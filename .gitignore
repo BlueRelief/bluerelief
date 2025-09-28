@@ -1,0 +1,26 @@
+.venv/
+.DS_Store
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Docker
+docker-compose.override.yml
+
+# Database
+*.db
+*.sqlite
+
+# Logs
+*.log
+logs/
+
+# Cache
+__pycache__/
+.cache/
+.next/
+node_modules/
