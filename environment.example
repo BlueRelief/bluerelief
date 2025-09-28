@@ -1,0 +1,15 @@
+# Database
+DATABASE_URL=postgresql://dev:devpassword@localhost:5432/bluerelief
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# Environment
+ENVIRONMENT=development
+
+# Frontend
+NEXT_PUBLIC_API_URL=http://localhost:8000
+
+# Secrets (change these in production)
+SECRET_KEY=your-secret-key-here
+JWT_SECRET=your-jwt-secret-here
