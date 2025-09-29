@@ -1,30 +1,49 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Logo } from "@/components/logo";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Mail } from "lucide-react";
+import { loginWithGoogle } from "@/lib/auth";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const router = useRouter();
+  const { isAuthenticated, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      router.push("/dashboard");
+    }
+  }, [isAuthenticated, loading, router]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Login attempt:", { email, password });
-    // Simulate successful login and redirect
-    window.location.href = "/dashboard";
   };
 
   const handleGoogleAuth = () => {
-    console.log("Google auth clicked");
-    // Simulate successful Google auth and redirect
-    window.location.href = "/dashboard";
+    loginWithGoogle();
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">

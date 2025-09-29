@@ -12,11 +12,10 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 # Secrets (change these in production)
 SECRET_KEY=your-secret-key-here
-JWT_SECRET=your-jwt-secret-here
+JWT_SECRET_KEY=your-jwt-secret-key-here
 
 # Google OAuth
 GOOGLE_CLIENT_ID=your-google-client-id-here
 GOOGLE_CLIENT_SECRET=your-google-client-secret-here
-JWT_SECRET_KEY=your-jwt-secret-key-here
-REDIRECT_URL=http://localhost:8000/google/auth
+REDIRECT_URL=http://localhost:3000/dashboard
 FRONTEND_URL=http://localhost:3000
