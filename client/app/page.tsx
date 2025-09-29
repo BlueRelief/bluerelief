@@ -50,14 +50,12 @@ export default function Home() {
           </p>
           <div className="flex gap-4 justify-center">
             <Link href="/dashboard">
-              <Button size="lg" className="text-lg px-8">
-                Get Started
+              <Button size="lg" className="text-lg px-8 text">
+                <div className="text-center">
+                    Get Started
+                </div>
+
                 <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/dashboard">
-              <Button variant="outline" size="lg" className="text-lg px-8">
-                View Demo
               </Button>
             </Link>
           </div>
@@ -241,7 +239,7 @@ export default function Home() {
                   <div>
                     <h3 className="font-semibold mb-2">Faster Detection</h3>
                     <p className="text-muted-foreground">
-                      Identify crises as they emerge from social media chatter, hours before traditional methods.
+                      Identify crises as they emerge from social media posts, hours before older, inefficient detection methods.
                     </p>
                   </div>
                 </div>
@@ -315,15 +313,10 @@ export default function Home() {
             Join first responders and organizations already using BlueRelief to save lives and reduce disaster impact.
           </p>
           <div className="flex gap-4 justify-center">
-            <Link href="/dashboard">
-              <Button size="lg" variant="secondary" className="text-lg px-8">
-                Start Free Trial
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
             <Link href="/login">
-              <Button variant="outline" size="lg" className="text-lg px-8 border-white text-white hover:bg-white hover:text-blue-600">
-                Contact Sales
+              <Button size="lg" variant="secondary" className="text-lg px-8">
+                Create an account today
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
           </div>
