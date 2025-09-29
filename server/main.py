@@ -1,11 +1,22 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from routers import auth
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(
     title="BlueRelief API",
     description="A simple FastAPI starter application",
     version="1.0.0"
+)
+
+# Add session middleware for OAuth state management
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key=os.getenv("SECRET_KEY", "your-secret-key-here")
 )
 
 # Add CORS middleware to allow frontend connections
