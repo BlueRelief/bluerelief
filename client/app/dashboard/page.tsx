@@ -27,9 +27,9 @@ export default function DashboardPage() {
             <AlertTriangle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">N/A</div>
             <p className="text-xs text-muted-foreground">
-              +2 from last hour
+              N/A
             </p>
           </CardContent>
         </Card>
@@ -42,9 +42,9 @@ export default function DashboardPage() {
             <Activity className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24,583</div>
+            <div className="text-2xl font-bold">N/A</div>
             <p className="text-xs text-muted-foreground">
-              +1,250 in last hour
+              +N/A
             </p>
           </CardContent>
         </Card>
@@ -57,27 +57,13 @@ export default function DashboardPage() {
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">96.8%</div>
+            <div className="text-2xl font-bold">N/A</div>
             <p className="text-xs text-muted-foreground">
-              +0.2% from yesterday
+              N/A
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Global Coverage
-            </CardTitle>
-            <Globe className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">48</div>
-            <p className="text-xs text-muted-foreground">
-              Countries monitored
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Recent Alerts */}
@@ -87,29 +73,7 @@ export default function DashboardPage() {
             <CardTitle>Recent Alerts</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-start space-x-4">
-              <div className="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Wildfire detected in California</p>
-                <p className="text-xs text-muted-foreground">2 minutes ago • High severity</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start space-x-4">
-              <div className="w-2 h-2 bg-orange-500 rounded-full mt-2"></div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Flooding reports in Texas</p>
-                <p className="text-xs text-muted-foreground">15 minutes ago • Medium severity</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start space-x-4">
-              <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Power outage in New York</p>
-                <p className="text-xs text-muted-foreground">32 minutes ago • Low severity</p>
-              </div>
-            </div>
+
           </CardContent>
         </Card>
 
@@ -144,6 +108,21 @@ export default function DashboardPage() {
               <Badge variant="outline" className="text-green-600 border-green-600">
                 Operational
               </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Heatmap Section */}
+      <div className="mt-6">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Heatmap</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Heatmap content goes here */}
+            <div className="h-48 bg-gray-100 rounded-md flex items-center justify-center text-muted-foreground">
+              In-Progress
             </div>
           </CardContent>
         </Card>
