@@ -61,7 +61,7 @@ importers:
         specifier: ^4
         version: 4.1.13
       '@types/node':
-        specifier: ^20
+        specifier: ^20.19.17
         version: 20.19.17
       '@types/react':
         specifier: ^19
@@ -82,7 +82,7 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0
       typescript:
-        specifier: ^5
+        specifier: ^5.9.2
         version: 5.9.2
 
 packages:
