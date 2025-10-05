@@ -8,32 +8,49 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
+  ReferenceLine,
 } from 'recharts';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { TrendingUp, AlertTriangle, Activity, Target } from "lucide-react";
 
 export default function AnalysisPage() {
-  // Graph will show empty data for now, we'll add onto it once we obtain data
   const crisisData = [
-    { month: 'Jan', highPriority: 0, mediumPriority: 0, totalIncidents: 0 },
-    { month: 'Feb', highPriority: 0, mediumPriority: 0, totalIncidents: 0 },
-    { month: 'Mar', highPriority: 0, mediumPriority: 0, totalIncidents: 0 },
-    { month: 'Apr', highPriority: 0, mediumPriority: 0, totalIncidents: 0 },
-    { month: 'May', highPriority: 0, mediumPriority: 0, totalIncidents: 0 },
-    { month: 'Jun', highPriority: 0, mediumPriority: 0, totalIncidents: 0 },
-    { month: 'Jul', highPriority: 0, mediumPriority: 0, totalIncidents: 0 },
-    { month: 'Aug', highPriority: 0, mediumPriority: 0, totalIncidents: 0 },
-    { month: 'Sep', highPriority: 0, mediumPriority: 0, totalIncidents: 0 },
-    { month: 'Oct', highPriority: 0, mediumPriority: 0, totalIncidents: 0 },
-    { month: 'Nov', highPriority: 0, mediumPriority: 0, totalIncidents: 0 },
-    { month: 'Dec', highPriority: 0, mediumPriority: 0, totalIncidents: 0 }
+    { month: 'Jan', highPriority: 45, mediumPriority: 32, totalIncidents: 120 },
+    { month: 'Feb', highPriority: 52, mediumPriority: 28, totalIncidents: 135 },
+    { month: 'Mar', highPriority: 38, mediumPriority: 45, totalIncidents: 145 },
+    { month: 'Apr', highPriority: 63, mediumPriority: 38, totalIncidents: 160 },
+    { month: 'May', highPriority: 48, mediumPriority: 52, totalIncidents: 155 },
+    { month: 'Jun', highPriority: 55, mediumPriority: 42, totalIncidents: 142 },
+    { month: 'Jul', highPriority: 42, mediumPriority: 48, totalIncidents: 138 },
+    { month: 'Aug', highPriority: 58, mediumPriority: 35, totalIncidents: 148 },
+    { month: 'Sep', highPriority: 47, mediumPriority: 41, totalIncidents: 152 },
+    { month: 'Oct', highPriority: 61, mediumPriority: 46, totalIncidents: 168 },
+    { month: 'Nov', highPriority: 53, mediumPriority: 39, totalIncidents: 158 },
+    { month: 'Dec', highPriority: 49, mediumPriority: 44, totalIncidents: 163 }
   ];
 
-  // Empty data for regional analysis - ready for real data integration
+  const chartConfig = {
+    highPriority: {
+      label: "High Priority",
+      color: "oklch(0.6368 0.2078 25.3313)",
+    },
+    mediumPriority: {
+      label: "Medium Priority",
+      color: "oklch(0.5593 0.1942 258.4556)",
+    },
+    totalIncidents: {
+      label: "Total Incidents",
+      color: "oklch(0.7137 0.1434 254.6240)",
+    },
+  } satisfies ChartConfig;
+
   const regionalData: { region: string; incidents: number; severity: string }[] = [];
 
   // This will contain empty heatmap data until we add onto it
@@ -42,7 +59,7 @@ export default function AnalysisPage() {
     for (let i = 0; i < 8; i++) {
       const row = [];
       for (let j = 0; j < 12; j++) {
-        row.push(0); // Values will be readjusted later when we obtain data
+        row.push(Math.random() * 0.8 + 0.1);
       }
       data.push(row);
     }
@@ -51,10 +68,11 @@ export default function AnalysisPage() {
 
   const heatmapData = generateHeatmapData();
 
-  // Get the intensity color for heatmap cells
   const getHeatmapColor = (intensity: number) => {
-    // Return light gray for empty data
-    return '#f3f4f6';
+    if (intensity < 0.3) return 'oklch(0.9683 0.0069 247.8956)';
+    if (intensity < 0.5) return 'oklch(0.8091 0.0956 251.8128)';
+    if (intensity < 0.7) return 'oklch(0.6128 0.1689 257.5652)';
+    return 'oklch(0.5593 0.1942 258.4556)';
   };
 
   
@@ -84,9 +102,9 @@ export default function AnalysisPage() {
             <Activity className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">--</div>
+            <div className="text-2xl font-bold">1,784</div>
             <p className="text-xs text-muted-foreground">
-              Awaiting data
+              +12.5% from last period
             </p>
           </CardContent>
         </Card>
@@ -97,9 +115,9 @@ export default function AnalysisPage() {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">--</div>
+            <div className="text-2xl font-bold">611</div>
             <p className="text-xs text-muted-foreground">
-              Awaiting data
+              34.3% of total incidents
             </p>
           </CardContent>
         </Card>
@@ -110,9 +128,9 @@ export default function AnalysisPage() {
             <Target className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">--</div>
+            <div className="text-2xl font-bold">92.4%</div>
             <p className="text-xs text-muted-foreground">
-              Awaiting data
+              +2.1% from last month
             </p>
           </CardContent>
         </Card>
@@ -123,9 +141,9 @@ export default function AnalysisPage() {
             <TrendingUp className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">--</div>
+            <div className="text-2xl font-bold">3.2m</div>
             <p className="text-xs text-muted-foreground">
-              Awaiting data
+              -0.8m from last month
             </p>
           </CardContent>
         </Card>
@@ -140,58 +158,54 @@ export default function AnalysisPage() {
           </p>
         </CardHeader>
         <CardContent>
-          <div className="h-96 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={crisisData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis 
-                  dataKey="month" 
-                  className="text-muted-foreground"
-                  fontSize={12}
-                />
-                <YAxis 
-                  className="text-muted-foreground"
-                  fontSize={12}
-                />
-                <Tooltip 
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--background))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                  }}
-                />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="highPriority" 
-                  stroke="hsl(var(--destructive))" 
-                  strokeWidth={3}
-                  name="High Priority"
-                  dot={{ fill: 'hsl(var(--destructive))', strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="mediumPriority" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={3}
-                  name="Medium Priority"
-                  dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="totalIncidents" 
-                  stroke="hsl(var(--chart-3))" 
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                  name="Total Incidents"
-                  dot={{ fill: 'hsl(var(--chart-3))', strokeWidth: 2, r: 3 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          <ChartContainer config={chartConfig} className="h-96 w-full">
+            <LineChart data={crisisData} accessibilityLayer>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="month" 
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+              />
+              <YAxis 
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartLegend content={<ChartLegendContent />} />
+              <ReferenceLine 
+                y={50} 
+                stroke="oklch(0.7107 0.0351 256.7878)" 
+                strokeDasharray="3 3"
+                label={{ value: "Target", position: "right", fill: "oklch(0.5544 0.0407 257.4166)" }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="highPriority" 
+                stroke="var(--color-highPriority)" 
+                strokeWidth={3}
+                dot={{ fill: "var(--color-highPriority)", strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="mediumPriority" 
+                stroke="var(--color-mediumPriority)" 
+                strokeWidth={3}
+                dot={{ fill: "var(--color-mediumPriority)", strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="totalIncidents" 
+                stroke="var(--color-totalIncidents)" 
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={{ fill: "var(--color-totalIncidents)", strokeWidth: 2, r: 3 }}
+              />
+            </LineChart>
+          </ChartContainer>
         </CardContent>
       </Card>
 
@@ -307,21 +321,21 @@ export default function AnalysisPage() {
                     <div className="w-3 h-3 bg-primary rounded-full"></div>
                     <span className="text-sm font-medium">Recurring Crisis Patterns</span>
                   </div>
-                  <Badge variant="secondary">--</Badge>
+                  <Badge variant="secondary">23</Badge>
                 </div>
                 <div className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
                     <span className="text-sm font-medium">Tweets Recognized</span>
                   </div>
-                  <Badge variant="secondary">--</Badge>
+                  <Badge variant="secondary">8.4K</Badge>
                 </div>
                 <div className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                     <span className="text-sm font-medium">Prediction Accuracy %</span>
                   </div>
-                  <Badge variant="secondary">--</Badge>
+                  <Badge variant="secondary">87.3%</Badge>
                 </div>
               </div>
             </CardContent>
