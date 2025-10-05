@@ -50,6 +50,12 @@ services:
       DATABASE_URL: postgresql://dev:devpassword@postgres:5432/bluerelief
       REDIS_URL: redis://redis:6379
       ENVIRONMENT: development
+      GOOGLE_CLIENT_ID: 42548008977-d3m985jupaljnjsluoakcps64t4q4sk8.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: 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
+      JWT_SECRET_KEY: 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
+      SECRET_KEY: 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
+      REDIRECT_URL: http://localhost:3000/dashboard
+      FRONTEND_URL: http://localhost:3000
     depends_on:
       postgres:
         condition: service_healthy
