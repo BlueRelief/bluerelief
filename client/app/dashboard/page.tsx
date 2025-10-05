@@ -17,53 +17,20 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Active Alerts
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-500" />
+
+      {/* Heatmap Section */}
+      <div className="mt-6">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Heatmap</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">N/A</div>
-            <p className="text-xs text-muted-foreground">
-              N/A
-            </p>
+            {/* Heatmap content goes here */}
+            <div className="h-48 bg-gray-100 rounded-md flex items-center justify-center text-muted-foreground">
+              In-Progress
+            </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Posts Analyzed
-            </CardTitle>
-            <Activity className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">N/A</div>
-            <p className="text-xs text-muted-foreground">
-              +N/A
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Accuracy Rate
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">N/A</div>
-            <p className="text-xs text-muted-foreground">
-              N/A
-            </p>
-          </CardContent>
-        </Card>
-
       </div>
 
       {/* Recent Alerts */}
@@ -113,20 +80,59 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Heatmap Section */}
-      <div className="mt-6">
-        <Card className="w-full">
-          <CardHeader>
-            <CardTitle>Heatmap</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Heatmap content goes here */}
-            <div className="h-48 bg-gray-100 rounded-md flex items-center justify-center text-muted-foreground">
-              In-Progress
-            </div>
-          </CardContent>
-        </Card>
+      {/* Stats Cards */}
+      <div className="flex justify-center">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-4xl w-full">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Active Alerts
+              </CardTitle>
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">N/A</div>
+              <p className="text-xs text-muted-foreground">
+                N/A
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Posts Analyzed
+              </CardTitle>
+              <Activity className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">N/A</div>
+              <p className="text-xs text-muted-foreground">
+                +N/A
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Accuracy Rate
+              </CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">N/A</div>
+              <p className="text-xs text-muted-foreground">
+                N/A
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
+
+
+
     </div>
   );
 }

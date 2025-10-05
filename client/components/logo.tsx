@@ -37,6 +37,12 @@ const Logo = React.forwardRef<
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
+        <defs>
+          <mask id="logo-mask">
+            <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
+            <rect x="25" y="25" width="50" height="50" rx="8" ry="8" fill="black" />
+          </mask>
+        </defs>
         <rect
           x="0"
           y="0"
@@ -45,15 +51,7 @@ const Logo = React.forwardRef<
           rx="20"
           ry="20"
           className="fill-primary"
-        />
-        <rect
-          x="25"
-          y="25"
-          width="50"
-          height="50"
-          rx="8"
-          ry="8"
-          className="fill-primary-foreground"
+          mask="url(#logo-mask)"
         />
       </svg>
     </div>
