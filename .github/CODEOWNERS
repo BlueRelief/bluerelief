@@ -1,0 +1,18 @@
+# Default owners for everything in the repo
+* @BlueRelief/frontend @BlueRelief/backend
+
+# GitHub configuration files
+/.github/ @geeth24
+
+# Docker files
+Dockerfile @geeth24
+docker-compose.yml @geeth24
+*.dockerfile @geeth24
+/scripts/ @geeth24
+
+# Client-side code
+/client/ @BlueRelief/frontend
+
+# Server-side code
+/server/ @BlueRelief/backend
+
