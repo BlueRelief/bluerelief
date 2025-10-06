@@ -23,6 +23,7 @@ import {
   Settings,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const navigation = [
   {
@@ -58,6 +59,8 @@ const navigation = [
 ];
 
 function AppSidebar() {
+  const pathname = usePathname();
+  
   return (
     <Sidebar variant="inset">
       <SidebarHeader className="p-4">
@@ -72,7 +75,7 @@ function AppSidebar() {
             <SidebarMenu>
               {navigation.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild isActive={pathname === item.href}>
                     <Link href={item.href}>
                       <item.icon />
                       <span>{item.title}</span>

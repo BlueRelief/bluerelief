@@ -99,9 +99,9 @@ export default function AnalysisPage() {
             <Activity className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,784</div>
+            <div className="text-2xl font-bold">1,000</div>
             <p className="text-xs text-muted-foreground">
-              +12.5% from last period
+              +10% from last period
             </p>
           </CardContent>
         </Card>
@@ -112,9 +112,9 @@ export default function AnalysisPage() {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">611</div>
+            <div className="text-2xl font-bold">100</div>
             <p className="text-xs text-muted-foreground">
-              34.3% of total incidents
+              10% of total incidents
             </p>
           </CardContent>
         </Card>
@@ -125,9 +125,9 @@ export default function AnalysisPage() {
             <Target className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">92.4%</div>
+            <div className="text-2xl font-bold">100%</div>
             <p className="text-xs text-muted-foreground">
-              +2.1% from last month
+              +10% from last month
             </p>
           </CardContent>
         </Card>
@@ -138,9 +138,9 @@ export default function AnalysisPage() {
             <TrendingUp className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3.2m</div>
+            <div className="text-2xl font-bold">10m</div>
             <p className="text-xs text-muted-foreground">
-              -0.8m from last month
+              -0.1m from last month
             </p>
           </CardContent>
         </Card>
@@ -318,21 +318,21 @@ export default function AnalysisPage() {
                     <div className="w-3 h-3 bg-primary rounded-full"></div>
                     <span className="text-sm font-medium">Recurring Crisis Patterns</span>
                   </div>
-                  <Badge variant="secondary">23</Badge>
+                  <Badge variant="secondary">10</Badge>
                 </div>
                 <div className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
                     <span className="text-sm font-medium">Tweets Recognized</span>
                   </div>
-                  <Badge variant="secondary">8.4K</Badge>
+                  <Badge variant="secondary">10K</Badge>
                 </div>
                 <div className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                     <span className="text-sm font-medium">Prediction Accuracy %</span>
                   </div>
-                  <Badge variant="secondary">87.3%</Badge>
+                  <Badge variant="secondary">100%</Badge>
                 </div>
               </div>
             </CardContent>
