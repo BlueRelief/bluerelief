@@ -3,6 +3,8 @@ const API_URL = "http://localhost:8000";
 export interface User {
   user_id: string;
   user_email: string;
+  name?: string;
+  picture?: string;
 }
 
 export async function checkAuthStatus(): Promise<User | null> {

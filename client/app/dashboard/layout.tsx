@@ -64,10 +64,14 @@ const navigation = [
 ];
 
 interface AppSidebarProps {
-  userEmail?: string;
+  user?: {
+    user_email: string;
+    name?: string;
+    picture?: string;
+  } | null;
 }
 
-function AppSidebar({ userEmail }: AppSidebarProps) {
+function AppSidebar({ user }: AppSidebarProps) {
 
   return (
     <Sidebar variant="inset">
@@ -95,9 +99,25 @@ function AppSidebar({ userEmail }: AppSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      {userEmail && (
+      {user && (
         <div className="mt-auto p-4 border-t">
-          <div className="text-xs text-muted-foreground mb-2">{userEmail}</div>
+          <div className="flex items-center space-x-3 mb-3">
+            {user.picture && (
+              <img 
+                src={user.picture} 
+                alt="Profile" 
+                className="w-8 h-8 rounded-full"
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              {user.name && (
+                <div className="text-sm font-medium truncate">{user.name}</div>
+              )}
+              <div className="text-xs text-muted-foreground truncate">
+                {user.user_email}
+              </div>
+            </div>
+          </div>
           <Button
             variant="outline"
             size="sm"
@@ -141,7 +161,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <AppSidebar userEmail={user?.user_email} />
+      <AppSidebar user={user} />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
