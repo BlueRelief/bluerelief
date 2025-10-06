@@ -1,5 +1,7 @@
-'use client';
+"use client";
 
+import React, { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,6 +21,15 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { TrendingUp, AlertTriangle, Activity, Target } from "lucide-react";
+
+const CrisisMap = dynamic(() => import("@/components/crisis-map"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full flex items-center justify-center bg-muted/20">
+      <div className="text-sm text-muted-foreground">Loading map...</div>
+    </div>
+  ),
+});
 
 export default function AnalysisPage() {
   const crisisData = [
@@ -51,7 +62,15 @@ export default function AnalysisPage() {
     },
   } satisfies ChartConfig;
 
-  const regionalData: { region: string; incidents: number; severity: string }[] = [];
+  const regionalData: { region: string; incidents: number; severity: string; coordinates: [number, number] }[] = [
+    { region: 'Coastal Region', incidents: 120, severity: 'High', coordinates: [-74.006, 40.7128] },
+    { region: 'Inland Valley', incidents: 85, severity: 'Medium', coordinates: [-118.2437, 34.0522] },
+    { region: 'Northern Highlands', incidents: 45, severity: 'Medium', coordinates: [-122.6765, 45.5231] },
+    { region: 'Southern Basin', incidents: 170, severity: 'Critical', coordinates: [-95.3698, 29.7604] },
+  ];
+
+  const [regions, setRegions] = useState(regionalData);
+  const [mapError, setMapError] = useState(false);
 
   // This will contain empty heatmap data until we add onto it
   const heatmapData = [
@@ -81,6 +100,23 @@ export default function AnalysisPage() {
       default: return 'secondary';
     }
   };
+
+  useEffect(() => {
+    const fetchIncidents = async () => {
+      try {
+        const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+        const res = await fetch(`${apiBase}/api/incidents`);
+        if (res.ok) {
+          const json = await res.json();
+          setRegions(json);
+        }
+      } catch (e) {
+        console.warn('Failed to fetch incidents:', e);
+      }
+    };
+
+    fetchIncidents();
+  }, []);
 
   return (
     <div className="space-y-6 p-6">
@@ -266,8 +302,28 @@ export default function AnalysisPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {regionalData.length > 0 ? (
-                regionalData.map((region, index) => (
+              <div className="h-64 w-full rounded-lg overflow-hidden mb-4 relative">
+                {mapError ? (
+                  <div className="h-full w-full flex flex-col items-center justify-center bg-muted/80 text-center p-4">
+                    <div className="font-medium mb-2">Map failed to load</div>
+                    <div className="text-sm">Unable to initialize the map. Please check your Mapbox token.</div>
+                  </div>
+                ) : (
+                  <CrisisMap regions={regions} onMapError={() => setMapError(true)} />
+                )}
+              </div>
+              <div className="flex items-center space-x-3 text-sm text-muted-foreground mb-2">
+                <div className="flex items-center space-x-2">
+                  <span className="w-3 h-3 bg-destructive rounded-full inline-block"></span>
+                  <span>Critical/High</span>
+                </div>
+                <div className="flex items-center space-x-2 ml-4">
+                  <span className="w-3 h-3 bg-primary rounded-full inline-block"></span>
+                  <span>Medium</span>
+                </div>
+              </div>
+              {regions.length > 0 ? (
+                regions.map((region, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div className="flex-1">
                       <div className="font-medium">{region.region}</div>

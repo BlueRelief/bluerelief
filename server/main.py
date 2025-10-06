@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from routers import auth
+from routers import incidents
 import os
 from dotenv import load_dotenv
 
@@ -35,6 +36,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router)
+app.include_router(incidents.router)
 
 @app.get("/")
 async def root():
