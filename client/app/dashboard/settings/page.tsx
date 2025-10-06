@@ -43,9 +43,11 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center space-x-4">
-              <Avatar className="h-20 w-20">
+              <Avatar className="h-20 w-20" onClick={() => {
+                    console.log("Avatar clicked:", user?.picture);
+                  }}>
                 <AvatarImage 
-                  src={user?.picture || ""} 
+                  src={user?.picture} 
                   alt={user?.name || "User"} 
                 />
                 <AvatarFallback className="bg-muted text-2xl">

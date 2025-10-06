@@ -14,7 +14,7 @@ from typing import Optional
 from google.oauth2 import service_account
 import google.auth.transport.requests
 from google.oauth2.id_token import verify_oauth2_token
-from db_utils.db import log_user, log_token
+from db_utils.db import upsert_user, get_user_by_email
 import logging as logger
 
 load_dotenv(override=True)
@@ -63,19 +63,21 @@ def get_current_user(token: str = Cookie(None)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
-        user_id: str = payload.get("sub")
         user_email: str = payload.get("email")
-        user_name: str = payload.get("name")
-        user_picture: str = payload.get("picture")
 
-        if user_id is None or user_email is None:
+        if user_email is None:
             raise credentials_exception
 
+        # Get user data from database using email from JWT
+        user_data = get_user_by_email(user_email)
+        if user_data is None:
+            raise HTTPException(status_code=401, detail="User not found")
+
         return {
-            "user_id": user_id, 
-            "user_email": user_email,
-            "name": user_name,
-            "picture": user_picture
+            "user_id": user_data["id"], 
+            "user_email": user_data["email"],
+            "name": user_data["name"],
+            "picture": user_data["picture"]
         }
 
     except ExpiredSignatureError:
@@ -156,22 +158,19 @@ async def auth(request: Request):
     if user_id is None or user_email is None:
         raise HTTPException(status_code=401, detail="Missing user information from Google.")
 
-    # Create JWT token with profile data included
+    # Store user data in database
+    user_data = upsert_user(user_id, user_email, user_name, user_pic)
+    if user_data is None:
+        raise HTTPException(status_code=500, detail="Failed to store user data")
+
+    # Create simplified JWT token with only email and expiration
     access_token_expires = timedelta(seconds=expires_in)
     access_token = create_access_token(
         data={
-            "sub": user_id, 
-            "email": user_email,
-            "name": user_name,
-            "picture": user_pic
+            "email": user_email
         }, 
         expires_delta=access_token_expires
     )
-
-    # Skip database logging for now since we're not using a database
-    # session_id = str(uuid.uuid4())
-    # log_user(user_id, user_email, user_name, user_pic, first_logged_in, last_accessed)
-    # log_token(access_token, user_email, session_id)
 
     redirect_url = request.session.pop("login_redirect", REDIRECT_URL)
     response = RedirectResponse(redirect_url)
