@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "mapbox-gl/dist/mapbox-gl.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -186,5 +187,78 @@
   body {
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
+  }
+}
+
+@layer components {
+  .status-active {
+    @apply bg-green-100 text-green-800 border-green-200;
+  }
+  
+  .status-inactive {
+    @apply bg-gray-100 text-gray-600 border-gray-200;
+  }
+  
+  .data-feed-skeleton {
+    @apply bg-gray-200 h-4 rounded animate-pulse;
+  }
+}
+
+@layer utilities {
+  /* Enhanced dialog animations */
+  .dialog-overlay-enter {
+    animation: dialog-overlay-enter 300ms ease-out;
+  }
+  
+  .dialog-overlay-exit {
+    animation: dialog-overlay-exit 300ms ease-in;
+  }
+  
+  .dialog-content-enter {
+    animation: dialog-content-enter 300ms ease-out;
+  }
+  
+  .dialog-content-exit {
+    animation: dialog-content-exit 300ms ease-in;
+  }
+  
+  @keyframes dialog-overlay-enter {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes dialog-overlay-exit {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  
+  @keyframes dialog-content-enter {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+  
+  @keyframes dialog-content-exit {
+    from {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.95);
+    }
   }
 }
