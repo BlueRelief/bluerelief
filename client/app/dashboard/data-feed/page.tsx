@@ -151,12 +151,7 @@ export default function DataFeedPage() {
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant="outline"
-                        className={
-                          feed.status === "active"
-                            ? "status-active"
-                            : "status-inactive"
-                        }
+                        variant={feed.status === "active" ? "default" : "secondary"}
                       >
                         {feed.status === "active" ? "Active" : "Inactive"}
                       </Badge>
@@ -231,7 +226,7 @@ export default function DataFeedPage() {
           <p className="text-sm text-muted-foreground">Recent crisis events detected this week</p>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {[
               {
                 id: 1,
@@ -258,51 +253,42 @@ export default function DataFeedPage() {
               },
     
             ].map((crisis) => (
-              <div key={crisis.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-foreground">{crisis.crisisName}</h3>
-                      <Badge 
-                        variant="outline" 
-                        className={
-                          crisis.severity === "Critical" ? "border-red-500 text-red-600 bg-red-50" :
-                          crisis.severity === "High" ? "border-orange-500 text-orange-600 bg-orange-50" :
-                          "border-yellow-500 text-yellow-600 bg-yellow-50"
-                        }
-                      >
-                        {crisis.severity}
-                      </Badge>
-                      <Badge 
-                        variant="outline" 
-                        className={
-                          crisis.status === "Ongoing" ? "border-blue-500 text-blue-600 bg-blue-50" :
-                          crisis.status === "Contained" ? "border-yellow-500 text-yellow-600 bg-yellow-50" :
-                          "border-green-500 text-green-600 bg-green-50"
-                        }
-                      >
-                        {crisis.status}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">{crisis.description}</p>
-                  </div>
+              <div key={crisis.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <h3 className="font-semibold text-foreground">{crisis.crisisName}</h3>
+                  <Badge 
+                    variant={
+                      crisis.severity === "Critical" || crisis.severity === "High" 
+                        ? "destructive" 
+                        : "secondary"
+                    }
+                  >
+                    {crisis.severity}
+                  </Badge>
+                  <Badge 
+                    variant={
+                      crisis.status === "Active" || crisis.status === "Ongoing"
+                        ? "default"
+                        : "outline"
+                    }
+                  >
+                    {crisis.status}
+                  </Badge>
                 </div>
+                <p className="text-sm text-muted-foreground mb-3">{crisis.description}</p>
                 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                  <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">📍 Location:</span>
-                    <p className="font-medium">{crisis.region}</p>
+                    <span className="font-medium">{crisis.region}</span>
                   </div>
-                  <div>
+                  <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">📅 Date:</span>
-                    <p className="font-medium">{crisis.date} at {crisis.time}</p>
+                    <span className="font-medium">{crisis.date} at {crisis.time}</span>
                   </div>
-                  <div>
+                  <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">📊 Tweets:</span>
-                    <p className="font-medium">{crisis.tweetsAnalyzed} analyzed</p>
-                  </div>
-                  <div>
-
+                    <span className="font-medium">{crisis.tweetsAnalyzed} analyzed</span>
                   </div>
                 </div>
               </div>

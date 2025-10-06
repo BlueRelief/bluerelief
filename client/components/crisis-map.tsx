@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from "react";
 import Map, { Marker, Popup, NavigationControl } from "react-map-gl/mapbox";
+import { useTheme } from "next-themes";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 interface RegionData {
@@ -17,6 +18,7 @@ interface CrisisMapProps {
 }
 
 export default function CrisisMap({ regions, onMapError }: CrisisMapProps) {
+  const { theme, resolvedTheme } = useTheme();
   const [selectedRegion, setSelectedRegion] = useState<RegionData | null>(null);
   const [viewState, setViewState] = useState({
     longitude: -98.5795,
@@ -26,6 +28,11 @@ export default function CrisisMap({ regions, onMapError }: CrisisMapProps) {
 
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? 
     'pk.eyJ1IjoiZ3NnMjEwMDAxIiwiYSI6ImNtZzRpNjZ4ejFsNTgybW9mbnlyNmIxY28ifQ.01BgG4RXjP9pn8PYGc7sDw';
+
+  const isDark = resolvedTheme === 'dark' || theme === 'dark';
+  const mapStyle = isDark 
+    ? "mapbox://styles/mapbox/dark-v11" 
+    : "mapbox://styles/mapbox/light-v11";
 
   const getMarkerColor = useCallback((severity: string) => {
     switch (severity) {
@@ -49,7 +56,7 @@ export default function CrisisMap({ regions, onMapError }: CrisisMapProps) {
       {...viewState}
       onMove={(evt) => setViewState(evt.viewState)}
       mapboxAccessToken={mapboxToken}
-      mapStyle="mapbox://styles/mapbox/light-v11"
+      mapStyle={mapStyle}
       style={{ width: "100%", height: "100%" }}
       scrollZoom={true}
       dragPan={true}

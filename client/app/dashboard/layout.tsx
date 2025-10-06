@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import { Logo } from "@/components/logo";
 import {
   Sidebar,
@@ -17,6 +18,17 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   LayoutGrid,
   Menu,
   BarChart3,
@@ -24,12 +36,16 @@ import {
   Bell,
   Settings,
   LogOut,
+  Sun,
+  Moon,
+  Monitor,
+  ChevronUp,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { logout } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const navigation = [
   {
@@ -74,6 +90,8 @@ interface AppSidebarProps {
 
 function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+
   return (
     <Sidebar variant="inset">
       <SidebarHeader className="p-4">
@@ -101,33 +119,69 @@ function AppSidebar({ user }: AppSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
       {user && (
-        <div className="mt-auto p-4 border-t">
-          <div className="flex items-center space-x-3 mb-3">
-            {user.picture && (
-              <img 
-                src={user.picture} 
-                alt="Profile" 
-                className="w-8 h-8 rounded-full"
-              />
-            )}
-            <div className="flex-1 min-w-0">
-              {user.name && (
-                <div className="text-sm font-medium truncate">{user.name}</div>
-              )}
-              <div className="text-xs text-muted-foreground truncate">
-                {user.user_email}
-              </div>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={logout}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
+        <div className="mt-auto border-t">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-3 w-full p-3 hover:bg-sidebar-accent transition-colors">
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={user.picture} alt={user.name || user.user_email} />
+                  <AvatarFallback className="text-xs">
+                    {user.name ? user.name.charAt(0).toUpperCase() : user.user_email.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0 text-left">
+                  {user.name && (
+                    <div className="text-sm font-medium truncate text-sidebar-foreground">{user.name}</div>
+                  )}
+                  <div className="text-xs text-muted-foreground truncate">
+                    {user.user_email}
+                  </div>
+                </div>
+                <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end" className="w-56 mb-2">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  {user.name && (
+                    <p className="text-sm font-medium leading-none">{user.name}</p>
+                  )}
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user.user_email}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Monitor className="mr-2 h-4 w-4" />
+                  <span>Theme</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => setTheme("light")}>
+                    <Sun className="mr-2 h-4 w-4" />
+                    <span>Light</span>
+                    {theme === "light" && <span className="ml-auto">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("dark")}>
+                    <Moon className="mr-2 h-4 w-4" />
+                    <span>Dark</span>
+                    {theme === "dark" && <span className="ml-auto">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("system")}>
+                    <Monitor className="mr-2 h-4 w-4" />
+                    <span>System</span>
+                    {theme === "system" && <span className="ml-auto">✓</span>}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout} className="cursor-pointer">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Logout</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
     </Sidebar>
