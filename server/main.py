@@ -2,10 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from routers import auth
+from db_utils.db import init_db
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Initialize database tables
+init_db()
 
 app = FastAPI(
     title="BlueRelief API",
