@@ -65,11 +65,18 @@ def get_current_user(token: str = Cookie(None)):
 
         user_id: str = payload.get("sub")
         user_email: str = payload.get("email")
+        user_name: str = payload.get("name")
+        user_picture: str = payload.get("picture")
 
         if user_id is None or user_email is None:
             raise credentials_exception
 
-        return {"user_id": user_id, "user_email": user_email}
+        return {
+            "user_id": user_id, 
+            "user_email": user_email,
+            "name": user_name,
+            "picture": user_picture
+        }
 
     except ExpiredSignatureError:
         # Specifically handle expired tokens
@@ -93,7 +100,12 @@ async def auth_status(request: Request, token: str = Cookie(None)):
         user = get_current_user(token)
         return {
             "authenticated": True,
-            "user": {"user_id": user["user_id"], "user_email": user["user_email"]},
+            "user": {
+                "user_id": user["user_id"], 
+                "user_email": user["user_email"],
+                "name": user.get("name"),
+                "picture": user.get("picture")
+            }
         }
     except HTTPException:
         return {"authenticated": False}
@@ -129,30 +141,37 @@ async def auth(request: Request):
         raise HTTPException(status_code=401, detail="Failed to get user info")
 
     user = token.get("userinfo")
-    expires_in = token.get("expires_in")
-    user_id = user.get("sub")
-    iss = user.get("iss")
-    user_email = user.get("email")
-    first_logged_in = datetime.utcnow()
-    last_accessed = datetime.utcnow()
-
+    expires_in = token.get("expires_in", 3600)  # Default to 1 hour
+    user_id = user.get("sub") if user else user_info.get("id")
+    iss = user.get("iss") if user else "https://accounts.google.com"
+    user_email = user.get("email") if user else user_info.get("email")
+    
+    # Get profile data from Google API response
     user_name = user_info.get("name")
     user_pic = user_info.get("picture")
 
     if iss not in ["https://accounts.google.com", "accounts.google.com"]:
         raise HTTPException(status_code=401, detail="Google authentication failed.")
 
-    if user_id is None:
-        raise HTTPException(status_code=401, detail="Google authentication failed")
+    if user_id is None or user_email is None:
+        raise HTTPException(status_code=401, detail="Missing user information from Google.")
 
+    # Create JWT token with profile data included
     access_token_expires = timedelta(seconds=expires_in)
     access_token = create_access_token(
-        data={"sub": user_id, "email": user_email}, expires_delta=access_token_expires
+        data={
+            "sub": user_id, 
+            "email": user_email,
+            "name": user_name,
+            "picture": user_pic
+        }, 
+        expires_delta=access_token_expires
     )
 
-    session_id = str(uuid.uuid4())
-    log_user(user_id, user_email, user_name, user_pic, first_logged_in, last_accessed)
-    log_token(access_token, user_email, session_id)
+    # Skip database logging for now since we're not using a database
+    # session_id = str(uuid.uuid4())
+    # log_user(user_id, user_email, user_name, user_pic, first_logged_in, last_accessed)
+    # log_token(access_token, user_email, session_id)
 
     redirect_url = request.session.pop("login_redirect", REDIRECT_URL)
     response = RedirectResponse(redirect_url)
