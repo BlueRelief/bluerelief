@@ -78,6 +78,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
       NODE_ENV: development
+      NEXT_PUBLIC_MAPBOX_TOKEN: "pk.eyJ1IjoiZ3NnMjEwMDAxIiwiYSI6ImNtZzRpNjZ4ejFsNTgybW9mbnlyNmIxY28ifQ.01BgG4RXjP9pn8PYGc7sDw"
     depends_on:
       - backend
     volumes:
