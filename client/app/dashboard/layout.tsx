@@ -26,6 +26,7 @@ import {
   LogOut,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { logout } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -72,7 +73,7 @@ interface AppSidebarProps {
 }
 
 function AppSidebar({ user }: AppSidebarProps) {
-
+  const pathname = usePathname();
   return (
     <Sidebar variant="inset">
       <SidebarHeader className="p-4">
@@ -87,7 +88,7 @@ function AppSidebar({ user }: AppSidebarProps) {
             <SidebarMenu>
               {navigation.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild isActive={pathname === item.href}>
                     <Link href={item.href}>
                       <item.icon />
                       <span>{item.title}</span>
