@@ -1,27 +1,41 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { checkAuthStatus, type User } from "@/lib/auth";
+import { onAuthError } from "@/lib/api-client";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     async function loadUser() {
       try {
-        const userData = await checkAuthStatus(); // Now includes name and picture!
+        const userData = await checkAuthStatus();
         console.log('Authenticated user:', userData);
         setUser(userData);
       } catch (error) {
         console.error('Auth failed:', error);
+        setUser(null);
       } finally {
         setLoading(false);
       }
     }
 
     loadUser();
-  }, []);
+
+    const unsubscribe = onAuthError(() => {
+      console.log('Session expired, redirecting to login');
+      setUser(null);
+      router.push('/login');
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [router]);
 
   const refreshAuth = async () => {
     setLoading(true);
@@ -37,7 +51,7 @@ export function useAuth() {
   };
 
   return { 
-    user,        // Now includes name, picture, email, user_id
+    user,
     loading, 
     isAuthenticated: !!user,
     refreshAuth
