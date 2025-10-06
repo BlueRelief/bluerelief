@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,6 +22,15 @@ import {
 } from "@/components/ui/chart";
 import { TrendingUp, AlertTriangle, Activity, Target } from "lucide-react";
 
+const CrisisMap = dynamic(() => import("@/components/crisis-map"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full flex items-center justify-center bg-muted/20">
+      <div className="text-sm text-muted-foreground">Loading map...</div>
+    </div>
+  ),
+});
+
 export default function AnalysisPage() {
   const crisisData = [
     { month: 'Jan', highPriority: 45, mediumPriority: 32, totalIncidents: 120 },
@@ -36,9 +46,6 @@ export default function AnalysisPage() {
     { month: 'Nov', highPriority: 53, mediumPriority: 39, totalIncidents: 158 },
     { month: 'Dec', highPriority: 49, mediumPriority: 44, totalIncidents: 163 }
   ];
-
-  const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? 'pk.eyJ1IjoiZ3NnMjEwMDAxIiwiYSI6ImNtZzRpNjZ4ejFsNTgybW9mbnlyNmIxY28ifQ.01BgG4RXjP9pn8PYGc7sDw';
-  // Mapbox token will be set when the library is dynamically imported inside the effect. Prefer NEXT_PUBLIC_MAPBOX_TOKEN in prod.
 
   const chartConfig = {
     highPriority: {
@@ -56,17 +63,14 @@ export default function AnalysisPage() {
   } satisfies ChartConfig;
 
   const regionalData: { region: string; incidents: number; severity: string; coordinates: [number, number] }[] = [
-    { region: 'Coastal Region', incidents: 120, severity: 'High', coordinates: [-74.006, 40.7128] }, // fallback
-    { region: 'Inland Valley', incidents: 85, severity: 'Medium', coordinates: [-118.2437, 34.0522] }, // fallback
-    { region: 'Northern Highlands', incidents: 45, severity: 'Medium', coordinates: [-122.6765, 45.5231] }, // fallback
-    { region: 'Southern Basin', incidents: 170, severity: 'Critical', coordinates: [-95.3698, 29.7604] }, // fallback
+    { region: 'Coastal Region', incidents: 120, severity: 'High', coordinates: [-74.006, 40.7128] },
+    { region: 'Inland Valley', incidents: 85, severity: 'Medium', coordinates: [-118.2437, 34.0522] },
+    { region: 'Northern Highlands', incidents: 45, severity: 'Medium', coordinates: [-122.6765, 45.5231] },
+    { region: 'Southern Basin', incidents: 170, severity: 'Critical', coordinates: [-95.3698, 29.7604] },
   ];
 
-  const [fetchedRegions, setFetchedRegions] = useState<typeof regionalData | null>(null);
-
-  const mapRef = useRef<HTMLDivElement | null>(null);
+  const [regions, setRegions] = useState(regionalData);
   const [mapError, setMapError] = useState(false);
-  const [mapErrorMessage, setMapErrorMessage] = useState<string | null>(null);
 
   // This will contain empty heatmap data until we add onto it
   const heatmapData = [
@@ -98,187 +102,21 @@ export default function AnalysisPage() {
   };
 
   useEffect(() => {
-    if (!mapRef.current) return;
-
-    let map: any = null;
-    (async () => {
-      // Dynamically import mapbox-gl to avoid build-time type/module errors when the package
-      // isn't installed in the environment. 
+    const fetchIncidents = async () => {
       try {
-        const mapboxModule = await import('mapbox-gl');
-        const mapbox = (mapboxModule && (mapboxModule.default ?? mapboxModule)) as any;
-
-        // Mapbox CSS is imported globally in globals.css; only import JS module here.
-        mapbox.accessToken = MAPBOX_TOKEN;
-
-        map = new mapbox.Map({
-          container: mapRef.current,
-          style: 'mapbox://styles/mapbox/light-v11',
-          center: [-98.5795, 39.8283], // USA center
-          zoom: 3.2,
-        });
-
-      map.on('load', async () => {
-        // Use fetchedRegions if available, otherwise fall back to static regionalData
-        let sourceData = (fetchedRegions && fetchedRegions.length ? fetchedRegions : regionalData);
-
-        // If we haven't fetched yet, try to fetch from the API
-        if (!fetchedRegions) {
-          try {
-            const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
-            const res = await fetch(`${apiBase}/api/incidents`);
-            if (res.ok) {
-              const json = await res.json();
-              setFetchedRegions(json);
-              sourceData = json;
-            }
-          } catch (e) {
-            // ignore - we'll use fallback data
-            // eslint-disable-next-line no-console
-            console.warn('Failed to fetch incidents:', e);
-          }
+        const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+        const res = await fetch(`${apiBase}/api/incidents`);
+        if (res.ok) {
+          const json = await res.json();
+          setRegions(json);
         }
-
-        const geojson = {
-          type: 'FeatureCollection',
-          features: sourceData.map((r: any) => ({
-            type: 'Feature',
-            properties: {
-              region: r.region,
-              incidents: r.incidents,
-              severity: r.severity,
-            },
-            geometry: {
-              type: 'Point',
-              coordinates: r.coordinates,
-            }
-          }))
-        };
-
-        map.addSource('regions', { type: 'geojson', data: geojson });
-
-        map.addLayer({
-          id: 'regions-circles',
-          type: 'circle',
-          source: 'regions',
-          paint: {
-            'circle-radius': [
-              'interpolate', ['linear'], ['get', 'incidents'],
-              0, 6,
-              200, 28
-            ],
-            'circle-color': [
-              'match', ['get', 'severity'],
-              'Critical', '#d62728',
-              'High', '#ff7f0e',
-              'Medium', '#1f77b4',
-              /* default */ '#888888'
-            ],
-            'circle-opacity': 0.8,
-            'circle-stroke-width': 1,
-            'circle-stroke-color': '#fff'
-          }
-        });
-
-        // Add popup on click. Wrap creation in try/catch because some Mapbox
-        // internal runtime paths can throw (observed: "this.errorCb is not a function").
-        // If Popup fails, fall back to a tiny DOM tooltip so the UI remains usable
-        // and we can capture diagnostics in the console.
-        const createDomFallbackPopup = (coords: [number, number], props: any) => {
-          try {
-            const container = map.getContainer();
-            const existing = container.querySelector('.custom-map-popup');
-            if (existing) existing.remove();
-
-            const div = document.createElement('div');
-            div.className = 'custom-map-popup';
-            div.style.position = 'absolute';
-            div.style.pointerEvents = 'auto';
-            div.style.background = 'white';
-            div.style.padding = '8px';
-            div.style.borderRadius = '6px';
-            div.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-            div.style.transform = 'translate(-50%, -100%)';
-            div.innerHTML = `<strong>${props.region}</strong><div>${props.incidents} incidents</div><div>Severity: ${props.severity}</div>`;
-
-            // Position using map.project (lngLat -> screen coordinates)
-            const p = map.project(coords);
-            div.style.left = `${p.x}px`;
-            div.style.top = `${p.y}px`;
-
-            container.appendChild(div);
-
-            // Remove after 5s
-            setTimeout(() => div.remove(), 5000);
-          } catch (e) {
-            // If even the DOM fallback fails, as a last resort use alert so
-            // the user still sees something and the error gets surfaced.
-            // eslint-disable-next-line no-alert
-            alert(`${props.region} — ${props.incidents} incidents (Severity: ${props.severity})`);
-          }
-        };
-
-        map.on('click', 'regions-circles', (e: any) => {
-          const features = map.queryRenderedFeatures(e.point, { layers: ['regions-circles'] });
-          if (!features.length) return;
-          const f = features[0] as any;
-          const props = f.properties as any;
-
-          const coords = (f.geometry && f.geometry.coordinates) || (props && [props.longitude, props.latitude]) || null;
-          if (!coords) return;
-
-          // Defensive creation: test that Popup exists and is callable.
-          try {
-            if (mapbox && typeof mapbox.Popup === 'function') {
-              // Try Mapbox popup first; this is the normal UX path. Wrap in
-              // try/catch because Mapbox internals can throw in some environments.
-              try {
-                new mapbox.Popup()
-                  .setLngLat(coords)
-                  .setHTML(`<strong>${props.region}</strong><div>${props.incidents} incidents</div><div>Severity: ${props.severity}</div>`)
-                  .addTo(map);
-                return;
-              } catch (popupErr) {
-                // Log detailed diagnostic info to help track down the runtime
-                // "this.errorCb is not a function" issue.
-                // eslint-disable-next-line no-console
-                console.error('Mapbox Popup creation failed:', popupErr, {
-                  popupConstructor: mapbox.Popup,
-                  mapboxType: typeof mapbox,
-                  mapboxKeys: Object.keys(mapbox || {}),
-                });
-                // fall through to DOM fallback
-              }
-            }
-
-            // Fallback: show a small DOM tooltip so clicks still show region info
-            createDomFallbackPopup(coords, props);
-          } catch (err) {
-            // Catch-all to avoid bubbling runtime exceptions to the app.
-            // eslint-disable-next-line no-console
-            console.error('Unexpected error while handling map click:', err);
-            createDomFallbackPopup(coords, props);
-          }
-        });
-
-        // Change cursor on hover
-        map.on('mouseenter', 'regions-circles', () => map.getCanvas().style.cursor = 'pointer');
-        map.on('mouseleave', 'regions-circles', () => map.getCanvas().style.cursor = '');
-      });
-      } catch (err: any) {
-        // If dynamic import failed (module not installed or runtime error), set error flag so UI can show instructions
-        // We'll rely on the client-side rendering to show the fallback message.
-        // eslint-disable-next-line no-console
-        console.error('Mapbox failed to load:', err);
-        setMapError(true);
-        setMapErrorMessage(err && (err.message || String(err)));
+      } catch (e) {
+        console.warn('Failed to fetch incidents:', e);
       }
-    })();
-
-    return () => {
-      try { map && map.remove(); } catch (e) { /* ignore */ }
     };
-  }, [mapRef, regionalData]);
+
+    fetchIncidents();
+  }, []);
 
   return (
     <div className="space-y-6 p-6">
@@ -465,13 +303,13 @@ export default function AnalysisPage() {
           <CardContent>
             <div className="space-y-4">
               <div className="h-64 w-full rounded-lg overflow-hidden mb-4 relative">
-                <div ref={mapRef} id="regional-map" className="h-full w-full" />
-                {mapError && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/80 text-center p-4">
+                {mapError ? (
+                  <div className="h-full w-full flex flex-col items-center justify-center bg-muted/80 text-center p-4">
                     <div className="font-medium mb-2">Map failed to load</div>
-                    <div className="text-sm mb-3">It looks like Mapbox GL isn't available in this environment.</div>
-                    <div className="text-xs bg-muted/60 rounded px-2 py-1">Install with: <code>pnpm add mapbox-gl</code></div>
+                    <div className="text-sm">Unable to initialize the map. Please check your Mapbox token.</div>
                   </div>
+                ) : (
+                  <CrisisMap regions={regions} onMapError={() => setMapError(true)} />
                 )}
               </div>
               <div className="flex items-center space-x-3 text-sm text-muted-foreground mb-2">
@@ -484,8 +322,8 @@ export default function AnalysisPage() {
                   <span>Medium</span>
                 </div>
               </div>
-              {regionalData.length > 0 ? (
-                regionalData.map((region, index) => (
+              {regions.length > 0 ? (
+                regions.map((region, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div className="flex-1">
                       <div className="font-medium">{region.region}</div>
