@@ -31,14 +31,7 @@ oauth.register(
     name="auth_demo",
     client_id=config("GOOGLE_CLIENT_ID"),
     client_secret=config("GOOGLE_CLIENT_SECRET"),
-    authorize_url="https://accounts.google.com/o/oauth2/auth",
-    authorize_params=None,
-    access_token_url="https://oauth2.googleapis.com/token",
-    access_token_params=None,
-    refresh_token_url=None,
-    authorize_state=config("SECRET_KEY"),
-    redirect_uri="http://localhost:8000/auth/google/callback",
-    jwks_uri="https://www.googleapis.com/oauth2/v1/certs",
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
     client_kwargs={"scope": "openid profile email"},
 )
 
@@ -72,11 +65,18 @@ def get_current_user(token: str = Cookie(None)):
 
         user_id: str = payload.get("sub")
         user_email: str = payload.get("email")
+        user_name: str = payload.get("name")
+        user_picture: str = payload.get("picture")
 
         if user_id is None or user_email is None:
             raise credentials_exception
 
-        return {"user_id": user_id, "user_email": user_email}
+        return {
+            "user_id": user_id, 
+            "user_email": user_email,
+            "name": user_name,
+            "picture": user_picture
+        }
 
     except ExpiredSignatureError:
         # Specifically handle expired tokens
@@ -90,32 +90,46 @@ def get_current_user(token: str = Cookie(None)):
         traceback.print_exc()
         raise HTTPException(status_code=401, detail="Not Authenticated")
 
+
 @router.get("/status")
-async def auth_status():
-    return {"message": "Auth service is running", "authenticated": False}
+async def auth_status(request: Request, token: str = Cookie(None)):
+    if not token:
+        return {"authenticated": False}
+
+    try:
+        user = get_current_user(token)
+        return {
+            "authenticated": True,
+            "user": {
+                "user_id": user["user_id"], 
+                "user_email": user["user_email"],
+                "name": user.get("name"),
+                "picture": user.get("picture")
+            }
+        }
+    except HTTPException:
+        return {"authenticated": False}
+
 
 @router.get("/google/login")
 async def login(request: Request):
     request.session.clear()
-    referer = request.headers.get("referer")
-    FRONTEND_URL = "http://localhost:3000"
-    redirect_url = os.getenv("REDIRECT_URL")
+    redirect_url = os.getenv("REDIRECT_URL", "http://localhost:3000/dashboard")
     request.session["login_redirect"] = redirect_url
+    callback_url = "http://localhost:8000/auth/google/callback"
 
-    return await oauth.auth_demo.authorize_redirect(request, redirect_url, prompt="consent")
+    return await oauth.auth_demo.authorize_redirect(
+        request, callback_url, prompt="consent"
+    )
 
-@router.route("/google/callback")
+
+@router.get("/google/callback")
 async def auth(request: Request):
-    state_in_request = request.query_params.get("state")
-
-    logger.info(f"Request Session: {request.session}")
-    logger.info(f"Request state (from query params): {state_in_request}")
-
     try:
         token = await oauth.auth_demo.authorize_access_token(request)
     except Exception as e:
-        logger.info(str(e))
-        raise HTTPException(status_code=401, detail="Google authentication failed.")
+        logger.error(f"OAuth token error: {str(e)}")
+        raise HTTPException(status_code=401, detail="Google authentication failed")
 
     try:
         user_info_endpoint = "https://www.googleapis.com/oauth2/v2/userinfo"
@@ -123,50 +137,58 @@ async def auth(request: Request):
         google_response = requests.get(user_info_endpoint, headers=headers)
         user_info = google_response.json()
     except Exception as e:
-        logger.info(str(e))
-        raise HTTPException(status_code=401, detail="Google authentication failed.")
+        logger.error(f"User info fetch error: {str(e)}")
+        raise HTTPException(status_code=401, detail="Failed to get user info")
 
     user = token.get("userinfo")
-    expires_in = token.get("expires_in")
-    user_id = user.get("sub")
-    iss = user.get("iss")
-    user_email = user.get("email")
-    first_logged_in = datetime.utcnow()
-    last_accessed = datetime.utcnow()
-
+    expires_in = token.get("expires_in", 3600)  # Default to 1 hour
+    user_id = user.get("sub") if user else user_info.get("id")
+    iss = user.get("iss") if user else "https://accounts.google.com"
+    user_email = user.get("email") if user else user_info.get("email")
+    
+    # Get profile data from Google API response
     user_name = user_info.get("name")
     user_pic = user_info.get("picture")
-
-    logger.info(f"User name:{user_name}")
-    logger.info(f"User Email:{user_email}")
 
     if iss not in ["https://accounts.google.com", "accounts.google.com"]:
         raise HTTPException(status_code=401, detail="Google authentication failed.")
 
-    if user_id is None:
-        raise HTTPException(status_code=401, detail="Google authentication failed.")
+    if user_id is None or user_email is None:
+        raise HTTPException(status_code=401, detail="Missing user information from Google.")
 
-    # Create JWT token
+    # Create JWT token with profile data included
     access_token_expires = timedelta(seconds=expires_in)
-    access_token = create_access_token(data={"sub": user_id, "email": user_email}, expires_delta=access_token_expires)
+    access_token = create_access_token(
+        data={
+            "sub": user_id, 
+            "email": user_email,
+            "name": user_name,
+            "picture": user_pic
+        }, 
+        expires_delta=access_token_expires
+    )
 
-    session_id = str(uuid.uuid4())
-    log_user(user_id, user_email, user_name, user_pic, first_logged_in, last_accessed)
-    log_token(access_token, user_email, session_id)
+    # Skip database logging for now since we're not using a database
+    # session_id = str(uuid.uuid4())
+    # log_user(user_id, user_email, user_name, user_pic, first_logged_in, last_accessed)
+    # log_token(access_token, user_email, session_id)
 
-    redirect_url = request.session.pop("login_redirect", "")
-    logger.info(f"Redirecting to: {redirect_url}")
+    redirect_url = request.session.pop("login_redirect", REDIRECT_URL)
     response = RedirectResponse(redirect_url)
-    print(f"Access Token: {access_token}")
+
+    is_production = os.getenv("ENVIRONMENT", "development") == "production"
     response.set_cookie(
         key="token",
         value=access_token,
         httponly=True,
-        secure=True,  # Ensure you're using HTTPS
-        samesite="strict",  # Set the SameSite attribute to None
+        secure=is_production,
+        samesite="lax",
+        max_age=expires_in,
+        path="/",
     )
 
     return response
+
 
 @router.get("/logout")
 async def logout(request: Request):
@@ -174,4 +196,3 @@ async def logout(request: Request):
     response = JSONResponse(content={"message": "Logged out successfully."})
     response.delete_cookie("token")
     return response
-

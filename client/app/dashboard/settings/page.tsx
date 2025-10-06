@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useTheme } from "next-themes"
+import { useAuth } from "@/hooks/use-auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,6 +13,7 @@ import { Search, Check } from "lucide-react"
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
+  const { user, loading, isAuthenticated } = useAuth()
   const [emailNotifications, setEmailNotifications] = useState(false)
   const [twoFactor, setTwoFactor] = useState(false)
   const [autoUpdates, setAutoUpdates] = useState(false)
@@ -34,7 +36,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Profile Card */}
+        {/* Profile Card - Fixed */}
         <Card>
           <CardHeader>
             <CardTitle>Profile</CardTitle>
@@ -42,14 +44,36 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center space-x-4">
               <Avatar className="h-20 w-20">
-                <AvatarImage src="" />
-                <AvatarFallback className="bg-muted">
-                  <div className="h-full w-full bg-muted" />
+                <AvatarImage 
+                  src={user?.picture || ""} 
+                  alt={user?.name || "User"} 
+                />
+                <AvatarFallback className="bg-muted text-2xl">
+                  {user?.name 
+                    ? user.name.split(' ').map(n => n[0]).join('').toUpperCase()
+                    : user?.user_email?.[0]?.toUpperCase() || "U"
+                  }
                 </AvatarFallback>
               </Avatar>
               <div className="space-y-2 flex-1">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
+                {loading ? (
+                  <>
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </>
+                ) : (
+                  <>
+                    <div className="font-medium text-lg">
+                      {user?.name || "No name available"}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {user?.user_email}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      ID: {user?.user_id}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </CardContent>
@@ -173,7 +197,7 @@ export default function SettingsPage() {
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => setTheme("system")}
-                className="h-4 w-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex items-center justify-center"
+                className="h-4 w-4 rounded-full border border-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex items-center justify-center"
               >
                 {theme === "system" && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
               </button>

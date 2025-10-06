@@ -26,7 +26,6 @@ import {
   LogOut,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { logout } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -73,7 +72,7 @@ interface AppSidebarProps {
 }
 
 function AppSidebar({ user }: AppSidebarProps) {
-  const pathname = usePathname();
+
   return (
     <Sidebar variant="inset">
       <SidebarHeader className="p-4">
