@@ -40,6 +40,7 @@ SECRET_KEY = config("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 REDIRECT_URL = config("REDIRECT_URL")
 FRONTEND_URL = config("FRONTEND_URL")
+BACKEND_URL = config("BACKEND_URL", default="http://localhost:8000")
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
@@ -116,9 +117,8 @@ async def auth_status(request: Request, token: str = Cookie(None)):
 @router.get("/google/login")
 async def login(request: Request):
     request.session.clear()
-    redirect_url = os.getenv("REDIRECT_URL", "http://localhost:3000/dashboard")
-    request.session["login_redirect"] = redirect_url
-    callback_url = "http://localhost:8000/auth/google/callback"
+    request.session["login_redirect"] = REDIRECT_URL
+    callback_url = f"{BACKEND_URL}/auth/google/callback"
 
     return await oauth.auth_demo.authorize_redirect(
         request, callback_url, prompt="consent"

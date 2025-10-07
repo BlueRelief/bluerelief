@@ -63,9 +63,11 @@ export default function CrisisMap({ regions, onMapError }: CrisisMapProps) {
       dragRotate={true}
       doubleClickZoom={true}
       touchZoomRotate={true}
-      onError={(error: any) => {
+      onError={(error) => {
         console.error('Map error:', error);
-        onMapError?.(error.error);
+        if (error?.error) {
+          onMapError?.(error.error as Error);
+        }
       }}
     >
       <NavigationControl position="top-right" />

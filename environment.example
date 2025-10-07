@@ -19,3 +19,4 @@ GOOGLE_CLIENT_ID=your-google-client-id-here
 GOOGLE_CLIENT_SECRET=your-google-client-secret-here
 REDIRECT_URL=http://localhost:3000/dashboard
 FRONTEND_URL=http://localhost:3000
+BACKEND_URL=http://localhost:8000

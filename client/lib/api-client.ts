@@ -50,7 +50,7 @@ export async function apiGet<T>(endpoint: string): Promise<T> {
   return response.json();
 }
 
-export async function apiPost<T>(endpoint: string, data?: any): Promise<T> {
+export async function apiPost<T>(endpoint: string, data?: unknown): Promise<T> {
   const response = await apiClient(endpoint, {
     method: "POST",
     body: data ? JSON.stringify(data) : undefined,
@@ -61,7 +61,7 @@ export async function apiPost<T>(endpoint: string, data?: any): Promise<T> {
   return response.json();
 }
 
-export async function apiPut<T>(endpoint: string, data?: any): Promise<T> {
+export async function apiPut<T>(endpoint: string, data?: unknown): Promise<T> {
   const response = await apiClient(endpoint, {
     method: "PUT",
     body: data ? JSON.stringify(data) : undefined,
