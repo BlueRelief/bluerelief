@@ -17,9 +17,6 @@ permissions:
 jobs:
   enable-auto-merge:
     runs-on: ubuntu-latest
-    if: |
-      github.event.pull_request.draft == false &&
-      github.event.pull_request.user.login != 'dependabot[bot]'
     steps:
       - name: Check if PR is ready for auto-merge
         id: check-ready
@@ -27,7 +24,25 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const prNumber = context.payload.pull_request.number;
+            let prNumber;
+            
+            if (context.payload.pull_request) {
+              prNumber = context.payload.pull_request.number;
+            } else if (context.payload.workflow_run) {
+              const workflowRun = context.payload.workflow_run;
+              const prs = workflowRun.pull_requests;
+              if (prs && prs.length > 0) {
+                prNumber = prs[0].number;
+              } else {
+                console.log('No PR associated with this workflow run');
+                return false;
+              }
+            } else {
+              console.log('Could not determine PR number from context');
+              return false;
+            }
+            
+            console.log(`Processing PR #${prNumber}`);
             
             const { data: reviews } = await github.rest.pulls.listReviews({
               owner: context.repo.owner,
@@ -44,6 +59,16 @@ jobs:
               repo: context.repo.repo,
               pull_number: prNumber,
             });
+            
+            if (pr.draft) {
+              console.log('PR is a draft, skipping auto-merge');
+              return false;
+            }
+            
+            if (pr.user.login === 'dependabot[bot]') {
+              console.log('PR is from dependabot, skipping auto-merge');
+              return false;
+            }
             
             console.log(`PR mergeable: ${pr.mergeable}`);
             console.log(`PR mergeable_state: ${pr.mergeable_state}`);
@@ -126,7 +151,24 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             try {
-              const pullRequestId = context.payload.pull_request.node_id;
+              let prNumber;
+              
+              if (context.payload.pull_request) {
+                prNumber = context.payload.pull_request.number;
+              } else if (context.payload.workflow_run) {
+                const prs = context.payload.workflow_run.pull_requests;
+                if (prs && prs.length > 0) {
+                  prNumber = prs[0].number;
+                }
+              }
+              
+              const { data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+              });
+              
+              const pullRequestId = pr.node_id;
               
               const mutation = `
                 mutation($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod!) {
@@ -172,10 +214,21 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            let prNumber;
+            
+            if (context.payload.pull_request) {
+              prNumber = context.payload.pull_request.number;
+            } else if (context.payload.workflow_run) {
+              const prs = context.payload.workflow_run.pull_requests;
+              if (prs && prs.length > 0) {
+                prNumber = prs[0].number;
+              }
+            }
+            
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
+              issue_number: prNumber,
             });
             
             const botComment = comments.find(comment => 
@@ -187,7 +240,7 @@ jobs:
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
+                issue_number: prNumber,
                 body: '✅ **Auto-merge enabled** - This PR will be automatically merged when all checks pass.'
               });
             }
