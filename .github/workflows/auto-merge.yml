@@ -1,15 +1,9 @@
 name: Auto Merge
 
 on:
-  pull_request_review:
-    types: [submitted]
-  check_suite:
-    types: [completed]
   workflow_run:
     workflows: ["Deploy Preview"]
     types: [completed]
-  pull_request:
-    types: [synchronize]
 
 permissions:
   contents: write
@@ -19,10 +13,7 @@ permissions:
 jobs:
   enable-auto-merge:
     runs-on: ubuntu-latest
-    if: |
-      github.event_name != 'pull_request' || 
-      github.event.pull_request.draft == false &&
-      github.event.pull_request.user.login != 'dependabot[bot]'
+    if: github.event.workflow_run.conclusion == 'success'
     steps:
       - name: Check if PR is ready for auto-merge
         id: check-ready
@@ -30,27 +21,17 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            let prNumber;
+            const workflowRun = context.payload.workflow_run;
+            const prs = workflowRun.pull_requests;
             
-            if (context.payload.pull_request) {
-              prNumber = context.payload.pull_request.number;
-            } else if (context.payload.workflow_run) {
-              const workflowRun = context.payload.workflow_run;
-              const prs = workflowRun.pull_requests;
-              if (prs && prs.length > 0) {
-                prNumber = prs[0].number;
-              } else {
-                console.log('No PR associated with this workflow run');
-                return false;
-              }
-            } else {
-              console.log('Could not determine PR number from context');
+            if (!prs || prs.length === 0) {
+              console.log('No PR associated with this workflow run');
               return false;
             }
             
-            console.log(`Processing PR #${prNumber}`);
-            console.log(`Event type: ${context.eventName}`);
-            console.log(`Workflow run ID: ${context.runId}`);
+            const prNumber = prs[0].number;
+            console.log(`Processing PR #${prNumber} after Deploy Preview completed`);
+            console.log(`Deploy Preview conclusion: ${workflowRun.conclusion}`);
             
             const { data: reviews } = await github.rest.pulls.listReviews({
               owner: context.repo.owner,
@@ -93,25 +74,12 @@ jobs:
               ref: pr.head.sha,
             });
             
-            const { data: workflowRuns } = await github.rest.actions.listWorkflowRunsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              head_sha: pr.head.sha,
-              per_page: 100
-            });
+            // Preview deployment already completed successfully (triggered this workflow)
+            const previewComplete = true;
+            const previewSuccess = workflowRun.conclusion === 'success';
             
-            const previewWorkflow = workflowRuns.workflow_runs.find(
-              run => run.name === 'Deploy Preview' && run.head_sha === pr.head.sha
-            );
-            
-            const previewComplete = !previewWorkflow || previewWorkflow.status === 'completed';
-            const previewSuccess = !previewWorkflow || previewWorkflow.conclusion === 'success';
-            
-            console.log(`Preview workflow found: ${!!previewWorkflow}`);
-            if (previewWorkflow) {
-              console.log(`Preview workflow status: ${previewWorkflow.status}`);
-              console.log(`Preview workflow conclusion: ${previewWorkflow.conclusion}`);
-            }
+            console.log(`Preview deployment completed: ${previewComplete}`);
+            console.log(`Preview deployment successful: ${previewSuccess}`);
             
             const relevantChecks = checkRuns.check_runs.filter(
               run => run.name !== 'enable-auto-merge'
@@ -159,16 +127,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             try {
-              let prNumber;
-              
-              if (context.payload.pull_request) {
-                prNumber = context.payload.pull_request.number;
-              } else if (context.payload.workflow_run) {
-                const prs = context.payload.workflow_run.pull_requests;
-                if (prs && prs.length > 0) {
-                  prNumber = prs[0].number;
-                }
-              }
+              const workflowRun = context.payload.workflow_run;
+              const prs = workflowRun.pull_requests;
+              const prNumber = prs[0].number;
               
               const { data: pr } = await github.rest.pulls.get({
                 owner: context.repo.owner,
@@ -222,16 +183,9 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            let prNumber;
-            
-            if (context.payload.pull_request) {
-              prNumber = context.payload.pull_request.number;
-            } else if (context.payload.workflow_run) {
-              const prs = context.payload.workflow_run.pull_requests;
-              if (prs && prs.length > 0) {
-                prNumber = prs[0].number;
-              }
-            }
+            const workflowRun = context.payload.workflow_run;
+            const prs = workflowRun.pull_requests;
+            const prNumber = prs[0].number;
             
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
