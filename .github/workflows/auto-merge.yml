@@ -50,16 +50,21 @@ jobs:
               ref: pr.head.sha,
             });
             
-            const allChecksComplete = checkRuns.check_runs.every(
+            const relevantChecks = checkRuns.check_runs.filter(
+              run => run.name !== 'enable-auto-merge'
+            );
+            
+            const allChecksComplete = relevantChecks.length === 0 || relevantChecks.every(
               run => run.status === 'completed'
             );
-            const allChecksPassed = checkRuns.check_runs.every(
+            const allChecksPassed = relevantChecks.length === 0 || relevantChecks.every(
               run => run.conclusion === 'success' || run.conclusion === 'skipped' || run.conclusion === 'neutral'
             );
             
+            console.log(`Total check runs: ${checkRuns.check_runs.length}`);
+            console.log(`Relevant checks: ${relevantChecks.length}`);
             console.log(`All checks complete: ${allChecksComplete}`);
             console.log(`All checks passed: ${allChecksPassed}`);
-            console.log(`Check runs: ${checkRuns.check_runs.length}`);
             
             const isReady = hasApproval && allChecksComplete && allChecksPassed;
             console.log(`PR ready for auto-merge: ${isReady}`);
