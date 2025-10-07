@@ -68,8 +68,8 @@ jobs:
       - name: Deploy to production
         run: |
           helm upgrade --install bluerelief-backend \
-            ./helm/celery-app-chart \
-            -f ./helm/celery-app-chart/bluerelief-values.yaml \
+            /home/geeth/Development/k8s/helm/celery-app-chart \
+            -f /home/geeth/Development/k8s/helm/celery-app-chart/bluerelief-values.yaml \
             -n bluerelief \
             --create-namespace \
             --set app.image.tag=${{ steps.vars.outputs.image_tag }} \
@@ -123,8 +123,8 @@ jobs:
       - name: Deploy to Kubernetes
         run: |
           helm upgrade --install bluerelief-${{ steps.vars.outputs.sanitized_branch }} \
-            ./helm/celery-app-chart \
-            -f ./helm/celery-app-chart/bluerelief-values.yaml \
+            /home/geeth/Development/k8s/helm/celery-app-chart \
+            -f /home/geeth/Development/k8s/helm/celery-app-chart/bluerelief-values.yaml \
             -n bluerelief \
             --create-namespace \
             --set app.image.tag=${{ steps.vars.outputs.image_tag }} \
