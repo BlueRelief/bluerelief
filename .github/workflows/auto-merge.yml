@@ -20,26 +20,54 @@ jobs:
       github.event.pull_request.draft == false &&
       github.event.pull_request.user.login != 'dependabot[bot]'
     steps:
-      - name: Check if PR is approved
-        id: check-approval
+      - name: Check if PR is ready for auto-merge
+        id: check-ready
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const prNumber = context.payload.pull_request.number;
+            
             const { data: reviews } = await github.rest.pulls.listReviews({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: context.payload.pull_request.number,
+              pull_number: prNumber,
             });
             
             const approvedReviews = reviews.filter(review => review.state === 'APPROVED');
             const hasApproval = approvedReviews.length > 0;
-            
             console.log(`Approved reviews: ${approvedReviews.length}`);
-            return hasApproval;
+            
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+            
+            const { data: checkRuns } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: pr.head.sha,
+            });
+            
+            const allChecksComplete = checkRuns.check_runs.every(
+              run => run.status === 'completed'
+            );
+            const allChecksPassed = checkRuns.check_runs.every(
+              run => run.conclusion === 'success' || run.conclusion === 'skipped' || run.conclusion === 'neutral'
+            );
+            
+            console.log(`All checks complete: ${allChecksComplete}`);
+            console.log(`All checks passed: ${allChecksPassed}`);
+            console.log(`Check runs: ${checkRuns.check_runs.length}`);
+            
+            const isReady = hasApproval && allChecksComplete && allChecksPassed;
+            console.log(`PR ready for auto-merge: ${isReady}`);
+            
+            return isReady;
 
       - name: Enable auto-merge
-        if: steps.check-approval.outputs.result == 'true'
+        if: steps.check-ready.outputs.result == 'true'
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -75,6 +103,8 @@ jobs:
             } catch (error) {
               if (error.message.includes('already enabled') || error.message.includes('auto-merge is already enabled')) {
                 console.log('ℹ️  Auto-merge already enabled');
+              } else if (error.message.includes('unstable status')) {
+                console.log('⏳ PR is not ready yet - checks may still be running or branch protection rules not met');
               } else {
                 console.error('❌ Error enabling auto-merge:', error.message);
                 throw error;
@@ -82,7 +112,7 @@ jobs:
             }
 
       - name: Add comment
-        if: steps.check-approval.outputs.result == 'true'
+        if: steps.check-ready.outputs.result == 'true'
         uses: actions/github-script@v6
         continue-on-error: true
         with:
