@@ -65,8 +65,8 @@ export default function CrisisMap({ regions, onMapError }: CrisisMapProps) {
       touchZoomRotate={true}
       onError={(error) => {
         console.error('Map error:', error);
-        if (error?.error) {
-          onMapError?.(error.error as Error);
+        if (error?.error && onMapError) {
+          onMapError(error.error as Error);
         }
       }}
     >

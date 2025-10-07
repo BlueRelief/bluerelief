@@ -9,7 +9,7 @@ import {
 import CrisisMap from "@/components/crisis-map";
 import { useState, useEffect } from "react";
 import { 
-  ChartContainer, 
+  ChartContainer,
   type ChartConfig 
 } from "@/components/ui/chart";
 import { AreaChart, Area } from "recharts";

@@ -1,0 +1,31 @@
+name: Cleanup Preview
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: registry.rsft.co
+
+jobs:
+  cleanup-preview:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Delete preview deployment
+        run: |
+          BRANCH_NAME="${GITHUB_HEAD_REF}"
+          SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+          RELEASE_NAME="bluerelief-$SANITIZED_BRANCH"
+          
+          if helm list -n bluerelief | grep -q "$RELEASE_NAME"; then
+            helm uninstall $RELEASE_NAME -n bluerelief
+            echo "✅ Deleted preview deployment: $RELEASE_NAME"
+          else
+            echo "⚠️  No preview deployment found"
+          fi
