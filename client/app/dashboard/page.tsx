@@ -9,12 +9,10 @@ import {
 import CrisisMap from "@/components/crisis-map";
 import { useState, useEffect } from "react";
 import { 
-  ChartContainer, 
-  ChartTooltip, 
-  ChartTooltipContent,
+  ChartContainer,
   type ChartConfig 
 } from "@/components/ui/chart";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
+import { AreaChart, Area } from "recharts";
 
 const sentimentData = [
   { time: "00:00", sentiment: 65 },

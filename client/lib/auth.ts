@@ -21,7 +21,7 @@ export async function checkAuthStatus(): Promise<User | null> {
       }
     }
     return null;
-  } catch (error) {
+  } catch {
     return null;
   }
 }

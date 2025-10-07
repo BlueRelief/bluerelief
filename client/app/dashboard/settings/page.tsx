@@ -13,7 +13,7 @@ import { Search, Check } from "lucide-react"
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
-  const { user, loading, isAuthenticated } = useAuth()
+  const { user, loading } = useAuth()
   const [emailNotifications, setEmailNotifications] = useState(false)
   const [twoFactor, setTwoFactor] = useState(false)
   const [autoUpdates, setAutoUpdates] = useState(false)

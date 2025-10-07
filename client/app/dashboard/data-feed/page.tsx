@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 // import { Input } from "@/components/ui/input"
@@ -55,11 +54,7 @@ const dataFeeds = [
 ]
 
 export default function DataFeedPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-
-  const filteredFeeds = dataFeeds.filter((feed) =>
-    feed.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredFeeds = dataFeeds
 
   return (
     <div className="space-y-6">
