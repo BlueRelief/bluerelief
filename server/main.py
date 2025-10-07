@@ -25,13 +25,19 @@ app.add_middleware(
 )
 
 # Add CORS middleware to allow frontend connections
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+]
+
+if frontend_url not in allowed_origins:
+    allowed_origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8000",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -53,6 +59,22 @@ async def health_check():
 @app.get("/api/test")
 async def test_endpoint():
     return {"message": "API is working!", "data": {"test": True}}
+
+
+@app.get("/api/debug/config")
+async def debug_config():
+    return {
+        "environment": os.getenv("ENVIRONMENT", "not_set"),
+        "backend_url": os.getenv("BACKEND_URL", "not_set"),
+        "frontend_url": os.getenv("FRONTEND_URL", "not_set"),
+        "redirect_url": os.getenv("REDIRECT_URL", "not_set"),
+        "google_client_id": (
+            os.getenv("GOOGLE_CLIENT_ID", "not_set")[:20] + "..."
+            if os.getenv("GOOGLE_CLIENT_ID")
+            else "not_set"
+        ),
+    }
+
 
 if __name__ == "__main__":
     import uvicorn
