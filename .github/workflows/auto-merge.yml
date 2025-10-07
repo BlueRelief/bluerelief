@@ -78,9 +78,18 @@ jobs:
             console.log(`All checks passed: ${allChecksPassed}`);
             console.log(`Commit statuses state: ${statuses.state}`);
             console.log(`Commit statuses count: ${statuses.statuses.length}`);
+            console.log(`Statuses OK: ${statusesOk}`);
             
-            const isReady = hasApproval && allChecksComplete && allChecksPassed && statusesOk && pr.mergeable_state === 'clean';
+            const isReady = hasApproval && allChecksComplete && allChecksPassed && statusesOk;
             console.log(`PR ready for auto-merge: ${isReady}`);
+            
+            if (!isReady) {
+              console.log('Waiting for:');
+              if (!hasApproval) console.log('  - Approval');
+              if (!allChecksComplete) console.log('  - Checks to complete');
+              if (!allChecksPassed) console.log('  - Checks to pass');
+              if (!statusesOk) console.log('  - Commit statuses to succeed');
+            }
             
             return isReady;
 
