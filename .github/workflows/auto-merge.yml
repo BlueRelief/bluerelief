@@ -5,8 +5,9 @@ on:
     types: [submitted]
   check_suite:
     types: [completed]
-  pull_request:
-    types: [opened, synchronize, reopened]
+  workflow_run:
+    workflows: ["Deploy Preview"]
+    types: [completed]
 
 permissions:
   contents: write
