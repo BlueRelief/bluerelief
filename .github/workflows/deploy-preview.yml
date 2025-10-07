@@ -1,11 +1,8 @@
-name: Deploy to Kubernetes
+name: Deploy Preview
 
 on:
-  push:
-    branches:
-      - '**'
   pull_request:
-    types: [opened, synchronize, reopened, closed]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
@@ -18,86 +15,7 @@ env:
   FRONTEND_IMAGE: bluerelief/frontend
 
 jobs:
-  cleanup-preview:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
-    runs-on: self-hosted
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Delete preview deployment
-        run: |
-          BRANCH_NAME="${GITHUB_HEAD_REF}"
-          SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
-          RELEASE_NAME="bluerelief-$SANITIZED_BRANCH"
-          
-          if helm list -n bluerelief | grep -q "$RELEASE_NAME"; then
-            helm uninstall $RELEASE_NAME -n bluerelief
-            echo "✅ Deleted preview deployment: $RELEASE_NAME"
-          else
-            echo "⚠️  No preview deployment found"
-          fi
-
-  deploy-production:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: self-hosted
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Set up environment
-        id: vars
-        run: |
-          COMMIT_SHA=$(git rev-parse --short HEAD)
-          IMAGE_TAG="main-${COMMIT_SHA}"
-          
-          echo "Building from latest main commit:"
-          echo "  Commit SHA: $COMMIT_SHA"
-          echo "  Message: $(git log -1 --pretty=%B | head -n 1)"
-          echo "  Author: $(git log -1 --pretty=%an)"
-          echo "  Date: $(git log -1 --pretty=%ad)"
-          echo ""
-          
-          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
-          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
-
-      - name: Build and push backend
-        run: |
-          cd server
-          docker build -t ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} .
-          docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
-
-      - name: Build and push frontend
-        run: |
-          cd client
-          docker build \
-            --build-arg NEXT_PUBLIC_API_URL=https://api.private.bluerelief.app \
-            --build-arg NEXT_PUBLIC_MAPBOX_TOKEN=${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }} \
-            --build-arg NODE_ENV=production \
-            -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} .
-          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
-
-      - name: Deploy to production
-        run: |
-          helm upgrade --install bluerelief-backend \
-            /home/geeth/Development/k8s/helm/celery-app-chart \
-            -f /home/geeth/Development/k8s/helm/celery-app-chart/bluerelief-values.yaml \
-            -n bluerelief \
-            --create-namespace \
-            --set app.image.tag=${{ steps.vars.outputs.image_tag }} \
-            --set frontend.image.tag=${{ steps.vars.outputs.image_tag }} \
-            --wait
-
-      - name: Notify
-        run: |
-          echo "✅ Production deployment complete!"
-          echo "Backend: https://api.private.bluerelief.app"
-          echo "Frontend: https://platform.private.bluerelief.app"
-
   deploy-preview:
-    if: github.event_name == 'pull_request' && github.event.action != 'closed'
     runs-on: self-hosted
     steps:
       - name: Checkout code
