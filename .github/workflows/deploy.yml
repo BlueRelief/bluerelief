@@ -7,6 +7,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 env:
   REGISTRY: registry.rsft.co
   BACKEND_IMAGE: bluerelief/backend
@@ -135,8 +140,10 @@ jobs:
             --wait
 
       - name: Comment on PR
+        continue-on-error: true
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -148,3 +155,15 @@ jobs:
                     `Commit: \`${{ steps.vars.outputs.commit_sha }}\`\n\n` +
                     `_Preview will be automatically deleted when PR is closed or merged._`
             })
+      
+      - name: Print deployment info
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🚀 Preview Deployment Ready!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Backend:  ${{ steps.vars.outputs.backend_url }}"
+          echo "Frontend: ${{ steps.vars.outputs.frontend_url }}"
+          echo "Commit:   ${{ steps.vars.outputs.commit_sha }}"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
