@@ -1,0 +1,90 @@
+name: Auto Merge
+
+on:
+  pull_request_review:
+    types: [submitted]
+  check_suite:
+    types: [completed]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  enable-auto-merge:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    steps:
+      - name: Check if PR is approved
+        id: check-approval
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+            
+            const approvedReviews = reviews.filter(review => review.state === 'APPROVED');
+            const hasApproval = approvedReviews.length > 0;
+            
+            console.log(`Approved reviews: ${approvedReviews.length}`);
+            return hasApproval;
+
+      - name: Enable auto-merge
+        if: steps.check-approval.outputs.result == 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              const result = await github.rest.pulls.enableAutoMerge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                merge_method: 'squash'
+              });
+              console.log('✅ Auto-merge enabled');
+              console.log(result);
+            } catch (error) {
+              if (error.message.includes('already enabled')) {
+                console.log('ℹ️  Auto-merge already enabled');
+              } else {
+                console.error('❌ Error enabling auto-merge:', error.message);
+                throw error;
+              }
+            }
+
+      - name: Add comment
+        if: steps.check-approval.outputs.result == 'true'
+        uses: actions/github-script@v6
+        continue-on-error: true
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('Auto-merge enabled')
+            );
+            
+            if (!botComment) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: '✅ **Auto-merge enabled** - This PR will be automatically merged when all checks pass.'
+              });
+            }
