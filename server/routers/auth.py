@@ -163,8 +163,8 @@ async def auth(request: Request):
     if user_data is None:
         raise HTTPException(status_code=500, detail="Failed to store user data")
 
-    # Create simplified JWT token with only email and expiration
-    access_token_expires = timedelta(seconds=expires_in)
+    # Create JWT token with 7 day expiration
+    access_token_expires = timedelta(days=7)
     access_token = create_access_token(
         data={
             "email": user_email

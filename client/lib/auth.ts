@@ -1,4 +1,6 @@
-const API_URL = "http://localhost:8000";
+import { apiClient } from "./api-client";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export interface User {
   user_id: string;
@@ -9,10 +11,7 @@ export interface User {
 
 export async function checkAuthStatus(): Promise<User | null> {
   try {
-    const response = await fetch(`${API_URL}/auth/status`, {
-      credentials: "include",
-      mode: "cors",
-    });
+    const response = await apiClient("/auth/status");
     
     if (response.ok) {
       const data = await response.json();
@@ -32,10 +31,7 @@ export function loginWithGoogle() {
 
 export async function logout() {
   try {
-    const response = await fetch(`${API_URL}/auth/logout`, {
-      credentials: "include",
-      mode: "cors",
-    });
+    const response = await apiClient("/auth/logout");
     
     if (response.ok) {
       window.location.href = "/login";
