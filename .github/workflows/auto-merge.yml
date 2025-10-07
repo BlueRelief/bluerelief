@@ -59,6 +59,26 @@ jobs:
               ref: pr.head.sha,
             });
             
+            const { data: workflowRuns } = await github.rest.actions.listWorkflowRunsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head_sha: pr.head.sha,
+              per_page: 100
+            });
+            
+            const previewWorkflow = workflowRuns.workflow_runs.find(
+              run => run.name === 'Deploy Preview' && run.head_sha === pr.head.sha
+            );
+            
+            const previewComplete = !previewWorkflow || previewWorkflow.status === 'completed';
+            const previewSuccess = !previewWorkflow || previewWorkflow.conclusion === 'success';
+            
+            console.log(`Preview workflow found: ${!!previewWorkflow}`);
+            if (previewWorkflow) {
+              console.log(`Preview workflow status: ${previewWorkflow.status}`);
+              console.log(`Preview workflow conclusion: ${previewWorkflow.conclusion}`);
+            }
+            
             const relevantChecks = checkRuns.check_runs.filter(
               run => run.name !== 'enable-auto-merge'
             );
@@ -79,8 +99,10 @@ jobs:
             console.log(`Commit statuses state: ${statuses.state}`);
             console.log(`Commit statuses count: ${statuses.statuses.length}`);
             console.log(`Statuses OK: ${statusesOk}`);
+            console.log(`Preview complete: ${previewComplete}`);
+            console.log(`Preview success: ${previewSuccess}`);
             
-            const isReady = hasApproval && allChecksComplete && allChecksPassed && statusesOk;
+            const isReady = hasApproval && allChecksComplete && allChecksPassed && statusesOk && previewComplete && previewSuccess;
             console.log(`PR ready for auto-merge: ${isReady}`);
             
             if (!isReady) {
@@ -89,6 +111,8 @@ jobs:
               if (!allChecksComplete) console.log('  - Checks to complete');
               if (!allChecksPassed) console.log('  - Checks to pass');
               if (!statusesOk) console.log('  - Commit statuses to succeed');
+              if (!previewComplete) console.log('  - Preview deployment to complete');
+              if (!previewSuccess) console.log('  - Preview deployment to succeed');
             }
             
             return isReady;
