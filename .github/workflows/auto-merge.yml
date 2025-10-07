@@ -8,6 +8,8 @@ on:
   workflow_run:
     workflows: ["Deploy Preview"]
     types: [completed]
+  pull_request:
+    types: [synchronize]
 
 permissions:
   contents: write
@@ -17,6 +19,10 @@ permissions:
 jobs:
   enable-auto-merge:
     runs-on: ubuntu-latest
+    if: |
+      github.event_name != 'pull_request' || 
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
     steps:
       - name: Check if PR is ready for auto-merge
         id: check-ready
@@ -43,6 +49,8 @@ jobs:
             }
             
             console.log(`Processing PR #${prNumber}`);
+            console.log(`Event type: ${context.eventName}`);
+            console.log(`Workflow run ID: ${context.runId}`);
             
             const { data: reviews } = await github.rest.pulls.listReviews({
               owner: context.repo.owner,
