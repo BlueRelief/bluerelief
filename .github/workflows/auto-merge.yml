@@ -45,16 +45,35 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             try {
-              const result = await github.rest.pulls.enableAutoMerge({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: context.payload.pull_request.number,
-                merge_method: 'merge'
+              const pullRequestId = context.payload.pull_request.node_id;
+              
+              const mutation = `
+                mutation($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod!) {
+                  enablePullRequestAutoMerge(input: {
+                    pullRequestId: $pullRequestId,
+                    mergeMethod: $mergeMethod
+                  }) {
+                    pullRequest {
+                      autoMergeRequest {
+                        enabledAt
+                        enabledBy {
+                          login
+                        }
+                      }
+                    }
+                  }
+                }
+              `;
+              
+              const result = await github.graphql(mutation, {
+                pullRequestId: pullRequestId,
+                mergeMethod: 'MERGE'
               });
+              
               console.log('✅ Auto-merge enabled');
               console.log(result);
             } catch (error) {
-              if (error.message.includes('already enabled')) {
+              if (error.message.includes('already enabled') || error.message.includes('auto-merge is already enabled')) {
                 console.log('ℹ️  Auto-merge already enabled');
               } else {
                 console.error('❌ Error enabling auto-merge:', error.message);
