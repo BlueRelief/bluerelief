@@ -1,0 +1,169 @@
+name: Deploy to Kubernetes
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+env:
+  REGISTRY: registry.rsft.co
+  BACKEND_IMAGE: bluerelief/backend
+  FRONTEND_IMAGE: bluerelief/frontend
+
+jobs:
+  cleanup-preview:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Delete preview deployment
+        run: |
+          BRANCH_NAME="${GITHUB_HEAD_REF}"
+          SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+          RELEASE_NAME="bluerelief-$SANITIZED_BRANCH"
+          
+          if helm list -n bluerelief | grep -q "$RELEASE_NAME"; then
+            helm uninstall $RELEASE_NAME -n bluerelief
+            echo "✅ Deleted preview deployment: $RELEASE_NAME"
+          else
+            echo "⚠️  No preview deployment found"
+          fi
+
+  deploy-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up environment
+        id: vars
+        run: |
+          COMMIT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
+          IMAGE_TAG="main-${COMMIT_SHA}"
+          
+          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Build and push backend
+        run: |
+          cd server
+          docker build -t ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} .
+          docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
+
+      - name: Build and push frontend
+        run: |
+          cd client
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=https://api.private.bluerelief.app \
+            --build-arg NEXT_PUBLIC_MAPBOX_TOKEN=${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }} \
+            --build-arg NODE_ENV=production \
+            -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} .
+          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
+
+      - name: Deploy to production
+        run: |
+          helm upgrade --install bluerelief-backend \
+            /home/geeth/Development/k8s/helm/celery-app-chart \
+            -f /home/geeth/Development/k8s/helm/celery-app-chart/bluerelief-values.yaml \
+            -n bluerelief \
+            --create-namespace \
+            --set app.image.tag=${{ steps.vars.outputs.image_tag }} \
+            --set frontend.image.tag=${{ steps.vars.outputs.image_tag }} \
+            --wait
+
+      - name: Notify
+        run: |
+          echo "✅ Production deployment complete!"
+          echo "Backend: https://api.private.bluerelief.app"
+          echo "Frontend: https://platform.private.bluerelief.app"
+
+  deploy-preview:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up environment
+        id: vars
+        run: |
+          BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+          COMMIT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
+          IMAGE_TAG="${SANITIZED_BRANCH}-${COMMIT_SHA}"
+          
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "sanitized_branch=$SANITIZED_BRANCH" >> $GITHUB_OUTPUT
+          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "backend_url=https://api-${SANITIZED_BRANCH}.private.bluerelief.app" >> $GITHUB_OUTPUT
+          echo "frontend_url=https://${SANITIZED_BRANCH}.private.bluerelief.app" >> $GITHUB_OUTPUT
+
+      - name: Build and push backend
+        run: |
+          cd server
+          docker build -t ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} .
+          docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
+
+      - name: Build and push frontend
+        run: |
+          cd client
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=${{ steps.vars.outputs.backend_url }} \
+            --build-arg NEXT_PUBLIC_MAPBOX_TOKEN=${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }} \
+            --build-arg NODE_ENV=production \
+            -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} .
+          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
+
+      - name: Deploy to Kubernetes
+        run: |
+          helm upgrade --install bluerelief-${{ steps.vars.outputs.sanitized_branch }} \
+            /home/geeth/Development/k8s/helm/celery-app-chart \
+            -f /home/geeth/Development/k8s/helm/celery-app-chart/bluerelief-values.yaml \
+            -n bluerelief \
+            --create-namespace \
+            --set app.image.tag=${{ steps.vars.outputs.image_tag }} \
+            --set frontend.image.tag=${{ steps.vars.outputs.image_tag }} \
+            --set ingress.host="api-${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app" \
+            --set frontend.ingress.host="${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app" \
+            --set frontend.env.NEXT_PUBLIC_API_URL="${{ steps.vars.outputs.backend_url }}" \
+            --wait
+
+      - name: Comment on PR
+        continue-on-error: true
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🚀 Preview Deployment Ready!\n\n` +
+                    `**Backend:** ${{ steps.vars.outputs.backend_url }}\n` +
+                    `**Frontend:** ${{ steps.vars.outputs.frontend_url }}\n\n` +
+                    `Commit: \`${{ steps.vars.outputs.commit_sha }}\`\n\n` +
+                    `_Preview will be automatically deleted when PR is closed or merged._`
+            })
+      
+      - name: Print deployment info
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🚀 Preview Deployment Ready!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Backend:  ${{ steps.vars.outputs.backend_url }}"
+          echo "Frontend: ${{ steps.vars.outputs.frontend_url }}"
+          echo "Commit:   ${{ steps.vars.outputs.commit_sha }}"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
