@@ -106,12 +106,23 @@ jobs:
               }).catch(() => {});
             }
             
-            // Add new version label
+            // Determine type label based on PR title
+            const typeLabels = [];
+            if (/^feat:|^feature:/i.test(title)) {
+              typeLabels.push('enhancement');
+            } else if (/^fix:/i.test(title)) {
+              typeLabels.push('bug');
+            } else if (/^docs:/i.test(title)) {
+              typeLabels.push('documentation');
+            }
+            
+            // Add version label + type label
+            const labelsToAdd = [versionLabel, ...typeLabels];
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: pr.number,
-              labels: [versionLabel]
+              labels: labelsToAdd
             });
             
             // Add comment explaining the version bump
