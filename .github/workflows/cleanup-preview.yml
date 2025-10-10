@@ -21,6 +21,12 @@ jobs:
         run: |
           BRANCH_NAME="${GITHUB_HEAD_REF}"
           SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+          
+          # Truncate branch name if too long (max 40 chars to leave room for "bluerelief-" prefix)
+          if [ ${#SANITIZED_BRANCH} -gt 40 ]; then
+            SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | cut -c1-40)
+          fi
+          
           RELEASE_NAME="bluerelief-$SANITIZED_BRANCH"
           
           if helm list -n bluerelief | grep -q "$RELEASE_NAME"; then
