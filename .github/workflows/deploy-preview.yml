@@ -27,9 +27,9 @@ jobs:
           BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
           SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
           
-          # Truncate branch name if too long (max 40 chars to leave room for "bluerelief-" prefix)
-          if [ ${#SANITIZED_BRANCH} -gt 40 ]; then
-            SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | cut -c1-40)
+          # Truncate branch name if too long (max 30 chars to leave room for "bluerelief-" prefix and "-celery-worker" suffix)
+          if [ ${#SANITIZED_BRANCH} -gt 30 ]; then
+            SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | cut -c1-30)
           fi
           
           # Remove trailing hyphens
