@@ -1,0 +1,75 @@
+name: Auto Release Notes
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Generate Release Notes
+        id: notes
+        run: |
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          CURRENT_TAG=${GITHUB_REF#refs/tags/}
+          
+          echo "Generating release notes for ${CURRENT_TAG}"
+          echo "Previous: ${PREV_TAG}"
+          
+          # Get commits between tags
+          COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          
+          # Categorize commits
+          BREAKING=$(echo "$COMMITS" | grep -i "BREAKING CHANGE" || echo "")
+          FEATURES=$(echo "$COMMITS" | grep -i "^- feat:" || echo "")
+          FIXES=$(echo "$COMMITS" | grep -i "^- fix:" || echo "")
+          DOCS=$(echo "$COMMITS" | grep -i "^- docs:" || echo "")
+          CHORES=$(echo "$COMMITS" | grep -iE "^- (chore|ci|build):" || echo "")
+          
+          # Build release notes
+          NOTES="## Release ${CURRENT_TAG}\n\n"
+          
+          if [ -n "$BREAKING" ]; then
+            NOTES="${NOTES}### 💥 Breaking Changes\n${BREAKING}\n\n"
+          fi
+          
+          if [ -n "$FEATURES" ]; then
+            NOTES="${NOTES}### ✨ New Features\n${FEATURES}\n\n"
+          fi
+          
+          if [ -n "$FIXES" ]; then
+            NOTES="${NOTES}### 🐛 Bug Fixes\n${FIXES}\n\n"
+          fi
+          
+          if [ -n "$DOCS" ]; then
+            NOTES="${NOTES}### 📚 Documentation\n${DOCS}\n\n"
+          fi
+          
+          if [ -n "$CHORES" ]; then
+            NOTES="${NOTES}### 🏗️ Infrastructure & Maintenance\n${CHORES}\n\n"
+          fi
+          
+          # Save to file
+          echo -e "$NOTES" > release_notes.md
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

@@ -6,30 +6,24 @@ categories:
     labels:
       - 'version: major'
       - 'breaking'
-    collapse-after: 5
   - title: '✨ New Features'
     labels:
       - 'version: minor'
       - 'feature'
       - 'enhancement'
-    collapse-after: 10
   - title: '🐛 Bug Fixes'
     labels:
       - 'version: patch'
       - 'fix'
       - 'bug'
-    collapse-after: 10
   - title: '📚 Documentation'
     labels:
       - 'documentation'
       - 'docs'
-    collapse-after: 5
   - title: '🏗️ Infrastructure & CI/CD'
     labels:
       - 'infrastructure'
-      - 'ci'
-      - 'cd'
-    collapse-after: 5
+      - 'chore'
 
 version-resolver:
   major:
@@ -47,6 +41,9 @@ version-resolver:
       - 'fix'
       - 'bug'
       - 'chore'
+      - 'documentation'
+      - 'docs'
+      - 'infrastructure'
   default: patch
 
 template: |
@@ -58,37 +55,22 @@ template: |
 
   $CONTRIBUTORS
 
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+change-title-escapes: '\<*_&'
+
 autolabeler:
-  - label: 'version: major'
-    title:
-      - '/BREAKING[\s-]CHANGE/i'
-      - '/MAJOR:/i'
-  - label: 'version: minor'
-    title:
-      - '/^feat:/i'
-      - '/^feature:/i'
-      - '/MINOR:/i'
-  - label: 'version: patch'
-    title:
-      - '/^fix:/i'
-      - '/^chore:/i'
-      - '/^docs:/i'
-  - label: 'bug'
-    title:
-      - '/^fix:/i'
-  - label: 'feature'
-    title:
-      - '/^feat:/i'
-      - '/^feature:/i'
   - label: 'documentation'
-    title:
-      - '/^docs:/i'
     files:
       - '*.md'
-  - label: 'infrastructure'
-    files:
-      - 'Dockerfile*'
-      - 'docker-compose.yml'
-      - '.github/**'
-      - 'scripts/**'
+    branch:
+      - '/docs{0,1}\/.+/'
+  - label: 'bug'
+    branch:
+      - '/fix\/.+/'
+    title:
+      - '/fix/i'
+  - label: 'enhancement'
+    branch:
+      - '/feature\/.+/'
+      - '/feat\/.+/'
 
