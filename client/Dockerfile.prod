@@ -16,6 +16,7 @@ WORKDIR /app
 
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_MAPBOX_TOKEN
+ARG VERSION=dev
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -24,6 +25,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_MAPBOX_TOKEN=${NEXT_PUBLIC_MAPBOX_TOKEN}
+ENV NEXT_PUBLIC_VERSION=${VERSION}
 
 RUN pnpm build
 
@@ -31,8 +33,11 @@ RUN pnpm build
 FROM base AS runner
 WORKDIR /app
 
+ARG VERSION=dev
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_VERSION=${VERSION}
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

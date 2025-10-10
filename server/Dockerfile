@@ -3,6 +3,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+ARG VERSION=dev
+ARG COMMIT_SHA=unknown
+
+ENV VERSION=${VERSION}
+ENV COMMIT_SHA=${COMMIT_SHA}
+
 # The installer requires curl (and certificates) to download the release archive
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
 

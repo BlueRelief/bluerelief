@@ -6,7 +6,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   REGISTRY: registry.rsft.co
@@ -22,27 +22,63 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Auto-bump version
+        id: version
+        run: |
+          # Run auto-version script
+          chmod +x scripts/auto-version.sh
+          OUTPUT=$(./scripts/auto-version.sh)
+          
+          # Extract values
+          CURRENT_VERSION=$(echo "$OUTPUT" | grep "current_version=" | cut -d'=' -f2)
+          NEW_VERSION=$(echo "$OUTPUT" | grep "new_version=" | cut -d'=' -f2)
+          BUMP_TYPE=$(echo "$OUTPUT" | grep "bump_type=" | cut -d'=' -f2)
+          
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+
+      - name: Commit version bump
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add VERSION
+          git diff --staged --quiet || git commit -m "chore: bump version to ${{ steps.version.outputs.version }} [skip ci]"
+          git push
+
       - name: Set up environment
         id: vars
         run: |
+          VERSION="${{ steps.version.outputs.version }}"
           COMMIT_SHA=$(git rev-parse --short HEAD)
-          IMAGE_TAG="main-${COMMIT_SHA}"
+          IMAGE_TAG="v${VERSION}-${COMMIT_SHA}"
           
-          echo "Building from latest main commit:"
+          echo "Building production release:"
+          echo "  Previous Version: v${{ steps.version.outputs.current_version }}"
+          echo "  New Version: v${VERSION}"
+          echo "  Bump Type: ${{ steps.version.outputs.bump_type }}"
           echo "  Commit SHA: $COMMIT_SHA"
+          echo "  Image Tag: $IMAGE_TAG"
           echo "  Message: $(git log -1 --pretty=%B | head -n 1)"
           echo "  Author: $(git log -1 --pretty=%an)"
           echo "  Date: $(git log -1 --pretty=%ad)"
           echo ""
           
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
       - name: Build and push backend
         run: |
           cd server
-          docker build -t ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} .
+          docker build \
+            --build-arg VERSION=${{ steps.vars.outputs.version }} \
+            --build-arg COMMIT_SHA=${{ steps.vars.outputs.commit_sha }} \
+            -t ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} \
+            -t ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest \
+            .
           docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
+          docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
 
       - name: Build and push frontend
         run: |
@@ -51,8 +87,12 @@ jobs:
             --build-arg NEXT_PUBLIC_API_URL=https://api.private.bluerelief.app \
             --build-arg NEXT_PUBLIC_MAPBOX_TOKEN=${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }} \
             --build-arg NODE_ENV=production \
-            -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} .
+            --build-arg VERSION=${{ steps.vars.outputs.version }} \
+            -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} \
+            -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest \
+            .
           docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
+          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
 
       - name: Deploy to production
         run: |
@@ -65,8 +105,21 @@ jobs:
             --set frontend.image.tag=${{ steps.vars.outputs.image_tag }} \
             --wait
 
+      - name: Create Git Tag
+        run: |
+          git tag -a "v${{ steps.vars.outputs.version }}" -m "Release v${{ steps.vars.outputs.version }}"
+          git push origin "v${{ steps.vars.outputs.version }}" || echo "Tag already exists"
+
       - name: Notify
         run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo "✅ Production deployment complete!"
-          echo "Backend: https://api.private.bluerelief.app"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Version:  v${{ steps.version.outputs.current_version }} → v${{ steps.vars.outputs.version }}"
+          echo "Type:     ${{ steps.version.outputs.bump_type }} release"
+          echo "Commit:   ${{ steps.vars.outputs.commit_sha }}"
+          echo "Backend:  https://api.private.bluerelief.app"
           echo "Frontend: https://platform.private.bluerelief.app"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
