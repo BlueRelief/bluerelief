@@ -1,0 +1,133 @@
+name: Label PR with Version Type
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  label-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Analyze PR and add label
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            
+            // Get PR title and body
+            const title = pr.title.toLowerCase();
+            const body = (pr.body || '').toLowerCase();
+            const text = `${title} ${body}`;
+            
+            // Get commit messages
+            const commits = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+            
+            const commitMessages = commits.data
+              .map(commit => commit.commit.message.toLowerCase())
+              .join(' ');
+            
+            const allText = `${text} ${commitMessages}`;
+            
+            // Determine version type
+            let versionLabel = 'version: patch';
+            let versionEmoji = '🐛';
+            
+            if (allText.match(/breaking[\s-]change|major:/i)) {
+              versionLabel = 'version: major';
+              versionEmoji = '💥';
+            } else if (allText.match(/\bfeat:|feature:|minor:/i)) {
+              versionLabel = 'version: minor';
+              versionEmoji = '✨';
+            }
+            
+            // Remove existing version labels
+            const existingLabels = pr.labels.map(label => label.name);
+            const versionLabels = existingLabels.filter(label => 
+              label.startsWith('version:')
+            );
+            
+            for (const label of versionLabels) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                name: label
+              }).catch(() => {});
+            }
+            
+            // Add new version label
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: [versionLabel]
+            });
+            
+            // Add comment explaining the version bump
+            const currentVersion = require('fs').readFileSync('VERSION', 'utf8').trim();
+            const [major, minor, patch] = currentVersion.split('.').map(Number);
+            
+            let newVersion;
+            if (versionLabel === 'version: major') {
+              newVersion = `${major + 1}.0.0`;
+            } else if (versionLabel === 'version: minor') {
+              newVersion = `${major}.${minor + 1}.0`;
+            } else {
+              newVersion = `${major}.${minor}.${patch + 1}`;
+            }
+            
+            // Check if we already commented
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number
+            });
+            
+            const botComment = comments.data.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('Version Bump Prediction')
+            );
+            
+            const commentBody = `## ${versionEmoji} Version Bump Prediction\n\n` +
+              `When this PR is merged to \`main\`, the version will be bumped:\n\n` +
+              `**${currentVersion}** → **${newVersion}** (\`${versionLabel.replace('version: ', '')}\`)\n\n` +
+              `---\n\n` +
+              `<details>\n` +
+              `<summary>💡 How to change the version bump type</summary>\n\n` +
+              `The version bump is determined by your commit messages and PR title:\n\n` +
+              `- **Major** (${major + 1}.0.0): Use \`BREAKING CHANGE:\` or \`MAJOR:\`\n` +
+              `- **Minor** (${major}.${minor + 1}.0): Use \`feat:\` or \`feature:\`\n` +
+              `- **Patch** (${major}.${minor}.${patch + 1}): Use \`fix:\`, \`chore:\`, \`docs:\`, etc.\n\n` +
+              `Edit your PR title or commit messages to change the bump type.\n` +
+              `</details>`;
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: commentBody
+              });
+            }
+

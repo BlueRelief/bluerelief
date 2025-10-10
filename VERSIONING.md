@@ -14,7 +14,22 @@ Versions follow semantic versioning: `MAJOR.MINOR.PATCH`
 
 ### How It Works
 
-When you push to `main`, the deployment workflow automatically:
+#### For Pull Requests (Preview)
+When you create or update a PR:
+
+1. **Auto-labeling** - GitHub Actions automatically:
+   - Analyzes your PR title, description, and commits
+   - Adds a `version: major/minor/patch` label
+   - Comments with the predicted version bump
+   - Shows you exactly what version will be deployed
+
+2. **Release Notes** - Release Drafter automatically:
+   - Generates draft release notes
+   - Categorizes changes by type
+   - Lists all contributors
+
+#### For Production Deployments
+When you merge to `main`:
 
 1. Analyzes commit messages since the last release
 2. Determines the version bump type based on keywords
@@ -131,26 +146,31 @@ Response includes:
 
 ### Automated (Recommended)
 
-1. **Write good commit messages** with appropriate keywords:
+1. **Create a Pull Request**:
    ```bash
-   # For a new feature
+   git checkout -b feat/new-feature
    git commit -m "feat: add user profile page"
-   
-   # For a bug fix
-   git commit -m "fix: resolve authentication timeout"
-   
-   # For breaking changes
-   git commit -m "BREAKING CHANGE: update API response format"
+   git push origin feat/new-feature
    ```
 
-2. **Merge to main** - the workflow automatically:
-   - Analyzes commits and bumps version
-   - Commits the VERSION file change
-   - Builds and tags Docker images
-   - Deploys to production
-   - Creates a git tag
+2. **GitHub Actions automatically**:
+   - 🏷️ Adds version label (`version: minor`)
+   - 💬 Comments with predicted version bump
+   - 📝 Updates draft release notes
 
-3. **Verify deployment**:
+3. **Review the PR**:
+   - Check the version prediction comment
+   - If wrong, edit your PR title or commits
+   - The label and comment update automatically
+
+4. **Merge to main** - the workflow automatically:
+   - ⬆️ Bumps version based on commits
+   - 💾 Commits VERSION file update
+   - 🏷️ Creates git tag
+   - 🚀 Builds and deploys Docker images
+   - 📦 Updates release notes
+
+5. **Verify deployment**:
    ```bash
    curl https://api.private.bluerelief.app/api/version
    ```

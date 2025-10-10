@@ -1,0 +1,94 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+categories:
+  - title: '💥 Breaking Changes'
+    labels:
+      - 'version: major'
+      - 'breaking'
+    collapse-after: 5
+  - title: '✨ New Features'
+    labels:
+      - 'version: minor'
+      - 'feature'
+      - 'enhancement'
+    collapse-after: 10
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'version: patch'
+      - 'fix'
+      - 'bug'
+    collapse-after: 10
+  - title: '📚 Documentation'
+    labels:
+      - 'documentation'
+      - 'docs'
+    collapse-after: 5
+  - title: '🏗️ Infrastructure & CI/CD'
+    labels:
+      - 'infrastructure'
+      - 'ci'
+      - 'cd'
+    collapse-after: 5
+
+version-resolver:
+  major:
+    labels:
+      - 'version: major'
+      - 'breaking'
+  minor:
+    labels:
+      - 'version: minor'
+      - 'feature'
+      - 'enhancement'
+  patch:
+    labels:
+      - 'version: patch'
+      - 'fix'
+      - 'bug'
+      - 'chore'
+  default: patch
+
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  ## Contributors
+
+  $CONTRIBUTORS
+
+autolabeler:
+  - label: 'version: major'
+    title:
+      - '/BREAKING[\s-]CHANGE/i'
+      - '/MAJOR:/i'
+  - label: 'version: minor'
+    title:
+      - '/^feat:/i'
+      - '/^feature:/i'
+      - '/MINOR:/i'
+  - label: 'version: patch'
+    title:
+      - '/^fix:/i'
+      - '/^chore:/i'
+      - '/^docs:/i'
+  - label: 'bug'
+    title:
+      - '/^fix:/i'
+  - label: 'feature'
+    title:
+      - '/^feat:/i'
+      - '/^feature:/i'
+  - label: 'documentation'
+    title:
+      - '/^docs:/i'
+    files:
+      - '*.md'
+  - label: 'infrastructure'
+    files:
+      - 'Dockerfile*'
+      - 'docker-compose.yml'
+      - '.github/**'
+      - 'scripts/**'
+
