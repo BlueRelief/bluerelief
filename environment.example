@@ -2,7 +2,7 @@
 DATABASE_URL=postgresql://dev:devpassword@localhost:5432/bluerelief
 
 # Redis
-REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://localhost:6379/0
 
 # Environment
 ENVIRONMENT=development
@@ -20,3 +20,11 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret-here
 REDIRECT_URL=http://localhost:3000/dashboard
 FRONTEND_URL=http://localhost:3000
 BACKEND_URL=http://localhost:8000
+
+# BlueSky Integration
+BlueSky_Username=your-bluesky-username
+BlueSky_Password=your-bluesky-password
+GOOGLE_API_KEY=your-google-api-key-here
+SEARCH_HASHTAG=#earthquake
+POST_LIMIT=50
+SCHEDULE_HOURS=24

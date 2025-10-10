@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from routers import auth
 from routers import incidents
+from routers import bluesky
 from db_utils.db import init_db
 import os
 from dotenv import load_dotenv
@@ -14,8 +15,8 @@ init_db()
 
 app = FastAPI(
     title="BlueRelief API",
-    description="A simple FastAPI starter application",
-    version="1.0.0"
+    description="BlueRelief API with BlueSky Integration",
+    version="2.0.0",
 )
 
 # Add session middleware for OAuth state management
@@ -47,6 +48,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(incidents.router)
+app.include_router(bluesky.router)
 
 @app.get("/")
 async def root():
