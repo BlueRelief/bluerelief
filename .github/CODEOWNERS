@@ -6,6 +6,9 @@
 
 # Docker files
 Dockerfile @geeth24
+Dockerfile.prod @geeth24
+**/Dockerfile @geeth24
+**/Dockerfile.prod @geeth24
 docker-compose.yml @geeth24
 *.dockerfile @geeth24
 /scripts/ @geeth24
