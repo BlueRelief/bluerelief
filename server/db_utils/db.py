@@ -1,6 +1,16 @@
-from sqlalchemy import create_engine, Column, String, DateTime, Integer
+from sqlalchemy import (
+    create_engine,
+    Column,
+    String,
+    DateTime,
+    Integer,
+    Text,
+    ForeignKey,
+    Float,
+    JSON,
+)
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker, Session, relationship
 from datetime import datetime
 import os
 from typing import Optional, Dict
@@ -19,13 +29,63 @@ Base = declarative_base()
 # User model
 class User(Base):
     __tablename__ = "users"
-    
-    id = Column(String, primary_key=True, index=True)  # Google user ID
+
+    id = Column(String, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     picture = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# BlueSky models
+class CollectionRun(Base):
+    __tablename__ = "collection_runs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    started_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    completed_at = Column(DateTime, nullable=True)
+    status = Column(String(50), nullable=False, default="running")
+    posts_collected = Column(Integer, default=0)
+    error_message = Column(Text, nullable=True)
+
+    posts = relationship("Post", back_populates="collection_run")
+    disasters = relationship("Disaster", back_populates="collection_run")
+
+
+class Post(Base):
+    __tablename__ = "posts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    bluesky_id = Column(String(255), unique=True, nullable=False, index=True)
+    author_handle = Column(String(255), nullable=False)
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False)
+    collected_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    raw_data = Column(JSON, nullable=True)
+    collection_run_id = Column(
+        Integer, ForeignKey("collection_runs.id"), nullable=False
+    )
+
+    collection_run = relationship("CollectionRun", back_populates="posts")
+
+
+class Disaster(Base):
+    __tablename__ = "disasters"
+
+    id = Column(Integer, primary_key=True, index=True)
+    location = Column(String(500), nullable=True)
+    event_time = Column(String(255), nullable=True)
+    severity = Column(Integer, nullable=True)
+    magnitude = Column(Float, nullable=True)
+    description = Column(Text, nullable=True)
+    extracted_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    collection_run_id = Column(
+        Integer, ForeignKey("collection_runs.id"), nullable=False
+    )
+
+    collection_run = relationship("CollectionRun", back_populates="disasters")
+
 
 def get_db_session():
     """Get database session"""

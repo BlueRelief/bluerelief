@@ -1,0 +1,76 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+categories:
+  - title: '💥 Breaking Changes'
+    labels:
+      - 'version: major'
+      - 'breaking'
+  - title: '✨ New Features'
+    labels:
+      - 'version: minor'
+      - 'feature'
+      - 'enhancement'
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'version: patch'
+      - 'fix'
+      - 'bug'
+  - title: '📚 Documentation'
+    labels:
+      - 'documentation'
+      - 'docs'
+  - title: '🏗️ Infrastructure & CI/CD'
+    labels:
+      - 'infrastructure'
+      - 'chore'
+
+version-resolver:
+  major:
+    labels:
+      - 'version: major'
+      - 'breaking'
+  minor:
+    labels:
+      - 'version: minor'
+      - 'feature'
+      - 'enhancement'
+  patch:
+    labels:
+      - 'version: patch'
+      - 'fix'
+      - 'bug'
+      - 'chore'
+      - 'documentation'
+      - 'docs'
+      - 'infrastructure'
+  default: patch
+
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  ## Contributors
+
+  $CONTRIBUTORS
+
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+change-title-escapes: '\<*_&'
+
+autolabeler:
+  - label: 'documentation'
+    files:
+      - '*.md'
+    branch:
+      - '/docs{0,1}\/.+/'
+  - label: 'bug'
+    branch:
+      - '/fix\/.+/'
+    title:
+      - '/fix/i'
+  - label: 'enhancement'
+    branch:
+      - '/feature\/.+/'
+      - '/feat\/.+/'
+

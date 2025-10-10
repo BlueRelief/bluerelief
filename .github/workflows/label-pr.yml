@@ -1,0 +1,184 @@
+name: Label PR with Version Type
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+permissions:
+  pull-requests: write
+  contents: read
+  statuses: write
+
+jobs:
+  label-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Validate Semantic PR Title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            chore
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            revert
+          requireScope: false
+          wip: true
+          validateSingleCommit: false
+
+      - name: Analyze PR and add label
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            
+            // Get PR title and body
+            const title = pr.title.toLowerCase();
+            const body = (pr.body || '').toLowerCase();
+            const text = `${title} ${body}`;
+            
+            // Get commit messages
+            const commits = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+            
+            const commitMessages = commits.data
+              .map(commit => commit.commit.message)
+              .join('\n');
+            
+            const allText = `${title}\n${body}\n${commitMessages}`;
+            
+            // Log what we're checking (for debugging)
+            console.log('PR Title:', title);
+            console.log('PR Body:', body);
+            console.log('Commits:', commitMessages);
+            console.log('All Text:', allText);
+            
+            // Determine version type
+            let versionLabel = 'version: patch';
+            let versionEmoji = '🐛';
+            
+            // Check for breaking changes (highest priority)
+            if (/breaking[\s-]?change|major:/i.test(allText)) {
+              versionLabel = 'version: major';
+              versionEmoji = '💥';
+              console.log('Matched: MAJOR');
+            } 
+            // Check for features (medium priority)
+            else if (/feat:|feat\(|feature:/i.test(allText)) {
+              versionLabel = 'version: minor';
+              versionEmoji = '✨';
+              console.log('Matched: MINOR');
+            }
+            // Default to patch for everything else
+            else {
+              console.log('Matched: PATCH (default)');
+            }
+            
+            // Remove existing version labels
+            const existingLabels = pr.labels.map(label => label.name);
+            const versionLabels = existingLabels.filter(label => 
+              label.startsWith('version:')
+            );
+            
+            for (const label of versionLabels) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                name: label
+              }).catch(() => {});
+            }
+            
+            // Determine type label based on PR title
+            const typeLabels = [];
+            if (/^feat:|^feature:/i.test(title)) {
+              typeLabels.push('enhancement');
+            } else if (/^fix:/i.test(title)) {
+              typeLabels.push('bug');
+            } else if (/^docs:/i.test(title)) {
+              typeLabels.push('documentation');
+            }
+            
+            // Add version label + type label
+            const labelsToAdd = [versionLabel, ...typeLabels];
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: labelsToAdd
+            });
+            
+            // Add comment explaining the version bump
+            const currentVersion = require('fs').readFileSync('VERSION', 'utf8').trim();
+            const [major, minor, patch] = currentVersion.split('.').map(Number);
+            
+            let newVersion;
+            if (versionLabel === 'version: major') {
+              newVersion = `${major + 1}.0.0`;
+            } else if (versionLabel === 'version: minor') {
+              newVersion = `${major}.${minor + 1}.0`;
+            } else {
+              newVersion = `${major}.${minor}.${patch + 1}`;
+            }
+            
+            // Check if we already commented
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number
+            });
+            
+            const botComment = comments.data.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('Version Bump Prediction')
+            );
+            
+            const commentBody = `## ${versionEmoji} Version Bump Prediction\n\n` +
+              `When this PR is merged to \`main\`, the version will be bumped:\n\n` +
+              `**${currentVersion}** → **${newVersion}** (\`${versionLabel.replace('version: ', '')}\`)\n\n` +
+              `---\n\n` +
+              `<details>\n` +
+              `<summary>💡 How to change the version bump type</summary>\n\n` +
+              `The version bump is determined by your commit messages and PR title:\n\n` +
+              `- **Major** (${major + 1}.0.0): Use \`BREAKING CHANGE:\` or \`MAJOR:\` in title/commits\n` +
+              `- **Minor** (${major}.${minor + 1}.0): Use \`feat:\` or \`feature:\` in title/commits\n` +
+              `- **Patch** (${major}.${minor}.${patch + 1}): Use \`fix:\`, \`chore:\`, \`docs:\`, etc.\n\n` +
+              `**What I analyzed:**\n` +
+              `- PR Title: \`${pr.title}\`\n` +
+              `- Commits: ${commits.data.length} commit(s)\n\n` +
+              `Edit your PR title or commit messages to change the bump type.\n` +
+              `</details>`;
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: commentBody
+              });
+            }
+

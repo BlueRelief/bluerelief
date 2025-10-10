@@ -3,19 +3,36 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from routers import auth
 from routers import incidents
+from routers import bluesky
 from db_utils.db import init_db
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 load_dotenv()
 
 # Initialize database tables
 init_db()
 
+
+def get_version():
+    version_file = Path(__file__).parent.parent / "VERSION"
+    if version_file.exists():
+        return version_file.read_text().strip()
+    return os.getenv("VERSION", "dev")
+
+
+def get_commit_sha():
+    return os.getenv("COMMIT_SHA", "unknown")
+
+
+APP_VERSION = get_version()
+COMMIT_SHA = get_commit_sha()
+
 app = FastAPI(
     title="BlueRelief API",
-    description="A simple FastAPI starter application",
-    version="1.0.0"
+    description="BlueRelief API with BlueSky Integration",
+    version=APP_VERSION,
 )
 
 # Add session middleware for OAuth state management
@@ -47,14 +64,29 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(incidents.router)
+app.include_router(bluesky.router)
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to BlueRelief API"}
+    return {
+        "message": "Welcome to BlueRelief API",
+        "version": APP_VERSION,
+        "commit": COMMIT_SHA,
+    }
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {"status": "healthy", "version": APP_VERSION, "commit": COMMIT_SHA}
+
+
+@app.get("/api/version")
+async def version_info():
+    return {
+        "version": APP_VERSION,
+        "commit": COMMIT_SHA,
+        "environment": os.getenv("ENVIRONMENT", "development"),
+    }
+
 
 @app.get("/api/test")
 async def test_endpoint():

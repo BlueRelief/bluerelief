@@ -48,7 +48,7 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://dev:devpassword@postgres:5432/bluerelief
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: development
       GOOGLE_CLIENT_ID: 42548008977-d3m985jupaljnjsluoakcps64t4q4sk8.apps.googleusercontent.com
       GOOGLE_CLIENT_SECRET: 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
@@ -57,6 +57,12 @@ services:
       REDIRECT_URL: http://localhost:3000/dashboard
       FRONTEND_URL: http://localhost:3000
       BACKEND_URL: http://localhost:8000
+      BlueSky_Username: ${BlueSky_Username}
+      BlueSky_Password: ${BlueSky_Password}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      SEARCH_HASHTAG: ${SEARCH_HASHTAG:-#earthquake}
+      POST_LIMIT: ${POST_LIMIT:-50}
+      SCHEDULE_HOURS: ${SCHEDULE_HOURS:-24}
     depends_on:
       postgres:
         condition: service_healthy
@@ -66,6 +72,58 @@ services:
       - ./server:/app
       - /app/__pycache__
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: bluerelief-celery-worker
+    restart: unless-stopped
+    command: celery -A celery_app worker --loglevel=info
+    environment:
+      DATABASE_URL: postgresql://dev:devpassword@postgres:5432/bluerelief
+      REDIS_URL: redis://redis:6379/0
+      BlueSky_Username: ${BlueSky_Username}
+      BlueSky_Password: ${BlueSky_Password}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      SEARCH_HASHTAG: ${SEARCH_HASHTAG:-#earthquake}
+      POST_LIMIT: ${POST_LIMIT:-50}
+      SCHEDULE_HOURS: ${SCHEDULE_HOURS:-24}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./server:/app
+      - /app/__pycache__
+
+  # Celery Beat Scheduler
+  celery-beat:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: bluerelief-celery-beat
+    restart: unless-stopped
+    command: celery -A celery_app beat --loglevel=info
+    environment:
+      DATABASE_URL: postgresql://dev:devpassword@postgres:5432/bluerelief
+      REDIS_URL: redis://redis:6379/0
+      BlueSky_Username: ${BlueSky_Username}
+      BlueSky_Password: ${BlueSky_Password}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      SEARCH_HASHTAG: ${SEARCH_HASHTAG:-#earthquake}
+      POST_LIMIT: ${POST_LIMIT:-50}
+      SCHEDULE_HOURS: ${SCHEDULE_HOURS:-24}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./server:/app
+      - /app/__pycache__
 
   # Next.js Frontend
   frontend:

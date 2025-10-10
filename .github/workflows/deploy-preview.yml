@@ -26,6 +26,15 @@ jobs:
         run: |
           BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
           SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+          
+          # Truncate branch name if too long (max 30 chars to leave room for "bluerelief-" prefix and "-celery-worker" suffix)
+          if [ ${#SANITIZED_BRANCH} -gt 30 ]; then
+            SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | cut -c1-30)
+          fi
+          
+          # Remove trailing hyphens
+          SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's/-*$//')
+          
           COMMIT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
           IMAGE_TAG="${SANITIZED_BRANCH}-${COMMIT_SHA}"
           

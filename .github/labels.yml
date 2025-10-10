@@ -1,0 +1,42 @@
+# Version labels (automatically added)
+- name: 'version: major'
+  color: 'D73A4A'
+  description: 'Breaking changes - bumps major version (1.0.0 → 2.0.0)'
+
+- name: 'version: minor'
+  color: '0E8A16'
+  description: 'New features - bumps minor version (1.0.0 → 1.1.0)'
+
+- name: 'version: patch'
+  color: 'FBCA04'
+  description: 'Bug fixes & maintenance - bumps patch version (1.0.0 → 1.0.1)'
+
+# Type labels
+- name: 'breaking'
+  color: 'D73A4A'
+  description: 'Breaking changes'
+
+- name: 'feature'
+  color: '0E8A16'
+  description: 'New feature or enhancement'
+
+- name: 'bug'
+  color: 'D73A4A'
+  description: 'Bug fix'
+
+- name: 'enhancement'
+  color: '84B6EB'
+  description: 'Enhancement to existing feature'
+
+- name: 'documentation'
+  color: '0075CA'
+  description: 'Documentation changes'
+
+- name: 'infrastructure'
+  color: '6F42C1'
+  description: 'Infrastructure, CI/CD, Docker, etc.'
+
+- name: 'chore'
+  color: 'FEF2C0'
+  description: 'Maintenance and chores'
+
