@@ -1,0 +1,138 @@
+name: Cleanup All Preview Deployments
+
+on:
+  pull_request:
+    types: [closed]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+env:
+  REGISTRY: registry.rsft.co
+
+jobs:
+  cleanup-preview:
+    runs-on: self-hosted
+    if: |
+      (github.event_name == 'pull_request' && github.event.action == 'closed') ||
+      (github.event.issue.pull_request && startsWith(github.event.comment.body, '@cleanup'))
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Extract deployment name
+        id: extract
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            let deployName = '';
+            let prNumber = 0;
+            let cleanupAll = false;
+            
+            // Check if triggered by PR close or comment
+            if (context.eventName === 'pull_request') {
+              // Auto cleanup on PR close - find all deployments for this PR
+              cleanupAll = true;
+              prNumber = context.issue.number;
+              
+              const branchName = context.payload.pull_request.head.ref;
+              deployName = branchName.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+              
+              // Remove leading/trailing hyphens
+              deployName = deployName.replace(/^-+|-+$/g, '');
+              
+              // Truncate if too long (max 40 chars)
+              if (deployName.length > 40) {
+                deployName = deployName.substring(0, 40).replace(/-+$/, '');
+              }
+            } else {
+              // Manual cleanup via comment
+              const comment = context.payload.comment.body;
+              const match = comment.match(/@cleanup\s+(\S+)/);
+              
+              if (!match) {
+                core.setFailed('No deployment name found. Usage: @cleanup <name>');
+                return;
+              }
+              
+              deployName = match[1].toLowerCase().replace(/[^a-z0-9-]/g, '-');
+              deployName = deployName.replace(/^-+|-+$/g, '');
+              
+              if (deployName.length > 40) {
+                deployName = deployName.substring(0, 40).replace(/-+$/, '');
+              }
+              
+              prNumber = context.issue.number;
+            }
+            
+            if (!deployName || deployName.length === 0) {
+              core.setFailed('Invalid deployment name after sanitization');
+              return;
+            }
+            
+            core.setOutput('deploy_name', deployName);
+            core.setOutput('pr_number', prNumber);
+            core.setOutput('cleanup_all', cleanupAll);
+
+      - name: Delete preview deployments
+        id: cleanup
+        run: |
+          DEPLOY_NAME="${{ steps.extract.outputs.deploy_name }}"
+          CLEANUP_ALL="${{ steps.extract.outputs.cleanup_all }}"
+          DELETED_RELEASES=""
+          
+          if [ "$CLEANUP_ALL" = "true" ]; then
+            # Find all releases that might belong to this PR
+            echo "🔍 Finding all deployments for this PR..."
+            ALL_RELEASES=$(helm list -n bluerelief -q | grep "^bluerelief-" || true)
+            
+            # Try to delete the main deployment based on branch name
+            RELEASE_NAME="bluerelief-$DEPLOY_NAME"
+            if echo "$ALL_RELEASES" | grep -q "^$RELEASE_NAME$"; then
+              helm uninstall $RELEASE_NAME -n bluerelief
+              DELETED_RELEASES="$RELEASE_NAME"
+              echo "✅ Deleted: $RELEASE_NAME"
+            fi
+            
+            # List any remaining deployments for visibility
+            REMAINING=$(helm list -n bluerelief -q | grep "^bluerelief-" || true)
+            if [ -n "$REMAINING" ]; then
+              echo "📋 Remaining deployments:"
+              echo "$REMAINING"
+            fi
+          else
+            # Manual cleanup of specific deployment
+            RELEASE_NAME="bluerelief-$DEPLOY_NAME"
+            if helm list -n bluerelief | grep -q "$RELEASE_NAME"; then
+              helm uninstall $RELEASE_NAME -n bluerelief
+              DELETED_RELEASES="$RELEASE_NAME"
+              echo "✅ Deleted: $RELEASE_NAME"
+            else
+              echo "⚠️  No preview deployment found: $RELEASE_NAME"
+              exit 1
+            fi
+          fi
+          
+          echo "deleted_releases=$DELETED_RELEASES" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR
+        if: steps.extract.outputs.cleanup_all != 'true'
+        continue-on-error: true
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ steps.extract.outputs.pr_number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🗑️ Preview Deployment Cleaned Up\n\n` +
+                    `**Deployment Name:** \`${{ steps.extract.outputs.deploy_name }}\`\n` +
+                    `Successfully deleted the preview deployment.`
+            })
+

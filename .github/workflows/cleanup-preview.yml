@@ -27,6 +27,9 @@ jobs:
             SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | cut -c1-40)
           fi
           
+          # Remove trailing hyphens
+          SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's/-*$//')
+          
           RELEASE_NAME="bluerelief-$SANITIZED_BRANCH"
           
           if helm list -n bluerelief | grep -q "$RELEASE_NAME"; then

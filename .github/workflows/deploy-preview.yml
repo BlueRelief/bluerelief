@@ -32,6 +32,9 @@ jobs:
             SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | cut -c1-40)
           fi
           
+          # Remove trailing hyphens
+          SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's/-*$//')
+          
           COMMIT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
           IMAGE_TAG="${SANITIZED_BRANCH}-${COMMIT_SHA}"
           
