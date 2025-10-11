@@ -5,7 +5,12 @@ set -e
 VERSION_FILE="VERSION"
 
 get_version() {
-    if [ -f "$VERSION_FILE" ]; then
+    # Try to get version from latest git tag first
+    LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+    
+    if [ -n "$LATEST_TAG" ]; then
+        echo "$LATEST_TAG"
+    elif [ -f "$VERSION_FILE" ]; then
         cat "$VERSION_FILE"
     else
         echo "0.0.0"

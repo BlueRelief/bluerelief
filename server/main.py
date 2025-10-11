@@ -16,10 +16,16 @@ init_db()
 
 
 def get_version():
+    # Priority: env var (set during build) > VERSION file > default
+    env_version = os.getenv("VERSION")
+    if env_version:
+        return env_version
+
     version_file = Path(__file__).parent.parent / "VERSION"
     if version_file.exists():
         return version_file.read_text().strip()
-    return os.getenv("VERSION", "dev")
+
+    return "dev"
 
 
 def get_commit_sha():
