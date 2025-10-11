@@ -20,6 +20,48 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Predict version bump
+        id: version_prediction
+        run: |
+          # Get the current version from main branch
+          git fetch origin main
+          MAIN_VERSION=$(git show origin/main:VERSION | tr -d '\n' | sed 's/^v//')
+          
+          # Get commits in this PR
+          PR_COMMITS=$(git log origin/main..HEAD --pretty=format:"%s")
+          
+          # Detect bump type
+          BUMP_TYPE="patch"
+          if echo "$PR_COMMITS" | grep -iqE "BREAKING CHANGE|MAJOR:|breaking:"; then
+            BUMP_TYPE="major"
+          elif echo "$PR_COMMITS" | grep -iqE "^feat:|^feature:|MINOR:|minor:|new feature"; then
+            BUMP_TYPE="minor"
+          fi
+          
+          # Calculate new version
+          IFS='.' read -r major minor patch <<< "$MAIN_VERSION"
+          case $BUMP_TYPE in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch)
+              patch=$((patch + 1))
+              ;;
+          esac
+          NEW_VERSION="${major}.${minor}.${patch}"
+          
+          echo "main_version=$MAIN_VERSION" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
 
       - name: Set up environment
         id: vars
@@ -89,6 +131,14 @@ jobs:
                     `**Backend:** ${{ steps.vars.outputs.backend_url }}\n` +
                     `**Frontend:** ${{ steps.vars.outputs.frontend_url }}\n\n` +
                     `Commit: \`${{ steps.vars.outputs.commit_sha }}\`\n\n` +
+                    `---\n\n` +
+                    `## ✨ Version Bump Prediction\n` +
+                    `When this PR is merged to main, the version will be bumped:\n\n` +
+                    `**${{ steps.version_prediction.outputs.main_version }}** → **${{ steps.version_prediction.outputs.new_version }}** (${{ steps.version_prediction.outputs.bump_type }})\n\n` +
+                    `💡 **How to change the version bump type**\n` +
+                    `- For **patch**: Use \`fix:\`, \`chore:\`, \`docs:\`, or \`ci:\` in commit messages\n` +
+                    `- For **minor**: Use \`feat:\` or \`feature:\` in commit messages\n` +
+                    `- For **major**: Include \`BREAKING CHANGE\` or \`breaking:\` in commit messages\n\n` +
                     `_Preview will be automatically deleted when PR is closed or merged._`
             })
       
@@ -101,5 +151,10 @@ jobs:
           echo "Backend:  ${{ steps.vars.outputs.backend_url }}"
           echo "Frontend: ${{ steps.vars.outputs.frontend_url }}"
           echo "Commit:   ${{ steps.vars.outputs.commit_sha }}"
+          echo ""
+          echo "Version Prediction:"
+          echo "  Current:  v${{ steps.version_prediction.outputs.main_version }}"
+          echo "  New:      v${{ steps.version_prediction.outputs.new_version }}"
+          echo "  Type:     ${{ steps.version_prediction.outputs.bump_type }}"
           echo ""
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
