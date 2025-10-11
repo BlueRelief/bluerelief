@@ -94,7 +94,7 @@ jobs:
 
       - name: Deploy to production
         run: |
-          helm upgrade --install bluerelief-backend \
+          helm upgrade --install bluerelief \
             /home/geeth/Development/k8s/helm/celery-app-chart \
             -f /home/geeth/Development/k8s/helm/celery-app-chart/bluerelief-values.yaml \
             -n bluerelief \
