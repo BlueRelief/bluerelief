@@ -66,6 +66,8 @@ class Post(Base):
     collection_run_id = Column(
         Integer, ForeignKey("collection_runs.id"), nullable=False
     )
+    sentiment = Column(String(50), nullable=True)
+    sentiment_score = Column(Float, nullable=True)
 
     collection_run = relationship("CollectionRun", back_populates="posts")
 

@@ -25,3 +25,4 @@ __pycache__/
 .next/
 node_modules/
 server/celerybeat-schedule
+commit-as.sh

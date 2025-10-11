@@ -37,8 +37,9 @@ def complete_collection_run(run_id: int, posts_count: int, status: str = "comple
     finally:
         db.close()
 
-def save_posts(posts_data: list, run_id: int) -> int:
-    """Save posts to database with deduplication"""
+
+def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None) -> int:
+    """Save posts to database with deduplication and optional sentiment data"""
     db = SessionLocal()
     saved_count = 0
 
@@ -50,7 +51,6 @@ def save_posts(posts_data: list, run_id: int) -> int:
             if existing:
                 continue
 
-            # use indexedAt (server timestamp) over createdAt (client-set, can be unreliable)
             indexed_at = post_data.get(
                 "indexedAt", post_data.get("record", {}).get("createdAt", "")
             )
@@ -60,6 +60,13 @@ def save_posts(posts_data: list, run_id: int) -> int:
             else:
                 created_at = datetime.utcnow()
 
+            sentiment = None
+            sentiment_score = None
+            if sentiment_data and bluesky_id in sentiment_data:
+                sentiment_info = sentiment_data[bluesky_id]
+                sentiment = sentiment_info.get("sentiment")
+                sentiment_score = sentiment_info.get("sentiment_score")
+
             post = Post(
                 bluesky_id=bluesky_id,
                 author_handle=post_data.get("author", {}).get("handle", ""),
@@ -67,6 +74,8 @@ def save_posts(posts_data: list, run_id: int) -> int:
                 created_at=created_at,
                 raw_data=post_data,
                 collection_run_id=run_id,
+                sentiment=sentiment,
+                sentiment_score=sentiment_score,
             )
             db.add(post)
             saved_count += 1
@@ -79,46 +88,62 @@ def save_posts(posts_data: list, run_id: int) -> int:
     finally:
         db.close()
 
+
 def save_analysis(analysis_text: str, run_id: int):
     """Parse and save disaster data from AI analysis"""
     db = SessionLocal()
-    
+
     try:
         cleaned_text = analysis_text.strip()
-        
+
         json_match = re.search(r'\[.*\]', cleaned_text, re.DOTALL)
         if json_match:
             cleaned_text = json_match.group(0)
-        
+
         cleaned_text = re.sub(r'^```json\s*', '', cleaned_text)
         cleaned_text = re.sub(r'\s*```$', '', cleaned_text)
         cleaned_text = cleaned_text.strip()
-        
+
         try:
             disasters = json.loads(cleaned_text)
-            
+
             if isinstance(disasters, dict):
                 disasters = [disasters]
-            
+
             for disaster_data in disasters:
+                magnitude_value = disaster_data.get("magnitude")
+
+                if magnitude_value is not None:
+                    if isinstance(magnitude_value, str):
+                        magnitude_match = re.search(r"(\d+\.?\d*)", magnitude_value)
+                        if magnitude_match:
+                            magnitude_value = float(magnitude_match.group(1))
+                        else:
+                            magnitude_value = None
+                    else:
+                        try:
+                            magnitude_value = float(magnitude_value)
+                        except (ValueError, TypeError):
+                            magnitude_value = None
+
                 disaster = Disaster(
                     location=disaster_data.get("location"),
                     event_time=disaster_data.get("event_time"),
                     severity=disaster_data.get("severity"),
-                    magnitude=disaster_data.get("magnitude"),
+                    magnitude=magnitude_value,
                     description=disaster_data.get("description"),
-                    collection_run_id=run_id
+                    collection_run_id=run_id,
                 )
                 db.add(disaster)
-            
+
             db.commit()
             print(f"Saved {len(disasters)} disasters from AI analysis")
-            
+
         except json.JSONDecodeError as e:
             print(f"Failed to parse JSON from AI response: {e}")
             print(f"Response text: {cleaned_text}")
             db.rollback()
-            
+
     except Exception as e:
         db.rollback()
         raise e
