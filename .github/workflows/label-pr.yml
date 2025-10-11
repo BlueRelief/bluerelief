@@ -114,6 +114,22 @@ jobs:
               typeLabels.push('bug');
             } else if (/^docs:/i.test(title)) {
               typeLabels.push('documentation');
+            } else if (/^chore:/i.test(title)) {
+              typeLabels.push('chore');
+            } else if (/^ci:/i.test(title)) {
+              typeLabels.push('ci');
+            } else if (/^refactor:/i.test(title)) {
+              typeLabels.push('refactor');
+            } else if (/^perf:/i.test(title)) {
+              typeLabels.push('performance');
+            } else if (/^test:/i.test(title)) {
+              typeLabels.push('test');
+            } else if (/^build:/i.test(title)) {
+              typeLabels.push('build');
+            } else if (/^style:/i.test(title)) {
+              typeLabels.push('style');
+            } else if (/^revert:/i.test(title)) {
+              typeLabels.push('revert');
             }
             
             // Add version label + type label
