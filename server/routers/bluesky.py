@@ -26,9 +26,11 @@ def read_root():
             "/task/{task_id}": "Get task status",
             "/disasters": "Get recent disasters",
             "/disasters/{disaster_id}": "Get specific disaster",
-            "/posts/recent": "Get recent posts",
-            "/runs": "Get collection runs"
-        }
+            "/posts/recent": "Get recent posts with sentiment",
+            "/posts/sentiment/{sentiment_type}": "Get posts by sentiment (urgent, fearful, negative, neutral, positive)",
+            "/posts/sentiment-stats": "Get sentiment distribution statistics",
+            "/runs": "Get collection runs",
+        },
     }
 
 @router.get("/health")
@@ -84,7 +86,7 @@ def get_disaster(disaster_id: int, db: Session = Depends(get_db)):
 
 @router.get("/posts/recent")
 def get_recent_posts(limit: int = 50, db: Session = Depends(get_db)):
-    """Get recent posts"""
+    """Get recent posts with sentiment data"""
     posts = db.query(Post).order_by(Post.collected_at.desc()).limit(limit).all()
     return {
         "posts": [
@@ -94,11 +96,77 @@ def get_recent_posts(limit: int = 50, db: Session = Depends(get_db)):
                 "author": p.author_handle,
                 "text": p.text,
                 "created_at": p.created_at.isoformat(),
-                "collected_at": p.collected_at.isoformat()
+                "collected_at": p.collected_at.isoformat(),
+                "sentiment": p.sentiment,
+                "sentiment_score": p.sentiment_score,
             }
             for p in posts
         ]
     }
+
+
+@router.get("/posts/sentiment/{sentiment_type}")
+def get_posts_by_sentiment(
+    sentiment_type: str, limit: int = 50, db: Session = Depends(get_db)
+):
+    """Get posts filtered by sentiment type (urgent, fearful, negative, neutral, positive)"""
+    posts = (
+        db.query(Post)
+        .filter(Post.sentiment == sentiment_type)
+        .order_by(Post.collected_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return {
+        "sentiment": sentiment_type,
+        "count": len(posts),
+        "posts": [
+            {
+                "id": p.id,
+                "bluesky_id": p.bluesky_id,
+                "author": p.author_handle,
+                "text": p.text,
+                "created_at": p.created_at.isoformat(),
+                "sentiment": p.sentiment,
+                "sentiment_score": p.sentiment_score,
+            }
+            for p in posts
+        ],
+    }
+
+
+@router.get("/posts/sentiment-stats")
+def get_sentiment_stats(db: Session = Depends(get_db)):
+    """Get sentiment distribution statistics"""
+    from sqlalchemy import func
+
+    stats = (
+        db.query(
+            Post.sentiment,
+            func.count(Post.id).label("count"),
+            func.avg(Post.sentiment_score).label("avg_score"),
+        )
+        .filter(Post.sentiment.isnot(None))
+        .group_by(Post.sentiment)
+        .all()
+    )
+
+    total_posts = db.query(Post).count()
+    posts_with_sentiment = db.query(Post).filter(Post.sentiment.isnot(None)).count()
+
+    return {
+        "total_posts": total_posts,
+        "posts_with_sentiment": posts_with_sentiment,
+        "sentiment_distribution": [
+            {
+                "sentiment": s.sentiment,
+                "count": s.count,
+                "average_score": round(float(s.avg_score), 3) if s.avg_score else None,
+            }
+            for s in stats
+        ],
+    }
+
 
 @router.get("/runs")
 def get_runs(limit: int = 10, db: Session = Depends(get_db)):
@@ -117,4 +185,3 @@ def get_runs(limit: int = 10, db: Session = Depends(get_db)):
             for r in runs
         ]
     }
-
