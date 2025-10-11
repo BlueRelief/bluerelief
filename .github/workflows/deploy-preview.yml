@@ -26,9 +26,9 @@ jobs:
       - name: Predict version bump
         id: version_prediction
         run: |
-          # Get the current version from main branch
-          git fetch origin main
-          MAIN_VERSION=$(git show origin/main:VERSION | tr -d '\n' | sed 's/^v//')
+          # Get the current version from latest git tag
+          git fetch origin main --tags
+          MAIN_VERSION=$(git describe --tags --abbrev=0 origin/main 2>/dev/null | sed 's/^v//' || echo "0.0.0")
           
           # Get commits in this PR
           PR_COMMITS=$(git log origin/main..HEAD --pretty=format:"%s")

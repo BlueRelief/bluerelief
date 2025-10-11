@@ -38,10 +38,8 @@ jobs:
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
 
-      - name: Update VERSION file
+      - name: Version info
         run: |
-          # Just update the file locally for tagging and deployment
-          # We'll create a separate commit after deployment if needed
           echo "Version ${{ steps.version.outputs.version }} will be used for this deployment"
 
       - name: Set up environment

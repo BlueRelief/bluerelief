@@ -2,16 +2,12 @@
 
 set -e
 
-VERSION_FILE="VERSION"
-
 get_version() {
-    # Try to get version from latest git tag first
+    # Get version from latest git tag
     LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
     
     if [ -n "$LATEST_TAG" ]; then
         echo "$LATEST_TAG"
-    elif [ -f "$VERSION_FILE" ]; then
-        cat "$VERSION_FILE"
     else
         echo "0.0.0"
     fi
@@ -80,9 +76,6 @@ NEW_VERSION=$(bump_version "$BUMP_TYPE")
 echo "current_version=$CURRENT_VERSION"
 echo "new_version=$NEW_VERSION"
 echo "bump_type=$BUMP_TYPE"
-
-# Update VERSION file
-echo "$NEW_VERSION" > "$VERSION_FILE"
 
 echo "Version bumped: $CURRENT_VERSION -> $NEW_VERSION (type: $BUMP_TYPE)"
 
