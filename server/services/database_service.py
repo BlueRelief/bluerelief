@@ -41,26 +41,36 @@ def save_posts(posts_data: list, run_id: int) -> int:
     """Save posts to database with deduplication"""
     db = SessionLocal()
     saved_count = 0
-    
+
     try:
         for post_data in posts_data:
             bluesky_id = post_data.get("uri", "")
-            
+
             existing = db.query(Post).filter(Post.bluesky_id == bluesky_id).first()
             if existing:
                 continue
-            
+
+            # use indexedAt (server timestamp) over createdAt (client-set, can be unreliable)
+            indexed_at = post_data.get(
+                "indexedAt", post_data.get("record", {}).get("createdAt", "")
+            )
+            if indexed_at:
+                indexed_at = indexed_at.replace("Z", "+00:00")
+                created_at = datetime.fromisoformat(indexed_at)
+            else:
+                created_at = datetime.utcnow()
+
             post = Post(
                 bluesky_id=bluesky_id,
                 author_handle=post_data.get("author", {}).get("handle", ""),
                 text=post_data.get("record", {}).get("text", ""),
-                created_at=datetime.fromisoformat(post_data.get("record", {}).get("createdAt", "").replace("Z", "+00:00")),
+                created_at=created_at,
                 raw_data=post_data,
-                collection_run_id=run_id
+                collection_run_id=run_id,
             )
             db.add(post)
             saved_count += 1
-        
+
         db.commit()
         return saved_count
     except Exception as e:
@@ -168,4 +178,3 @@ def get_collection_stats():
         raise e
     finally:
         db.close()
-

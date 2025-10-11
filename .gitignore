@@ -24,3 +24,4 @@ __pycache__/
 .cache/
 .next/
 node_modules/
+server/celerybeat-schedule
