@@ -38,13 +38,11 @@ jobs:
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
 
-      - name: Commit version bump
+      - name: Update VERSION file
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add VERSION
-          git diff --staged --quiet || git commit -m "chore: bump version to ${{ steps.version.outputs.version }} [skip ci]"
-          git push
+          # Just update the file locally for tagging and deployment
+          # We'll create a separate commit after deployment if needed
+          echo "Version ${{ steps.version.outputs.version }} will be used for this deployment"
 
       - name: Set up environment
         id: vars
