@@ -142,7 +142,13 @@ jobs:
             });
             
             // Add comment explaining the version bump
-            const currentVersion = require('fs').readFileSync('VERSION', 'utf8').trim();
+            const { execSync } = require('child_process');
+            let currentVersion;
+            try {
+              currentVersion = execSync('git describe --tags --abbrev=0 origin/main 2>/dev/null', { encoding: 'utf8' }).trim().replace(/^v/, '');
+            } catch (error) {
+              currentVersion = '0.0.0';
+            }
             const [major, minor, patch] = currentVersion.split('.').map(Number);
             
             let newVersion;
