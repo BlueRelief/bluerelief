@@ -1,16 +1,18 @@
 -- Base schema migration for BlueRelief
 -- Creates all core tables if they don't exist
 
--- Users table
+-- Users table (OAuth-based authentication)
 CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
+    id VARCHAR(255) PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
-    hashed_password VARCHAR(255) NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    is_superuser BOOLEAN DEFAULT FALSE,
+    name VARCHAR(255) NOT NULL,
+    picture VARCHAR(512),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS ix_users_id ON users(id);
+CREATE INDEX IF NOT EXISTS ix_users_email ON users(email);
 
 -- Collection runs table
 CREATE TABLE IF NOT EXISTS collection_runs (
