@@ -128,7 +128,9 @@ def analyze_posts(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1)
         prompt = (
             "Analyze these social media posts about disasters and extract structured information. "
             "For each disaster mentioned, return a JSON array with objects containing:\n"
-            "- location: specific location of the disaster\n"
+            "- location: specific location in format 'Location Name (latitude, longitude)'. "
+            "If coordinates are mentioned, use those. Otherwise, estimate the coordinates for the location. "
+            "Example: 'Tokyo, Japan (35.6762, 139.6503)'\n"
             "- event_time: when the disaster occurred\n"
             "- severity: rate 1-5 (1=minor, 5=catastrophic)\n"
             "- magnitude: single numerical value if applicable (e.g., 7.6 for earthquakes, 4 for hurricanes). "

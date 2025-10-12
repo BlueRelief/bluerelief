@@ -124,13 +124,21 @@ def get_recent_events(limit: int = 10, db: Session = Depends(get_db)):
         except Exception:
             rel = "unknown"
 
-        events.append({
-            "id": d.id,
-            "title": f"{d.description[:60]}" if d.description else f"Event at {d.location}",
-            "location": d.location,
-            "time": rel,
-            "severity": label,
-            "severityColor": color,
-        })
+        # Use full description or fallback to location
+        if d.description:
+            title = d.description
+        else:
+            title = f"Event at {d.location}"
+
+        events.append(
+            {
+                "id": d.id,
+                "title": title,
+                "location": d.location,
+                "time": rel,
+                "severity": label,
+                "severityColor": color,
+            }
+        )
 
     return {"events": events}

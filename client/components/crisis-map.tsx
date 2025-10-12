@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
-import Map, { Marker, Popup, NavigationControl } from "react-map-gl/mapbox";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import Map, { Marker, Popup, NavigationControl, MapRef } from "react-map-gl/mapbox";
 import { useTheme } from "next-themes";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -14,12 +14,25 @@ interface RegionData {
 
 interface CrisisMapProps {
   regions: RegionData[];
+  focusRegion?: string;
   onMapError?: (error: Error) => void;
 }
 
-export default function CrisisMap({ regions, onMapError }: CrisisMapProps) {
+const REGION_CENTERS: Record<string, { longitude: number; latitude: number; zoom: number }> = {
+  "all": { longitude: 20, latitude: 20, zoom: 1.8 },
+  "north-america": { longitude: -95.7129, latitude: 37.0902, zoom: 2.8 },
+  "south-america": { longitude: -58.3816, latitude: -14.2350, zoom: 2.5 },
+  "europe": { longitude: 10.4515, latitude: 51.1657, zoom: 3.2 },
+  "africa": { longitude: 20.0, latitude: 0.0, zoom: 2.5 },
+  "asia": { longitude: 100.6197, latitude: 34.0479, zoom: 2.5 },
+  "oceania": { longitude: 133.7751, latitude: -25.2744, zoom: 3 },
+  "middle-east": { longitude: 45.0792, latitude: 29.3117, zoom: 3.5 },
+};
+
+export default function CrisisMap({ regions, focusRegion = "all", onMapError }: CrisisMapProps) {
   const { theme, resolvedTheme } = useTheme();
   const [selectedRegion, setSelectedRegion] = useState<RegionData | null>(null);
+  const mapRef = useRef<MapRef>(null);
   const [viewState, setViewState] = useState({
     longitude: -98.5795,
     latitude: 39.8283,
@@ -51,8 +64,23 @@ export default function CrisisMap({ regions, onMapError }: CrisisMapProps) {
     return Math.min(Math.max(incidents / 10, 15), 40);
   }, []);
 
+  useEffect(() => {
+    if (mapRef.current && focusRegion) {
+      const target = REGION_CENTERS[focusRegion];
+      if (target) {
+        mapRef.current.flyTo({
+          center: [target.longitude, target.latitude],
+          zoom: target.zoom,
+          duration: 2000,
+          essential: true
+        });
+      }
+    }
+  }, [focusRegion]);
+
   return (
     <Map
+      ref={mapRef}
       {...viewState}
       onMove={(evt) => setViewState(evt.viewState)}
       mapboxAccessToken={mapboxToken}
@@ -105,11 +133,23 @@ export default function CrisisMap({ regions, onMapError }: CrisisMapProps) {
           onClose={() => setSelectedRegion(null)}
           closeButton={true}
           closeOnClick={false}
+          className="crisis-map-popup"
         >
-          <div className="p-2">
-            <strong className="block mb-1">{selectedRegion.region}</strong>
-            <div className="text-sm">{selectedRegion.incidents} incidents</div>
-            <div className="text-sm">Severity: {selectedRegion.severity}</div>
+          <div className="bg-card text-card-foreground rounded-lg border p-3 min-w-[200px] font-sans">
+            <div className="font-semibold text-sm mb-2">
+              {selectedRegion.region}
+            </div>
+            <div className="text-muted-foreground text-xs mb-1">
+              {selectedRegion.incidents} incident{selectedRegion.incidents !== 1 ? 's' : ''}
+            </div>
+            <div className="text-muted-foreground text-xs">
+              Severity: <span 
+                className="font-medium"
+                style={{ color: getMarkerColor(selectedRegion.severity) }}
+              >
+                {selectedRegion.severity}
+              </span>
+            </div>
           </div>
         </Popup>
       )}

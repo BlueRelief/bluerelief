@@ -4,24 +4,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
   Search,
 } from "lucide-react";
 import CrisisMap from "@/components/crisis-map";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   ChartContainer,
   type ChartConfig 
 } from "@/components/ui/chart";
-import { AreaChart, Area } from "recharts";
-
-const sentimentData = [
-  { time: "00:00", sentiment: 65 },
-  { time: "04:00", sentiment: 62 },
-  { time: "08:00", sentiment: 68 },
-  { time: "12:00", sentiment: 72 },
-  { time: "16:00", sentiment: 70 },
-  { time: "20:00", sentiment: 75 },
-];
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { apiGet } from "@/lib/api-client";
 
 const chartConfig = {
   sentiment: {
@@ -30,78 +29,175 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-const recentEvents = [
-  {
-    id: 1,
-    title: "Flood reports - Downtown Sector 5",
-    location: "New York, USA",
-    time: "1h ago",
-    severity: "Critical",
-    severityColor: "bg-red-100 text-red-800"
-  },
-  {
-    id: 2,
-    title: "Power outage - Suburb A",
-    location: "Los Angeles, USA",
-    time: "3h ago",
-    severity: "High",
-    severityColor: "bg-orange-100 text-orange-800"
-  },
-  {
-    id: 3,
-    title: "Road closure - I-40 near exit 12",
-    location: "Austin, USA",
-    time: "7h ago",
-    severity: "Medium",
-    severityColor: "bg-yellow-100 text-yellow-800"
-  },
-  {
-    id: 4,
-    title: "Protest - City Square",
-    location: "London, UK",
-    time: "1d ago",
-    severity: "Low",
-    severityColor: "bg-blue-100 text-blue-800"
-  },
-];
+interface DashboardStats {
+  total_crises: number;
+  affected_people: number;
+  urgent_alerts: number;
+  active_regions: number;
+}
+
+interface SentimentTrend {
+  time: string;
+  sentiment: number | null;
+}
+
+interface RecentEvent {
+  id: number;
+  title: string;
+  location: string;
+  time: string;
+  severity: string;
+  severityColor: string;
+}
 
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState("");
+  const [locationFilter, setLocationFilter] = useState("all");
+  const [severityFilter, setSeverityFilter] = useState("all");
   const [regions, setRegions] = useState<Array<{
     region: string;
     incidents: number;
     severity: string;
     coordinates: [number, number];
   }>>([]);
+  const [stats, setStats] = useState<DashboardStats>({
+    total_crises: 0,
+    affected_people: 0,
+    urgent_alerts: 0,
+    active_regions: 0,
+  });
+  const [sentimentData, setSentimentData] = useState<SentimentTrend[]>([]);
+  const [recentEvents, setRecentEvents] = useState<RecentEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchIncidents = async () => {
+    const fetchDashboardData = async () => {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
-        const res = await fetch(`${apiBase}/api/incidents`);
-        if (res.ok) {
-          const json = await res.json();
-          setRegions(json);
-        }
+        setLoading(true);
+        
+        const [statsData, sentimentResponse, eventsResponse, incidentsData] = await Promise.all([
+          apiGet<DashboardStats>('/api/dashboard/stats'),
+          apiGet<{ trends: SentimentTrend[] }>('/api/dashboard/sentiment-trends'),
+          apiGet<{ events: RecentEvent[] }>('/api/dashboard/recent-events'),
+          apiGet<Array<{
+            region: string;
+            incidents: number;
+            severity: string;
+            coordinates: [number, number];
+          }>>('/api/incidents'),
+        ]);
+
+        setStats(statsData);
+        setSentimentData(sentimentResponse.trends);
+        setRecentEvents(eventsResponse.events);
+        setRegions(incidentsData);
       } catch (e) {
-        console.warn('Failed to fetch incidents:', e);
+        console.warn('Failed to fetch dashboard data:', e);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchIncidents();
+    fetchDashboardData();
   }, []);
+
+  const getRegionFromCoordinates = (lng: number, lat: number): string => {
+    // North America: roughly -170 to -50 longitude, 15 to 72 latitude
+    if (lng >= -170 && lng <= -50 && lat >= 15 && lat <= 72) return "north-america";
+    
+    // South America: roughly -82 to -34 longitude, -56 to 13 latitude
+    if (lng >= -82 && lng <= -34 && lat >= -56 && lat <= 13) return "south-america";
+    
+    // Europe: roughly -10 to 40 longitude, 36 to 71 latitude
+    if (lng >= -10 && lng <= 40 && lat >= 36 && lat <= 71) return "europe";
+    
+    // Africa: roughly -18 to 52 longitude, -35 to 37 latitude
+    if (lng >= -18 && lng <= 52 && lat >= -35 && lat <= 37) return "africa";
+    
+    // Middle East: roughly 34 to 63 longitude, 12 to 42 latitude
+    if (lng >= 34 && lng <= 63 && lat >= 12 && lat <= 42) return "middle-east";
+    
+    // Oceania: roughly 110 to 180 longitude, -50 to 0 latitude (includes Australia, NZ)
+    if (lng >= 110 && lng <= 180 && lat >= -50 && lat <= 0) return "oceania";
+    
+    // Asia: roughly 40 to 150 longitude, 0 to 55 latitude
+    if (lng >= 40 && lng <= 150 && lat >= 0 && lat <= 55) return "asia";
+    
+    return "all";
+  };
+
+  const filteredRegions = useMemo(() => {
+    return regions.filter(region => {
+      const severityMatch = severityFilter === "all" || region.severity.toLowerCase() === severityFilter.toLowerCase();
+      
+      let locationMatch = true;
+      if (locationFilter !== "all") {
+        const regionName = region.region.toLowerCase();
+        const [lng, lat] = region.coordinates;
+        const coordRegion = getRegionFromCoordinates(lng, lat);
+        
+        // Match by both name keywords AND coordinates
+        const nameMatch = (() => {
+          switch (locationFilter) {
+            case "north-america":
+              return regionName.includes("usa") || regionName.includes("united states") || 
+                     regionName.includes("canada") || regionName.includes("mexico") || 
+                     regionName.includes("america");
+            case "south-america":
+              return regionName.includes("brazil") || regionName.includes("argentina") || 
+                     regionName.includes("colombia") || regionName.includes("peru") || 
+                     regionName.includes("chile") || regionName.includes("venezuela");
+            case "europe":
+              return regionName.includes("uk") || regionName.includes("france") || 
+                     regionName.includes("germany") || regionName.includes("spain") || 
+                     regionName.includes("italy") || regionName.includes("poland") || 
+                     regionName.includes("ukraine") || regionName.includes("europe");
+            case "africa":
+              return regionName.includes("egypt") || regionName.includes("south africa") || 
+                     regionName.includes("nigeria") || regionName.includes("kenya") || 
+                     regionName.includes("morocco") || regionName.includes("ethiopia") || 
+                     regionName.includes("africa");
+            case "asia":
+              return regionName.includes("japan") || regionName.includes("china") || 
+                     regionName.includes("india") || regionName.includes("bangladesh") || 
+                     regionName.includes("nepal") || regionName.includes("indonesia") || 
+                     regionName.includes("philippines") || regionName.includes("pakistan") || 
+                     regionName.includes("thailand") || regionName.includes("vietnam") || 
+                     regionName.includes("korea") || regionName.includes("asia");
+            case "oceania":
+              return regionName.includes("australia") || regionName.includes("new zealand") || 
+                     regionName.includes("fiji") || regionName.includes("papua");
+            case "middle-east":
+              return regionName.includes("saudi") || regionName.includes("uae") || 
+                     regionName.includes("iran") || regionName.includes("iraq") || 
+                     regionName.includes("israel") || regionName.includes("yemen") || 
+                     regionName.includes("syria") || regionName.includes("jordan");
+            default:
+              return false;
+          }
+        })();
+        
+        locationMatch = nameMatch || coordRegion === locationFilter;
+      }
+      
+      return severityMatch && locationMatch;
+    });
+  }, [regions, severityFilter, locationFilter]);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <div className="flex gap-2">
-          <select className="px-3 py-1.5 text-sm border rounded-md bg-background">
-            <option>Last 24 hours</option>
-            <option>Last 7 days</option>
-            <option>Last 30 days</option>
-          </select>
-        </div>
+        <Select value={timeRange || "24h"} onValueChange={setTimeRange}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Last 24 hours" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="24h">Last 24 hours</SelectItem>
+            <SelectItem value="7d">Last 7 days</SelectItem>
+            <SelectItem value="30d">Last 30 days</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
@@ -109,7 +205,9 @@ export default function DashboardPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold">200</div>
+                <div className="text-2xl font-bold">
+                  {loading ? "-" : stats.total_crises.toLocaleString()}
+                </div>
                 <div className="text-xs text-muted-foreground">Total Crises</div>
               </div>
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
@@ -123,7 +221,9 @@ export default function DashboardPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold">15K</div>
+                <div className="text-2xl font-bold">
+                  {loading ? "-" : stats.affected_people.toLocaleString()}
+                </div>
                 <div className="text-xs text-muted-foreground">Affected People</div>
               </div>
               <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
@@ -137,7 +237,9 @@ export default function DashboardPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold">12</div>
+                <div className="text-2xl font-bold">
+                  {loading ? "-" : stats.urgent_alerts.toLocaleString()}
+                </div>
                 <div className="text-xs text-muted-foreground">Urgent Alerts</div>
               </div>
               <div className="h-12 w-12 rounded-full bg-amber-500/10 flex items-center justify-center">
@@ -151,7 +253,9 @@ export default function DashboardPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold">5</div>
+                <div className="text-2xl font-bold">
+                  {loading ? "-" : stats.active_regions.toLocaleString()}
+                </div>
                 <div className="text-xs text-muted-foreground">Active Regions</div>
               </div>
               <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
@@ -168,24 +272,39 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">Global Crisis Map</CardTitle>
               <div className="flex gap-2">
-                <select className="px-2 py-1 text-xs border rounded-md bg-background">
-                  <option>All Locations</option>
-                  <option>North America</option>
-                  <option>Europe</option>
-                  <option>Asia</option>
-                </select>
-                <select className="px-2 py-1 text-xs border rounded-md bg-background">
-                  <option>All Severity</option>
-                  <option>Critical</option>
-                  <option>High</option>
-                  <option>Medium</option>
-                </select>
+                <Select value={locationFilter} onValueChange={setLocationFilter}>
+                  <SelectTrigger className="w-[140px] h-7 text-xs">
+                    <SelectValue placeholder="All Locations" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    <SelectItem value="north-america">North America</SelectItem>
+                    <SelectItem value="south-america">South America</SelectItem>
+                    <SelectItem value="europe">Europe</SelectItem>
+                    <SelectItem value="africa">Africa</SelectItem>
+                    <SelectItem value="asia">Asia</SelectItem>
+                    <SelectItem value="oceania">Oceania</SelectItem>
+                    <SelectItem value="middle-east">Middle East</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={severityFilter} onValueChange={setSeverityFilter}>
+                  <SelectTrigger className="w-[120px] h-7 text-xs">
+                    <SelectValue placeholder="All Severity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Severity</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </CardHeader>
           <CardContent className="pb-3">
             <div className="h-[400px] rounded-md overflow-hidden border">
-              <CrisisMap regions={regions} />
+              <CrisisMap regions={filteredRegions} focusRegion={locationFilter} />
             </div>
           </CardContent>
         </Card>
@@ -197,7 +316,16 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="pb-3">
               <ChartContainer config={chartConfig} className="h-[120px] w-full">
-                <AreaChart data={sentimentData} accessibilityLayer>
+                <AreaChart 
+                  data={sentimentData.map(d => ({
+                    time: new Date(d.time).toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    }),
+                    sentiment: d.sentiment ?? 0
+                  }))} 
+                  accessibilityLayer
+                >
                   <defs>
                     <linearGradient id="fillSentiment" x1="0" y1="0" x2="0" y2="1">
                       <stop
@@ -222,8 +350,14 @@ export default function DashboardPage() {
                 </AreaChart>
               </ChartContainer>
               <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                <span>Positive trend</span>
-                <span className="text-primary font-medium">+12.5%</span>
+                <span>
+                  {loading ? "Loading..." : sentimentData.length > 0 ? "Recent trend" : "No data"}
+                </span>
+                <span className="text-primary font-medium">
+                  {sentimentData.length > 0 && sentimentData[0].sentiment !== null && sentimentData[sentimentData.length - 1].sentiment !== null 
+                    ? `${((sentimentData[sentimentData.length - 1].sentiment! - sentimentData[0].sentiment!) / sentimentData[0].sentiment! * 100).toFixed(1)}%`
+                    : "-"}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -275,21 +409,31 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent className="pb-3">
           <div className="space-y-2">
-            {recentEvents.map((event) => (
-              <div
-                key={event.id}
-                className="flex items-center gap-3 p-2.5 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer"
-              >
-                <Badge className={`${event.severityColor} text-xs px-2 py-0.5`}>
-                  {event.severity}
-                </Badge>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{event.title}</div>
-                  <div className="text-xs text-muted-foreground">{event.location}</div>
-                </div>
-                <div className="text-xs text-muted-foreground whitespace-nowrap">{event.time}</div>
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                Loading events...
               </div>
-            ))}
+            ) : recentEvents.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                No recent events found
+              </div>
+            ) : (
+              recentEvents.map((event) => (
+                <div
+                  key={event.id}
+                  className="flex items-center gap-3 p-2.5 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer"
+                >
+                  <Badge className={`${event.severityColor} text-xs px-2 py-0.5`}>
+                    {event.severity}
+                  </Badge>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{event.title}</div>
+                    <div className="text-xs text-muted-foreground">{event.location}</div>
+                  </div>
+                  <div className="text-xs text-muted-foreground whitespace-nowrap">{event.time}</div>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
