@@ -68,8 +68,10 @@ class Post(Base):
     )
     sentiment = Column(String(50), nullable=True)
     sentiment_score = Column(Float, nullable=True)
+    disaster_type = Column(String(50), nullable=True, index=True) 
 
     collection_run = relationship("CollectionRun", back_populates="posts")
+    disasters = relationship("Disaster", back_populates="post")
 
 
 class Disaster(Base):
@@ -85,8 +87,10 @@ class Disaster(Base):
     collection_run_id = Column(
         Integer, ForeignKey("collection_runs.id"), nullable=False
     )
+    post_id = Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"), nullable=True)
 
     collection_run = relationship("CollectionRun", back_populates="disasters")
+    post = relationship("Post", back_populates="disasters")
 
 
 def get_db_session():

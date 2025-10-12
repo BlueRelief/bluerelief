@@ -38,18 +38,56 @@ def complete_collection_run(run_id: int, posts_count: int, status: str = "comple
         db.close()
 
 
-def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None) -> int:
-    """Save posts to database with deduplication and optional sentiment data"""
+def get_existing_post_ids(post_uris: list) -> set:
+    """Get set of existing post IDs from database
+    
+    Args:
+        post_uris: List of Bluesky post URIs to check
+        
+    Returns:
+        Set of existing post URIs
+    """
+    db = SessionLocal()
+    try:
+        return set(id_tuple[0] for id_tuple in 
+                  db.query(Post.bluesky_id)
+                  .filter(Post.bluesky_id.in_(post_uris))
+                  .all())
+    finally:
+        db.close()
+
+def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None, disaster_type: str = None) -> tuple[int, list]:
+    """Save posts to database with deduplication, disaster type, and optional sentiment data
+    
+    Args:
+        posts_data: List of posts to save
+        run_id: ID of the collection run
+        sentiment_data: Optional sentiment analysis results
+        disaster_type: Type of disaster for these posts
+        
+    Returns:
+        Tuple of (number of posts saved, list of new posts)
+    """
     db = SessionLocal()
     saved_count = 0
+    new_posts = []
+
+    # Prepare all posts for batch insertion
+    posts_to_add = []
+    seen_ids = set()
 
     try:
+        # First get all existing bluesky_ids in one query
+        existing_ids = get_existing_post_ids([p.get("uri", "") for p in posts_data])
+
         for post_data in posts_data:
             bluesky_id = post_data.get("uri", "")
 
-            existing = db.query(Post).filter(Post.bluesky_id == bluesky_id).first()
-            if existing:
+            # Skip if we've seen this post in this batch or if it exists in DB
+            if not bluesky_id or bluesky_id in seen_ids or bluesky_id in existing_ids:
                 continue
+
+            seen_ids.add(bluesky_id)
 
             indexed_at = post_data.get(
                 "indexedAt", post_data.get("record", {}).get("createdAt", "")
@@ -67,21 +105,58 @@ def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None) -> in
                 sentiment = sentiment_info.get("sentiment")
                 sentiment_score = sentiment_info.get("sentiment_score")
 
-            post = Post(
-                bluesky_id=bluesky_id,
-                author_handle=post_data.get("author", {}).get("handle", ""),
-                text=post_data.get("record", {}).get("text", ""),
-                created_at=created_at,
-                raw_data=post_data,
-                collection_run_id=run_id,
-                sentiment=sentiment,
-                sentiment_score=sentiment_score,
-            )
-            db.add(post)
-            saved_count += 1
+            # Get disaster type from post data or use provided default
+            post_disaster_type = post_data.get("disaster_type") or disaster_type
 
-        db.commit()
-        return saved_count
+            try:
+                # Prepare post object
+                post = Post(
+                    bluesky_id=bluesky_id,
+                    author_handle=post_data.get("author", {}).get("handle", ""),
+                    text=post_data.get("record", {}).get("text", ""),
+                    created_at=created_at,
+                    raw_data=post_data,
+                    collection_run_id=run_id,
+                    sentiment=sentiment,
+                    sentiment_score=sentiment_score,
+                    disaster_type=post_disaster_type,
+                )
+                posts_to_add.append(post)
+                saved_count += 1
+            except Exception as e:
+                print(f"Error preparing post {bluesky_id}: {str(e)}")
+                continue
+
+        try:
+            # Bulk insert all posts at once
+            if posts_to_add:
+                db.bulk_save_objects(posts_to_add)
+                db.commit()
+                # After successful bulk save, populate new_posts list
+                for post in posts_to_add:
+                    original_data = next(
+                        p for p in posts_data if p.get("uri") == post.bluesky_id
+                    )
+                    new_posts.append(original_data)
+        except Exception as e:
+            print(f"Error during bulk save: {str(e)}")
+            db.rollback()
+            # Try one by one as fallback
+            saved_count = 0
+            new_posts = []
+            for post in posts_to_add:
+                try:
+                    db.add(post)
+                    db.commit()
+                    saved_count += 1
+                    # Find original post data
+                    original_data = next(p for p in posts_data if p.get("uri") == post.bluesky_id)
+                    new_posts.append(original_data)
+                except Exception:
+                    db.rollback()
+                    continue
+
+        return saved_count, new_posts
     except Exception as e:
         db.rollback()
         raise e
@@ -89,8 +164,8 @@ def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None) -> in
         db.close()
 
 
-def save_analysis(analysis_text: str, run_id: int):
-    """Parse and save disaster data from AI analysis"""
+def save_analysis(analysis_text: str, run_id: int, posts: list = None):
+    """Parse and save disaster data from AI analysis, linking to source posts when possible"""
     db = SessionLocal()
 
     try:
@@ -110,6 +185,18 @@ def save_analysis(analysis_text: str, run_id: int):
             if isinstance(disasters, dict):
                 disasters = [disasters]
 
+            # Get all posts from this run to link disasters
+            post_map = {}
+            if posts:
+                for post_data in posts:
+                    post_uri = post_data.get("uri")
+                    if post_uri:
+                        post_db = (
+                            db.query(Post).filter(Post.bluesky_id == post_uri).first()
+                        )
+                        if post_db:
+                            post_map[post_uri] = post_db.id
+
             for disaster_data in disasters:
                 magnitude_value = disaster_data.get("magnitude")
 
@@ -126,6 +213,22 @@ def save_analysis(analysis_text: str, run_id: int):
                         except (ValueError, TypeError):
                             magnitude_value = None
 
+                # Try to find matching post based on location/magnitude
+                post_id = None
+                if posts:
+                    location = disaster_data.get("location") or ""
+                    location = location.lower() if location else ""
+                    magnitude = disaster_data.get("magnitude")
+
+                    for post_data in posts:
+                        post_text = post_data.get("record", {}).get("text", "").lower()
+                        if location and location in post_text:
+                            post_id = post_map.get(post_data.get("uri"))
+                            break
+                        elif magnitude and str(magnitude) in post_text:
+                            post_id = post_map.get(post_data.get("uri"))
+                            break
+
                 disaster = Disaster(
                     location=disaster_data.get("location"),
                     event_time=disaster_data.get("event_time"),
@@ -133,11 +236,15 @@ def save_analysis(analysis_text: str, run_id: int):
                     magnitude=magnitude_value,
                     description=disaster_data.get("description"),
                     collection_run_id=run_id,
+                    post_id=post_id,
                 )
                 db.add(disaster)
 
             db.commit()
-            print(f"Saved {len(disasters)} disasters from AI analysis")
+            linked = sum(1 for d in disasters if post_id is not None)
+            print(
+                f"Saved {len(disasters)} disasters from AI analysis ({linked} linked to posts)"
+            )
 
         except json.JSONDecodeError as e:
             print(f"Failed to parse JSON from AI response: {e}")
@@ -149,6 +256,7 @@ def save_analysis(analysis_text: str, run_id: int):
         raise e
     finally:
         db.close()
+
 
 def get_recent_disasters(limit: int = 50):
     """Get recent disasters"""
