@@ -72,24 +72,24 @@ export default function AnalysisPage() {
   const [regions, setRegions] = useState(regionalData);
   const [mapError, setMapError] = useState(false);
 
-  // This will contain empty heatmap data until we add onto it
-  const heatmapData = [
-    [0.45, 0.32, 0.28, 0.51, 0.38, 0.67, 0.42, 0.55, 0.29, 0.48, 0.61, 0.35],
-    [0.52, 0.41, 0.36, 0.58, 0.44, 0.72, 0.38, 0.62, 0.25, 0.54, 0.68, 0.41],
-    [0.38, 0.29, 0.48, 0.62, 0.51, 0.45, 0.58, 0.33, 0.69, 0.47, 0.55, 0.39],
-    [0.63, 0.47, 0.52, 0.41, 0.59, 0.35, 0.67, 0.44, 0.28, 0.61, 0.38, 0.54],
-    [0.48, 0.55, 0.39, 0.64, 0.42, 0.58, 0.33, 0.71, 0.46, 0.52, 0.37, 0.68],
-    [0.55, 0.36, 0.61, 0.49, 0.43, 0.58, 0.71, 0.39, 0.54, 0.47, 0.62, 0.35],
-    [0.42, 0.58, 0.45, 0.67, 0.33, 0.52, 0.39, 0.61, 0.48, 0.36, 0.74, 0.41],
-    [0.58, 0.44, 0.69, 0.37, 0.53, 0.41, 0.62, 0.35, 0.47, 0.59, 0.28, 0.64]
-  ];
+  // // This will contain empty heatmap data until we add onto it
+  // const heatmapData = [
+  //   [0.45, 0.32, 0.28, 0.51, 0.38, 0.67, 0.42, 0.55, 0.29, 0.48, 0.61, 0.35],
+  //   [0.52, 0.41, 0.36, 0.58, 0.44, 0.72, 0.38, 0.62, 0.25, 0.54, 0.68, 0.41],
+  //   [0.38, 0.29, 0.48, 0.62, 0.51, 0.45, 0.58, 0.33, 0.69, 0.47, 0.55, 0.39],
+  //   [0.63, 0.47, 0.52, 0.41, 0.59, 0.35, 0.67, 0.44, 0.28, 0.61, 0.38, 0.54],
+  //   [0.48, 0.55, 0.39, 0.64, 0.42, 0.58, 0.33, 0.71, 0.46, 0.52, 0.37, 0.68],
+  //   [0.55, 0.36, 0.61, 0.49, 0.43, 0.58, 0.71, 0.39, 0.54, 0.47, 0.62, 0.35],
+  //   [0.42, 0.58, 0.45, 0.67, 0.33, 0.52, 0.39, 0.61, 0.48, 0.36, 0.74, 0.41],
+  //   [0.58, 0.44, 0.69, 0.37, 0.53, 0.41, 0.62, 0.35, 0.47, 0.59, 0.28, 0.64]
+  // ];
 
-  const getHeatmapColor = (intensity: number) => {
-    if (intensity < 0.3) return 'oklch(0.9683 0.0069 247.8956)';
-    if (intensity < 0.5) return 'oklch(0.8091 0.0956 251.8128)';
-    if (intensity < 0.7) return 'oklch(0.6128 0.1689 257.5652)';
-    return 'oklch(0.5593 0.1942 258.4556)';
-  };
+  // const getHeatmapColor = (intensity: number) => {
+  //   if (intensity < 0.3) return 'oklch(0.9683 0.0069 247.8956)';
+  //   if (intensity < 0.5) return 'oklch(0.8091 0.0956 251.8128)';
+  //   if (intensity < 0.7) return 'oklch(0.6128 0.1689 257.5652)';
+  //   return 'oklch(0.5593 0.1942 258.4556)';
+  // };
 
   
   const getSeverityVariant = (severity: string) => {
@@ -261,7 +261,8 @@ export default function AnalysisPage() {
                     <div className="text-sm">Unable to initialize the map. Please check your Mapbox token.</div>
                   </div>
                 ) : (
-                  <CrisisMap regions={regions} onMapError={() => setMapError(true)} />
+                  <CrisisMap regions={regions} />
+                  // removed maperror state
                 )}
               </div>
               <div className="flex items-center space-x-3 text-sm text-muted-foreground mb-2">

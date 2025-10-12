@@ -7,7 +7,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 interface HeatmapPoint {
   coordinates: [number, number]; // [longitude, latitude]
   weight?: number; // Optional weight/intensity (0-1)
-  [key: string]: any; // Additional properties
+  // [key: string]: any; // Additional properties
 }
 
 interface HeatmapLayerProps {
@@ -160,10 +160,10 @@ interface RegionData {
 
 interface CrisisMapProps {
   regions: RegionData[];
-  onMapError?: (error: Error) => void;
+  // onMapError?: (error: Error) => void;
 }
 
-export default function CrisisMap({ regions, onMapError }: CrisisMapProps) {
+export default function CrisisMap({ regions }: CrisisMapProps) {
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? 
     'pk.eyJ1IjoiZ3NnMjEwMDAxIiwiYSI6ImNtZzRpNjZ4ejFsNTgybW9mbnlyNmIxY28ifQ.01BgG4RXjP9pn8PYGc7sDw';
 
