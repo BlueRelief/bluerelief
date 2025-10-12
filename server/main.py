@@ -4,6 +4,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from routers import auth
 from routers import incidents
 from routers import bluesky
+from routers import dashboard
 from db_utils.db import init_db
 import os
 from dotenv import load_dotenv
@@ -71,6 +72,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(incidents.router)
 app.include_router(bluesky.router)
+app.include_router(dashboard.router)
 
 @app.get("/")
 async def root():
