@@ -68,6 +68,7 @@ class Post(Base):
     )
     sentiment = Column(String(50), nullable=True)
     sentiment_score = Column(Float, nullable=True)
+    disaster_type = Column(String(50), nullable=True, index=True) 
 
     collection_run = relationship("CollectionRun", back_populates="posts")
 

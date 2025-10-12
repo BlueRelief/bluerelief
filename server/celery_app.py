@@ -16,19 +16,43 @@ celery_app = Celery(
 )
 
 celery_app.conf.update(
+    # Task settings
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",
-    timezone="UTC",
-    enable_utc=True,
     task_track_started=True,
     task_time_limit=30 * 60,
+    
+    # Concurrency settings
+    worker_prefetch_multiplier=1,  # Process one task at a time
+    task_acks_late=True,  # Only acknowledge task after it's completed
+    
+    # Rate limiting
+    task_annotations={
+        'tasks.collect_and_analyze': {
+            'rate_limit': '1/m'  # One task per minute
+        }
+    },
+    
+    # Retry settings
+    task_default_retry_delay=60,  # 60 seconds between retries
+    task_max_retries=3,  # Maximum 3 retries
+    
+    # Timezone
+    timezone="UTC",
+    enable_utc=True,
 )
+
+# Default to running every 8 hours, but can be configured with env var
+SCHEDULE_HOURS = int(os.getenv("SCHEDULE_HOURS", "8"))
 
 celery_app.conf.beat_schedule = {
     "collect-bluesky-data": {
         "task": "tasks.collect_and_analyze",
         "schedule": crontab(hour=f"*/{SCHEDULE_HOURS}"),
+        "options": {
+            "expires": 60 * 60 * 3  # Tasks expire after 3 hours
+        }
     },
 }
 
