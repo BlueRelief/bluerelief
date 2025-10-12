@@ -61,7 +61,7 @@ services:
       BlueSky_Password: ${BlueSky_Password}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       SEARCH_HASHTAG: ${SEARCH_HASHTAG:-#earthquake}
-      POST_LIMIT: ${POST_LIMIT:-50}
+      POST_LIMIT: ${POST_LIMIT:-5}
       SCHEDULE_HOURS: ${SCHEDULE_HOURS:-24}
     depends_on:
       postgres:
@@ -88,7 +88,7 @@ services:
       BlueSky_Password: ${BlueSky_Password}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       SEARCH_HASHTAG: ${SEARCH_HASHTAG:-#earthquake}
-      POST_LIMIT: ${POST_LIMIT:-50}
+      POST_LIMIT: ${POST_LIMIT:-5}
       SCHEDULE_HOURS: ${SCHEDULE_HOURS:-24}
     depends_on:
       postgres:
@@ -114,7 +114,7 @@ services:
       BlueSky_Password: ${BlueSky_Password}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       SEARCH_HASHTAG: ${SEARCH_HASHTAG:-#earthquake}
-      POST_LIMIT: ${POST_LIMIT:-50}
+      POST_LIMIT: ${POST_LIMIT:-5}
       SCHEDULE_HOURS: ${SCHEDULE_HOURS:-24}
     depends_on:
       postgres:

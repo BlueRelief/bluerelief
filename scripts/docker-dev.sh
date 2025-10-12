@@ -46,6 +46,18 @@ case "$1" in
             echo "❌ Reset cancelled"
         fi
         ;;
+    "reset-rebuild")
+        echo "🗑️ Resetting database and rebuilding (this will delete all data)..."
+        read -p "Are you sure? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            docker-compose down -v
+            docker-compose up --build -d
+            echo "✅ Database reset and rebuild complete!"
+        else
+            echo "❌ Reset-rebuild cancelled"
+        fi
+        ;;
     "shell")
         if [ "$2" = "backend" ]; then
             docker-compose exec backend bash
@@ -61,16 +73,17 @@ case "$1" in
         ;;
     *)
         echo "BlueRelief Docker Development Helper"
-        echo "Usage: $0 {start|stop|restart|rebuild|logs|reset|shell}"
+        echo "Usage: $0 {start|stop|restart|rebuild|logs|reset|reset-rebuild|shell}"
         echo ""
         echo "Commands:"
-        echo "  start    - Start all services"
-        echo "  stop     - Stop all services"
-        echo "  restart  - Restart all services"
-        echo "  rebuild  - Rebuild and start all services"
-        echo "  logs     - Show logs (optionally specify service)"
-        echo "  reset    - Reset database (deletes all data)"
-        echo "  shell    - Access service shell [backend|frontend|postgres|redis]"
+        echo "  start         - Start all services"
+        echo "  stop          - Stop all services"
+        echo "  restart       - Restart all services"
+        echo "  rebuild       - Rebuild and start all services"
+        echo "  logs          - Show logs (optionally specify service)"
+        echo "  reset         - Reset database (deletes all data)"
+        echo "  reset-rebuild - Reset database and rebuild all services"
+        echo "  shell         - Access service shell [backend|frontend|postgres|redis]"
         echo ""
         echo "Examples:"
         echo "  $0 start"
