@@ -102,12 +102,18 @@ def get_recent_events(limit: int = 10, db: Session = Depends(get_db)):
         sev = int(d.severity) if d.severity is not None else 1
         label, color = severity_labels.get(sev, ("Info", "bg-blue-100 text-blue-800"))
 
-        # relative time
+        # Use post's created_at if disaster is linked to a post, otherwise use extracted_at
         try:
-            extracted = d.extracted_at
-            delta = datetime.utcnow() - extracted
+            if d.post_id and d.post:
+                event_time = d.post.created_at
+            else:
+                event_time = d.extracted_at
+
+            delta = datetime.utcnow() - event_time
             seconds = int(delta.total_seconds())
-            if seconds < 60:
+            if seconds < 0:
+                rel = "just now"
+            elif seconds < 60:
                 rel = f"{seconds}s ago"
             elif seconds < 3600:
                 rel = f"{seconds//60}m ago"
@@ -116,7 +122,7 @@ def get_recent_events(limit: int = 10, db: Session = Depends(get_db)):
             else:
                 rel = f"{seconds//86400}d ago"
         except Exception:
-            rel = None
+            rel = "unknown"
 
         events.append({
             "id": d.id,

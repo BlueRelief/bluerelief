@@ -82,11 +82,11 @@ def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None, disas
 
         for post_data in posts_data:
             bluesky_id = post_data.get("uri", "")
-            
+
             # Skip if we've seen this post in this batch or if it exists in DB
             if not bluesky_id or bluesky_id in seen_ids or bluesky_id in existing_ids:
                 continue
-                
+
             seen_ids.add(bluesky_id)
 
             indexed_at = post_data.get(
@@ -107,7 +107,7 @@ def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None, disas
 
             # Get disaster type from post data or use provided default
             post_disaster_type = post_data.get("disaster_type") or disaster_type
-            
+
             try:
                 # Prepare post object
                 post = Post(
@@ -132,6 +132,12 @@ def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None, disas
             if posts_to_add:
                 db.bulk_save_objects(posts_to_add)
                 db.commit()
+                # After successful bulk save, populate new_posts list
+                for post in posts_to_add:
+                    original_data = next(
+                        p for p in posts_data if p.get("uri") == post.bluesky_id
+                    )
+                    new_posts.append(original_data)
         except Exception as e:
             print(f"Error during bulk save: {str(e)}")
             db.rollback()
@@ -149,7 +155,7 @@ def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None, disas
                 except Exception:
                     db.rollback()
                     continue
-                
+
         return saved_count, new_posts
     except Exception as e:
         db.rollback()
@@ -158,8 +164,8 @@ def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None, disas
         db.close()
 
 
-def save_analysis(analysis_text: str, run_id: int):
-    """Parse and save disaster data from AI analysis"""
+def save_analysis(analysis_text: str, run_id: int, posts: list = None):
+    """Parse and save disaster data from AI analysis, linking to source posts when possible"""
     db = SessionLocal()
 
     try:
@@ -179,6 +185,18 @@ def save_analysis(analysis_text: str, run_id: int):
             if isinstance(disasters, dict):
                 disasters = [disasters]
 
+            # Get all posts from this run to link disasters
+            post_map = {}
+            if posts:
+                for post_data in posts:
+                    post_uri = post_data.get("uri")
+                    if post_uri:
+                        post_db = (
+                            db.query(Post).filter(Post.bluesky_id == post_uri).first()
+                        )
+                        if post_db:
+                            post_map[post_uri] = post_db.id
+
             for disaster_data in disasters:
                 magnitude_value = disaster_data.get("magnitude")
 
@@ -195,6 +213,22 @@ def save_analysis(analysis_text: str, run_id: int):
                         except (ValueError, TypeError):
                             magnitude_value = None
 
+                # Try to find matching post based on location/magnitude
+                post_id = None
+                if posts:
+                    location = disaster_data.get("location") or ""
+                    location = location.lower() if location else ""
+                    magnitude = disaster_data.get("magnitude")
+
+                    for post_data in posts:
+                        post_text = post_data.get("record", {}).get("text", "").lower()
+                        if location and location in post_text:
+                            post_id = post_map.get(post_data.get("uri"))
+                            break
+                        elif magnitude and str(magnitude) in post_text:
+                            post_id = post_map.get(post_data.get("uri"))
+                            break
+
                 disaster = Disaster(
                     location=disaster_data.get("location"),
                     event_time=disaster_data.get("event_time"),
@@ -202,11 +236,15 @@ def save_analysis(analysis_text: str, run_id: int):
                     magnitude=magnitude_value,
                     description=disaster_data.get("description"),
                     collection_run_id=run_id,
+                    post_id=post_id,
                 )
                 db.add(disaster)
 
             db.commit()
-            print(f"Saved {len(disasters)} disasters from AI analysis")
+            linked = sum(1 for d in disasters if post_id is not None)
+            print(
+                f"Saved {len(disasters)} disasters from AI analysis ({linked} linked to posts)"
+            )
 
         except json.JSONDecodeError as e:
             print(f"Failed to parse JSON from AI response: {e}")
@@ -218,6 +256,7 @@ def save_analysis(analysis_text: str, run_id: int):
         raise e
     finally:
         db.close()
+
 
 def get_recent_disasters(limit: int = 50):
     """Get recent disasters"""

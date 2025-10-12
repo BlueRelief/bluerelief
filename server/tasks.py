@@ -11,7 +11,6 @@ from services.database_service import (
 )
 import json
 import re
-import json
 import os
 from typing import Dict, List
 
@@ -34,16 +33,16 @@ def collect_and_analyze():
     run = create_collection_run()
     total_posts = []
     posts_by_disaster = {}
-    
+
     try:
         # Collect posts for each disaster type
         seen_post_ids = set()  # Track unique posts across all disaster types
         session_data = None  # Reuse session across requests
-        
+
         for disaster_type, hashtags in DISASTER_CONFIG.items():
             print(f"\n🔍 Monitoring {disaster_type.upper()} events...")
             disaster_posts = []
-            
+
             for hashtag in hashtags:
                 try:
                     # Pass our set of seen IDs and session for global deduplication
@@ -56,36 +55,19 @@ def collect_and_analyze():
                 except Exception as e:
                     print(f"⚠️ Error fetching {hashtag}: {str(e)}")
                     continue
-            
+
             posts_by_disaster[disaster_type] = disaster_posts
             total_posts.extend(disaster_posts)
             print(f"Total {disaster_type} posts: {len(disaster_posts)}")
 
-        # Analyze sentiment if we have posts
-        sentiment_data = {}
-        if total_posts:
-            print(f"\n🧠 Running sentiment analysis on {len(total_posts)} total posts...")
-            sentiment_response = analyze_sentiment(total_posts)
-            try:
-                cleaned = re.sub(r"^```json\s*", "", sentiment_response)
-                cleaned = re.sub(r"\s*```$", "", cleaned)
-                sentiment_data = json.loads(cleaned.strip())
-                print(
-                    f"✅ Sentiment analysis completed for {len(sentiment_data)} posts"
-                )
-
-            except json.JSONDecodeError as e:
-                print(f"⚠️ Failed to parse sentiment data: {e}")
-                sentiment_data = {}
-
         # First check which posts are new
         all_post_uris = [post.get("uri", "") for post in total_posts]
         existing_ids = get_existing_post_ids(all_post_uris)
-        
+
         # Filter out posts that already exist
         new_posts = [post for post in total_posts if post.get("uri") not in existing_ids]
         print(f"\n🔍 Found {len(new_posts)} new posts out of {len(total_posts)} total fetched")
-        
+
         # Only run sentiment analysis on new posts
         sentiment_data = {}
         if new_posts:
@@ -119,7 +101,7 @@ def collect_and_analyze():
             print(f"🤖 Running disaster analysis on {len(saved_posts)} new posts...")
             analysis = analyze_posts(saved_posts)
             if analysis:
-                save_analysis(analysis, run.id)
+                save_analysis(analysis, run.id, saved_posts)
                 print(f"✅ Disaster analysis completed")
             else:
                 print(f"⚠️ Disaster analysis returned no results")
@@ -146,7 +128,7 @@ def collect_and_analyze():
                 analysis[:200] if analysis else "Skipped - no new posts"
             ),
         }
-        
+
         return results
     except Exception as e:
         error_msg = f"Error in multi-disaster collection: {str(e)}"
