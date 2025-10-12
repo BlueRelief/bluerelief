@@ -242,67 +242,19 @@ export default function AnalysisPage() {
         </CardContent>
       </Card>
 
-      {/* Heatmap and Regional Analysis */}
+      {/* Heatmap and Pattern Recognition Side by Side */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Crisis Intensity Heatmap */}
+        {/* Regional Analysis Heatmap */}
         <Card>
           <CardHeader>
-            <CardTitle>Crisis Intensity Heatmap</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Geographic distribution of crisis intensity
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="w-full">
-              {/* Heatmap Grid */}
-              <div className="grid grid-cols-12 gap-1 mb-4">
-                {heatmapData.map((row, rowIndex) =>
-                  row.map((cell, colIndex) => (
-                    <div
-                      key={`${rowIndex}-${colIndex}`}
-                      className="aspect-square rounded-sm border border-border transition-all hover:scale-110 cursor-pointer"
-                      style={{
-                        backgroundColor: getHeatmapColor(cell),
-                      }}
-                      title={`Row ${rowIndex + 1}, Col ${colIndex + 1}: ${(cell * 100).toFixed(1)}%`}
-                    />
-                  ))
-                )}
-              </div>
-              
-              {/* Heatmap Legend */}
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <div className="flex items-center space-x-4">
-                  <span>Crisis Intensity:</span>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 rounded bg-muted"></div>
-                    <span>Low</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 rounded bg-primary/60"></div>
-                    <span>Medium</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 rounded bg-primary"></div>
-                    <span>High</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Regional Analysis */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Regional Analysis</CardTitle>
+            <CardTitle>Regional Analysis Heatmap</CardTitle>
             <p className="text-sm text-muted-foreground">
               Crisis distribution by geographic region
             </p>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="h-64 w-full rounded-lg overflow-hidden mb-4 relative">
+              <div className="h-80 w-full rounded-lg overflow-hidden mb-4 relative">
                 {mapError ? (
                   <div className="h-full w-full flex flex-col items-center justify-center bg-muted/80 text-center p-4">
                     <div className="font-medium mb-2">Map failed to load</div>
@@ -355,45 +307,79 @@ export default function AnalysisPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Additional Analysis Cards */}
-      <div className="flex justify-center">
-        <div className="max-w-md w-full">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pattern Recognition</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                AI-detected crisis patterns and anomalies
-              </p>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
+        {/* Pattern Recognition Cards - Bigger and Side by Side */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Pattern Recognition</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              AI-detected crisis patterns and anomalies
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Main Pattern Recognition Card */}
+              <div className="p-6 border-2 border-primary/20 rounded-xl bg-gradient-to-br from-primary/5 to-transparent">
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 bg-primary rounded-full"></div>
-                    <span className="text-sm font-medium">Recurring Crisis Patterns</span>
+                    <div className="w-4 h-4 bg-primary rounded-full"></div>
+                    <span className="text-lg font-semibold">Recurring Crisis Patterns</span>
                   </div>
-                  <Badge variant="secondary">10</Badge>
+                  <Badge variant="default" className="text-lg px-3 py-1">10</Badge>
                 </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
-                    <span className="text-sm font-medium">Tweets Recognized</span>
+                <p className="text-sm text-muted-foreground mb-4">
+                  AI has identified recurring patterns in crisis data across multiple regions
+                </p>
+                {/* <div className="flex items-center spa ce-x-2 text-sm">
+                  <span className="text-green-600 font-medium">↑ 15%</span>
+                  <span className="text-muted-foreground">from last month</span>
+                </div> */}
+              </div>
+
+              {/* Secondary Cards */}
+              <div className="grid gap-4">
+                <div className="p-4 border rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
+                      <span className="font-medium">Tweets Recognized</span>
+                    </div>
+                    <Badge variant="secondary" className="text-base px-2 py-1">10K</Badge>
                   </div>
-                  <Badge variant="secondary">10K</Badge>
+                  <p className="text-sm text-muted-foreground">
+                    Social media posts analyzed for crisis indicators
+                  </p>
                 </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <span className="text-sm font-medium">Prediction Accuracy %</span>
+
+                <div className="p-4 border rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span className="font-medium">Prediction Accuracy</span>
+                    </div>
+                    <Badge variant="secondary" className="text-base px-2 py-1">100%</Badge>
                   </div>
-                  <Badge variant="secondary">100%</Badge>
+                  <p className="text-sm text-muted-foreground">
+                    AI model accuracy in crisis prediction
+                  </p>
+                </div>
+
+                <div className="p-4 border rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                      <span className="font-medium">Anomalies Detected</span>
+                    </div>
+                    <Badge variant="secondary" className="text-base px-2 py-1">3</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Unusual patterns requiring immediate attention
+                  </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
