@@ -3,28 +3,45 @@
 import React, { useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { useTheme } from 'next-themes';
 
 interface HeatmapPoint {
   coordinates: [number, number];
   weight?: number;
 }
 
-interface HeatmapLayerProps {
-  data: HeatmapPoint[];
-  mapboxToken: string;
+interface RegionData {
+  region: string;
+  incidents: number;
+  severity: string;
+  coordinates: [number, number];
 }
 
-const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ data, mapboxToken }) => {
+interface HeatmapLayerProps {
+  data: HeatmapPoint[];
+  regions: RegionData[];
+  mapboxToken: string;
+  focusRegion?: string;
+}
+
+const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ data, regions, mapboxToken, focusRegion }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const { resolvedTheme } = useTheme();
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const isMapLoaded = useRef<boolean>(false);
 
   useEffect(() => {
     if (!mapContainer.current) return;
 
     mapboxgl.accessToken = mapboxToken;
+    const mapStyle = resolvedTheme === 'dark' 
+      ? 'mapbox://styles/mapbox/dark-v11' 
+      : 'mapbox://styles/mapbox/light-v11';
+    
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
+      style: mapStyle,
       center: [-98.5795, 39.8283],
       zoom: 3
     });
@@ -32,6 +49,7 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ data, mapboxToken }) => {
      map.current.on('load', () => {
        if (!map.current) return;
 
+       isMapLoaded.current = true;
        console.log('Map loaded, creating heatmap with data:', data);
 
        const geojsonData: GeoJSON.FeatureCollection = {
@@ -71,39 +89,222 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ data, mapboxToken }) => {
              'interpolate',
              ['linear'],
              ['zoom'],
-             0, 2,
-             9, 5
+             0, 1,
+             3, 2,
+             6, 3,
+             9, 4
            ],
            'heatmap-color': [
              'interpolate',
              ['linear'],
              ['heatmap-density'],
-             0, 'rgba(33,102,172,0)',
-             0.1, 'rgba(33,102,172,0.5)',
-             0.2, 'rgba(103,169,207,0.7)',
-             0.4, 'rgba(209,229,240,0.8)',
-             0.6, 'rgba(253,219,199,0.9)',
-             0.8, 'rgba(239,138,98,1)',
-             1, 'rgba(178,24,43,1)'
+             0, 'rgba(0, 0, 0, 0)',
+             0.2, 'rgba(34, 197, 94, 0.6)',
+             0.4, 'rgba(234, 179, 8, 0.7)',
+             0.6, 'rgba(249, 115, 22, 0.8)',
+             0.8, 'rgba(239, 68, 68, 0.9)',
+             1, 'rgba(220, 38, 38, 1)'
            ],
            'heatmap-radius': [
              'interpolate',
              ['linear'],
              ['zoom'],
-             0, 10,
-             9, 50
+             0, 40,
+             3, 60,
+             6, 80,
+             9, 100
            ],
-           'heatmap-opacity': 0.8
+           'heatmap-opacity': [
+             'interpolate',
+             ['linear'],
+             ['zoom'],
+             0, 0.9,
+             9, 0.8
+           ]
          }
        });
 
        console.log('Heatmap layer added');
+       
+       markersRef.current.forEach(marker => marker.remove());
+       markersRef.current = [];
+       
+       regions.forEach(region => {
+         if (!map.current) return;
+         
+         const severityColors = {
+           'Critical': '#dc2626',
+           'High': '#ea580c',
+           'Medium': '#f59e0b',
+           'Low': '#10b981'
+         };
+         
+         const color = severityColors[region.severity as keyof typeof severityColors] || '#6b7280';
+         
+         const el = document.createElement('div');
+         el.className = 'marker';
+         el.style.backgroundColor = color;
+         el.style.width = '12px';
+         el.style.height = '12px';
+         el.style.borderRadius = '50%';
+         el.style.border = '1px solid rgba(255,255,255,0.5)';
+         el.style.cursor = 'pointer';
+         el.style.boxShadow = `0 0 8px ${color}`;
+         el.style.opacity = '0.8';
+         
+         const popupContent = `
+           <div class="bg-card p-4 rounded-lg border border-border min-w-[200px]">
+             <h3 class="font-semibold text-card-foreground mb-2">${region.region}</h3>
+             <div class="space-y-1 text-sm">
+               <p class="text-muted-foreground">
+                 <span class="font-medium">Incidents:</span> ${region.incidents}
+               </p>
+               <p class="text-muted-foreground">
+                 <span class="font-medium">Severity:</span> 
+                 <span class="font-semibold" style="color: ${color}">${region.severity}</span>
+               </p>
+             </div>
+           </div>
+         `;
+         
+         const popup = new mapboxgl.Popup({ 
+           offset: 25,
+           closeButton: true,
+           className: 'map-popup'
+         }).setHTML(popupContent);
+         
+         const marker = new mapboxgl.Marker({ element: el })
+           .setLngLat(region.coordinates)
+           .setPopup(popup)
+           .addTo(map.current);
+         
+         markersRef.current.push(marker);
+       });
     });
 
     return () => {
+      markersRef.current.forEach(marker => marker.remove());
+      isMapLoaded.current = false;
       map.current?.remove();
     };
-  }, [data, mapboxToken]);
+  }, [data, regions, mapboxToken, resolvedTheme]);
+
+  useEffect(() => {
+    if (!map.current || !resolvedTheme || !isMapLoaded.current) return;
+    
+    const mapStyle = resolvedTheme === 'dark' 
+      ? 'mapbox://styles/mapbox/dark-v11' 
+      : 'mapbox://styles/mapbox/light-v11';
+    
+    map.current.setStyle(mapStyle);
+    
+    map.current.once('style.load', () => {
+      if (!map.current) return;
+      
+      const geojsonData: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: data.map(point => ({
+          type: 'Feature',
+          properties: {
+            weight: point.weight || 1
+          },
+          geometry: {
+            type: 'Point',
+            coordinates: point.coordinates
+          }
+        }))
+      };
+
+      if (!map.current.getSource('heatmap-source')) {
+        map.current.addSource('heatmap-source', {
+          type: 'geojson',
+          data: geojsonData
+        });
+      }
+
+      if (!map.current.getLayer('heatmap-layer')) {
+        map.current.addLayer({
+          id: 'heatmap-layer',
+          type: 'heatmap',
+          source: 'heatmap-source',
+          paint: {
+            'heatmap-weight': [
+              'interpolate',
+              ['linear'],
+              ['get', 'weight'],
+              0, 0,
+              1, 1
+            ],
+            'heatmap-intensity': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              0, 1,
+              3, 2,
+              6, 3,
+              9, 4
+            ],
+            'heatmap-color': [
+              'interpolate',
+              ['linear'],
+              ['heatmap-density'],
+              0, 'rgba(0, 0, 0, 0)',
+              0.2, 'rgba(34, 197, 94, 0.6)',
+              0.4, 'rgba(234, 179, 8, 0.7)',
+              0.6, 'rgba(249, 115, 22, 0.8)',
+              0.8, 'rgba(239, 68, 68, 0.9)',
+              1, 'rgba(220, 38, 38, 1)'
+            ],
+            'heatmap-radius': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              0, 40,
+              3, 60,
+              6, 80,
+              9, 100
+            ],
+            'heatmap-opacity': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              0, 0.9,
+              9, 0.8
+            ]
+          }
+        });
+      }
+    });
+  }, [resolvedTheme, data]);
+
+  useEffect(() => {
+    if (!map.current || !focusRegion || focusRegion === 'all') return;
+    
+    const regionCenters: { [key: string]: { center: [number, number], zoom: number } } = {
+      'north-america': { center: [-100, 45], zoom: 3 },
+      'south-america': { center: [-60, -15], zoom: 3 },
+      'europe': { center: [15, 50], zoom: 4 },
+      'africa': { center: [20, 0], zoom: 3 },
+      'middle-east': { center: [48, 28], zoom: 4 },
+      'asia': { center: [90, 30], zoom: 3 },
+      'oceania': { center: [140, -25], zoom: 3 },
+    };
+    
+    const target = regionCenters[focusRegion];
+    if (target) {
+      map.current.flyTo({
+        center: target.center,
+        zoom: target.zoom,
+        duration: 1500
+      });
+    } else {
+      map.current.flyTo({
+        center: [-98.5795, 39.8283],
+        zoom: 3,
+        duration: 1500
+      });
+    }
+  }, [focusRegion]);
 
   return (
     <div 
@@ -113,22 +314,16 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ data, mapboxToken }) => {
   );
 };
 
-interface RegionData {
-  region: string;
-  incidents: number;
-  severity: string;
-  coordinates: [number, number];
-}
-
 interface CrisisMapProps {
   regions: RegionData[];
+  focusRegion?: string;
 }
 
-export default function CrisisMap({ regions }: CrisisMapProps) {
+export default function CrisisMap({ regions, focusRegion }: CrisisMapProps) {
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? 
     'pk.eyJ1IjoiZ3NnMjEwMDAxIiwiYSI6ImNtZzRpNjZ4ejFsNTgybW9mbnlyNmIxY28ifQ.01BgG4RXjP9pn8PYGc7sDw';
 
-  const heatmapData: HeatmapPoint[] = regions.length > 0 ? regions.map(region => {
+  const heatmapData: HeatmapPoint[] = regions.map(region => {
     const severity_weights = {
       'Critical': 1.0,
       'High': 0.8,
@@ -142,23 +337,16 @@ export default function CrisisMap({ regions }: CrisisMapProps) {
       coordinates: region.coordinates,
       weight: weight
     };
-  }) : [
-    { coordinates: [-74.006, 40.7128], weight: 0.9 },
-    { coordinates: [-118.2437, 34.0522], weight: 0.8 },
-    { coordinates: [-87.6298, 41.8781], weight: 0.7 },
-    { coordinates: [-95.3698, 29.7604], weight: 0.6 },
-    { coordinates: [-75.1652, 39.9526], weight: 0.5 },
-    { coordinates: [-122.4194, 37.7749], weight: 0.8 },
-    { coordinates: [-80.1918, 25.7617], weight: 0.7 },
-    { coordinates: [-97.5164, 35.4676], weight: 0.6 },
-  ];
+  });
 
   console.log('Heatmap data prepared:', heatmapData);
 
   return (
     <HeatmapLayer 
       data={heatmapData}
+      regions={regions}
       mapboxToken={mapboxToken}
+      focusRegion={focusRegion}
     />
   );
 }

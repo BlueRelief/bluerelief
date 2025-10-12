@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS collection_runs (
 
 CREATE INDEX IF NOT EXISTS ix_collection_runs_id ON collection_runs(id);
 
--- Posts table
+-- Posts table (base columns only, new columns added by ALTER migrations)
 CREATE TABLE IF NOT EXISTS posts (
     id SERIAL PRIMARY KEY,
     bluesky_id VARCHAR(255) UNIQUE NOT NULL,
@@ -33,17 +33,13 @@ CREATE TABLE IF NOT EXISTS posts (
     created_at TIMESTAMP NOT NULL,
     collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     raw_data JSONB,
-    collection_run_id INTEGER NOT NULL REFERENCES collection_runs(id),
-    sentiment VARCHAR(50),
-    sentiment_score FLOAT,
-    disaster_type VARCHAR(50)
+    collection_run_id INTEGER NOT NULL REFERENCES collection_runs(id)
 );
 
 CREATE INDEX IF NOT EXISTS ix_posts_id ON posts(id);
 CREATE INDEX IF NOT EXISTS ix_posts_bluesky_id ON posts(bluesky_id);
-CREATE INDEX IF NOT EXISTS ix_posts_disaster_type ON posts(disaster_type);
 
--- Disasters table
+-- Disasters table (base columns only, post_id added by ALTER migration)
 CREATE TABLE IF NOT EXISTS disasters (
     id SERIAL PRIMARY KEY,
     location VARCHAR(500),
@@ -52,10 +48,8 @@ CREATE TABLE IF NOT EXISTS disasters (
     magnitude FLOAT,
     description TEXT,
     extracted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    collection_run_id INTEGER NOT NULL REFERENCES collection_runs(id),
-    post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE
+    collection_run_id INTEGER NOT NULL REFERENCES collection_runs(id)
 );
 
 CREATE INDEX IF NOT EXISTS ix_disasters_id ON disasters(id);
-CREATE INDEX IF NOT EXISTS idx_disasters_post_id ON disasters(post_id);
 
