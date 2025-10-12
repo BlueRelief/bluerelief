@@ -270,7 +270,7 @@ export default function DashboardPage() {
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Global Crisis Map</CardTitle>
+              <CardTitle className="text-lg">Global Crisis Heatmap</CardTitle>
               <div className="flex gap-2">
                 <Select value={locationFilter} onValueChange={setLocationFilter}>
                   <SelectTrigger className="w-[140px] h-7 text-xs">
