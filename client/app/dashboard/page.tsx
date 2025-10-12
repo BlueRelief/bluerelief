@@ -166,7 +166,7 @@ export default function DashboardPage() {
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Global Crisis Map</CardTitle>
+              <CardTitle className="text-lg">Global Crisis Heatmap</CardTitle>
               <div className="flex gap-2">
                 <select className="px-2 py-1 text-xs border rounded-md bg-background">
                   <option>All Locations</option>
