@@ -5,6 +5,7 @@ from routers import auth
 from routers import incidents
 from routers import bluesky
 from routers import dashboard
+from routers import notifications
 from db_utils.db import init_db
 import os
 from dotenv import load_dotenv
@@ -73,6 +74,7 @@ app.include_router(auth.router)
 app.include_router(incidents.router)
 app.include_router(bluesky.router)
 app.include_router(dashboard.router)
+app.include_router(notifications.router)
 
 @app.get("/")
 async def root():

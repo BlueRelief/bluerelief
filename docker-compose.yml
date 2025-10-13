@@ -63,6 +63,10 @@ services:
       SEARCH_HASHTAG: ${SEARCH_HASHTAG:-#earthquake}
       POST_LIMIT: ${POST_LIMIT:-5}
       SCHEDULE_HOURS: ${SCHEDULE_HOURS:-24}
+      # Email provider for DEV - Resend API key and sending domain
+      RESEND_API_KEY: "re_EMq78Md5_JUAKUD21Yah4gNjnJukU5cjw"
+      SENDING_DOMAIN: "notify.bluerelief.app"
+      EMAIL_FROM: "no-reply@notify.bluerelief.app"
     depends_on:
       postgres:
         condition: service_healthy
@@ -90,6 +94,10 @@ services:
       SEARCH_HASHTAG: ${SEARCH_HASHTAG:-#earthquake}
       POST_LIMIT: ${POST_LIMIT:-5}
       SCHEDULE_HOURS: ${SCHEDULE_HOURS:-24}
+      # Email provider for DEV - Resend API key and sending domain
+      RESEND_API_KEY: "re_EMq78Md5_JUAKUD21Yah4gNjnJukU5cjw"
+      SENDING_DOMAIN: "notify.bluerelief.app"
+      EMAIL_FROM: "no-reply@notify.bluerelief.app"
     depends_on:
       postgres:
         condition: service_healthy
@@ -116,6 +124,10 @@ services:
       SEARCH_HASHTAG: ${SEARCH_HASHTAG:-#earthquake}
       POST_LIMIT: ${POST_LIMIT:-5}
       SCHEDULE_HOURS: ${SCHEDULE_HOURS:-24}
+      # Email provider for DEV - Resend API key and sending domain
+      RESEND_API_KEY: "re_EMq78Md5_JUAKUD21Yah4gNjnJukU5cjw"
+      SENDING_DOMAIN: "notify.bluerelief.app"
+      EMAIL_FROM: "no-reply@notify.bluerelief.app"
     depends_on:
       postgres:
         condition: service_healthy
