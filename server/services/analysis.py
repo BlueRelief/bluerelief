@@ -135,7 +135,9 @@ def analyze_posts(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1)
             "- severity: rate 1-5 (1=minor, 5=catastrophic)\n"
             "- magnitude: single numerical value if applicable (e.g., 7.6 for earthquakes, 4 for hurricanes). "
             "If it's a range, use the highest value. If unknown, use null.\n"
-            "- description: brief summary of the disaster\n\n"
+            "- description: brief summary of the disaster\n"
+            "- affected_population: estimate number of people affected. Look for explicit mentions like 'X families evacuated', 'Y people without power', 'Z homes damaged' and convert to individual counts (1 family ≈ 4 people, 1 home ≈ 3 people). "
+            "If numbers are mentioned in shorthand (e.g., '5K'), expand to full number. If no explicit numbers are present, provide a best-effort estimate based on scope: neighborhood=5000, city block=500, single building=50, regional=50000. Return null if unknown.\n\n"
             "Posts:\n"
             + "\n".join(
                 [f"{idx}. {post['record']['text']}" for idx, post in enumerate(batch_posts, start_idx + 1)]

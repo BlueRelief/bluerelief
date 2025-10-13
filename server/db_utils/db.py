@@ -107,6 +107,7 @@ class Disaster(Base):
     severity = Column(Integer, nullable=True)
     magnitude = Column(Float, nullable=True)
     description = Column(Text, nullable=True)
+    affected_population = Column(Integer, nullable=True)
     extracted_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     collection_run_id = Column(
         Integer, ForeignKey("collection_runs.id"), nullable=False
