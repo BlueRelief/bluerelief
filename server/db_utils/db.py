@@ -1,6 +1,7 @@
 from sqlalchemy import (
     create_engine,
     Column,
+    Boolean,
     String,
     DateTime,
     Integer,
@@ -36,6 +37,29 @@ class User(Base):
     picture = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class UserNotificationPreference(Base):
+    __tablename__ = "user_notification_preferences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    email_opt_in = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class EmailLog(Base):
+    __tablename__ = "email_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    crisis_id = Column(Integer, ForeignKey("disasters.id"), nullable=True, index=True)
+    email_status = Column(String(50), nullable=True)
+    provider_message_id = Column(String(255), nullable=True)
+    sent_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    opened_at = Column(DateTime, nullable=True)
+    payload = Column(JSON, nullable=True)
 
 
 # BlueSky models
