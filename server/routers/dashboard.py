@@ -26,19 +26,25 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     # urgent alerts: posts with sentiment == "urgent"
     urgent_alerts = db.query(Post).filter(Post.sentiment == "urgent").count()
 
-    # estimate affected_people based on severity: 5=10000,4=5000,3=1000,2=200,1=50 (example)
-    severity_map = {5: 10000, 4: 5000, 3: 1000, 2: 200, 1: 50}
-    severity_rows = (
-        db.query(Disaster.severity, func.count(Disaster.id).label("cnt"))
-        .group_by(Disaster.severity)
-        .all()
+    # Prefer AI-extracted affected_population where available
+    affected_people = db.query(func.sum(Disaster.affected_population))
+    affected_people = (
+        affected_people.filter(Disaster.affected_population.isnot(None)).scalar() or 0
     )
 
-    affected_people = 0
-    for sev, cnt in severity_rows:
-        if sev is None:
-            continue
-        affected_people += severity_map.get(int(sev), 0) * int(cnt)
+    # If no AI-extracted data exists yet, fall back to severity-based estimate
+    if not affected_people:
+        severity_map = {5: 10000, 4: 5000, 3: 1000, 2: 200, 1: 50}
+        severity_rows = (
+            db.query(Disaster.severity, func.count(Disaster.id).label("cnt"))
+            .group_by(Disaster.severity)
+            .all()
+        )
+
+        for sev, cnt in severity_rows:
+            if sev is None:
+                continue
+            affected_people += severity_map.get(int(sev), 0) * int(cnt)
 
     return {
         "total_crises": total_crises,

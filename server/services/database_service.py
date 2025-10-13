@@ -235,6 +235,11 @@ def save_analysis(analysis_text: str, run_id: int, posts: list = None):
                     severity=disaster_data.get("severity"),
                     magnitude=magnitude_value,
                     description=disaster_data.get("description"),
+                    affected_population=(
+                        int(disaster_data.get("affected_population"))
+                        if disaster_data.get("affected_population") is not None
+                        else None
+                    ),
                     collection_run_id=run_id,
                     post_id=post_id,
                 )
