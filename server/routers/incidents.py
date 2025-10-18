@@ -15,53 +15,25 @@ def get_db():
         db.close()
 
 
-def extract_coordinates(location: str):
-    """Extract coordinates from location string if available"""
-    coord_pattern = r"\((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)"
-    match = re.search(coord_pattern, location)
-    if match:
-        return [float(match.group(2)), float(match.group(1))]
-    return None
+def get_severity_label(severity: int) -> str:
+    """Convert severity number to label"""
+    severity_map = {5: "Critical", 4: "High", 3: "Medium", 2: "Low", 1: "Info"}
+    return severity_map.get(int(severity) if severity else 1, "Info")
 
 
 @router.get("/api/incidents")
 async def list_incidents(db: Session = Depends(get_db)):
-    """Return incidents grouped by location for the map"""
-
-    disasters = (
-        db.query(
-            Disaster.location,
-            func.count(Disaster.id).label("incident_count"),
-            func.max(Disaster.severity).label("max_severity"),
-        )
-        .filter(Disaster.location.isnot(None))
-        .group_by(Disaster.location)
-        .all()
-    )
-
-    severity_map = {5: "Critical", 4: "High", 3: "Medium", 2: "Low", 1: "Info"}
-
+    """Return recent disasters for the map"""
+    disasters = db.query(Disaster).order_by(Disaster.extracted_at.desc()).limit(100).all()
+    
     result = []
-    for location, count, max_sev in disasters:
-        coords = extract_coordinates(location)
-
-        # For now, skip disasters without coordinates
-        # TODO: Add geocoding service to convert location names to coordinates
-        if not coords:
-            print(f"⚠️ Location '{location}' has no coordinates - needs geocoding")
-            continue
-
-        clean_location = re.sub(r"\s*\([^)]*\)", "", location).strip()
-
-        severity_label = severity_map.get(int(max_sev) if max_sev else 1, "Info")
-
-        result.append(
-            {
-                "region": clean_location,
-                "incidents": int(count),
-                "severity": severity_label,
-                "coordinates": coords,
-            }
-        )
-
+    for d in disasters:
+        result.append({
+            "id": d.id,
+            "region": d.location_name or d.location,  # Use new field, fallback to old
+            "incidents": 1,
+            "severity": get_severity_label(d.severity),
+            "coordinates": [d.longitude, d.latitude] if d.latitude and d.longitude else None
+        })
+    
     return result

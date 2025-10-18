@@ -128,21 +128,18 @@ def analyze_posts(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1)
         prompt = (
             "Analyze these social media posts about disasters and extract structured information. "
             "For each disaster mentioned, return a JSON array with objects containing:\n"
-            "- location: specific location in format 'Location Name (latitude, longitude)'. "
-            "If coordinates are mentioned, use those. Otherwise, estimate the coordinates for the location. "
-            "Example: 'Tokyo, Japan (35.6762, 139.6503)'\n"
+            "- location_name: the place name (e.g., 'Tokyo, Japan', 'Manila, Philippines')\n"
+            "- latitude: decimal latitude coordinate (e.g., 35.6762)\n"
+            "- longitude: decimal longitude coordinate (e.g., 139.6503)\n"
             "- event_time: when the disaster occurred\n"
             "- severity: rate 1-5 (1=minor, 5=catastrophic)\n"
-            "- magnitude: single numerical value if applicable (e.g., 7.6 for earthquakes, 4 for hurricanes). "
-            "If it's a range, use the highest value. If unknown, use null.\n"
-            "- description: brief summary of the disaster\n"
-            "- affected_population: estimate number of people affected. Look for explicit mentions like 'X families evacuated', 'Y people without power', 'Z homes damaged' and convert to individual counts (1 family ≈ 4 people, 1 home ≈ 3 people). "
-            "If numbers are mentioned in shorthand (e.g., '5K'), expand to full number. If no explicit numbers are present, provide a best-effort estimate based on scope: neighborhood=5000, city block=500, single building=50, regional=50000. Return null if unknown.\n\n"
-            "Posts:\n"
-            + "\n".join(
-                [f"{idx}. {post['record']['text']}" for idx, post in enumerate(batch_posts, start_idx + 1)]
-            )
-            + "\n\nReturn ONLY valid JSON array format, no other text."
+            "- magnitude: single numerical value if applicable\n"
+            "- description: brief summary\n"
+            "- affected_population: estimate number of people affected. "
+            "Look for mentions like 'X families evacuated', 'Y people without power'. "
+            "Convert to individual counts (1 family ≈ 4 people, 1 home ≈ 3 people). "
+            "Provide best-effort estimates: neighborhood=5000, city block=500, building=50, regional=50000. "
+            "Return null if completely unknown.\n\n"
         )
 
         try:
