@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,11 +32,54 @@ import {
 } from "@/components/ui/pagination"
 import { getDataFeedStatus, getDataFeedOverview, getWeeklyCrises } from "@/lib/api-client"
 
+interface Feed {
+  id: number
+  name: string
+  status: string
+  last_run: string | null
+  next_run: string | null
+}
+
+interface MostRecentCrisis {
+  name: string
+  date: string
+  bluesky_url: string | null
+  severity: string
+}
+
+interface Overview {
+  total_tweets_processed: number
+  total_crises_detected: number
+  most_recent_crisis: MostRecentCrisis | null
+}
+
+interface Crisis {
+  id: number
+  crisis_name: string
+  date: string
+  region: string
+  severity: string
+  tweets_analyzed: number
+  status: string
+  description: string
+  disaster_type: string
+  bluesky_url: string | null
+}
+
+interface Pagination {
+  page: number
+  page_size: number
+  total_count: number
+  total_pages: number
+  has_next: boolean
+  has_prev: boolean
+}
+
 export default function DataFeedPage() {
-  const [feedStatus, setFeedStatus] = useState<any>(null)
-  const [overview, setOverview] = useState<any>(null)
-  const [weeklyCrises, setWeeklyCrises] = useState<any[]>([])
-  const [pagination, setPagination] = useState<any>(null)
+  const [feedStatus, setFeedStatus] = useState<{ feeds: Feed[] } | null>(null)
+  const [overview, setOverview] = useState<Overview | null>(null)
+  const [weeklyCrises, setWeeklyCrises] = useState<Crisis[]>([])
+  const [pagination, setPagination] = useState<Pagination | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [error, setError] = useState<string | null>(null)
 
@@ -48,8 +92,8 @@ export default function DataFeedPage() {
         ])
         setFeedStatus(statusData)
         setOverview(overviewData)
-      } catch (err: any) {
-        setError(err.message)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred')
       }
     }
     fetchInitialData()
@@ -61,7 +105,7 @@ export default function DataFeedPage() {
         const crisesData = await getWeeklyCrises(7, currentPage, 10)
         setWeeklyCrises(crisesData.crises)
         setPagination(crisesData.pagination)
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error fetching crises:', err)
       }
     }
@@ -161,7 +205,7 @@ export default function DataFeedPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {feedStatus?.feeds?.map((feed: any) => (
+                {feedStatus?.feeds?.map((feed) => (
                   <TableRow key={feed.id}>
                     <TableCell>
                       <span className="font-medium">{feed.name}</span>
@@ -215,17 +259,22 @@ export default function DataFeedPage() {
                       <p className="text-sm text-muted-foreground">{formatDate(overview.most_recent_crisis.date)}</p>
                     </div>
                     {overview.most_recent_crisis.bluesky_url && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => window.open(overview.most_recent_crisis.bluesky_url, '_blank')}
-                        className="flex items-center gap-2"
+                      <Link 
+                        href={overview.most_recent_crisis.bluesky_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
-                        View Post
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          View Post
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </Button>
+                      </Link>
                     )}
                   </div>
                 ) : (
@@ -268,17 +317,23 @@ export default function DataFeedPage() {
                       {crisis.status}
                     </Badge>
                     {crisis.bluesky_url && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => window.open(crisis.bluesky_url, '_blank')}
-                        className="ml-auto flex items-center gap-1"
+                      <Link 
+                        href={crisis.bluesky_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-auto"
                       >
-                        View Post
-                        <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="flex items-center gap-1"
+                        >
+                          View Post
+                          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </Button>
+                      </Link>
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground mb-3">{crisis.description}</p>
