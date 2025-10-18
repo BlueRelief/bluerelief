@@ -1,8 +1,8 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
-// import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -21,44 +21,87 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-
-// Mock data for the data feeds
-const dataFeeds = [
-  {
-    id: 1,
-    name: "Emergency Services Feed",
-    status: "active" as const,
-    tweetsProcessed: 33,
-    crisisDetected: 25,
-    confidenceScore: 0,
-    lastCrisis: "N/A",
-  },
-  {
-    id: 2,
-    name: "Data Monitoring",
-    status: "active" as const,
-    tweetsProcessed: 33,
-    crisisDetected: 25,
-    confidenceScore: 0,
-    lastCrisis: "N/A",
-  },
-  {
-    id: 3,
-    name: "Social Media Monitoring",
-    status: "active" as const,
-    tweetsProcessed: 34,
-    crisisDetected: 25,
-    confidenceScore: 0,
-    lastCrisis: "N/A",
-  },
-]
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import { getDataFeedStatus, getDataFeedOverview, getWeeklyCrises } from "@/lib/api-client"
 
 export default function DataFeedPage() {
-  const filteredFeeds = dataFeeds
+  const [feedStatus, setFeedStatus] = useState<any>(null)
+  const [overview, setOverview] = useState<any>(null)
+  const [weeklyCrises, setWeeklyCrises] = useState<any[]>([])
+  const [pagination, setPagination] = useState<any>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchInitialData() {
+      try {
+        const [statusData, overviewData] = await Promise.all([
+          getDataFeedStatus(),
+          getDataFeedOverview()
+        ])
+        setFeedStatus(statusData)
+        setOverview(overviewData)
+      } catch (err: any) {
+        setError(err.message)
+      }
+    }
+    fetchInitialData()
+  }, [])
+
+  useEffect(() => {
+    async function fetchCrises() {
+      try {
+        const crisesData = await getWeeklyCrises(7, currentPage, 10)
+        setWeeklyCrises(crisesData.crises)
+        setPagination(crisesData.pagination)
+      } catch (err: any) {
+        console.error('Error fetching crises:', err)
+      }
+    }
+    fetchCrises()
+  }, [currentPage])
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold text-foreground">Data Feed</h1>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center text-red-600">
+              <p className="text-lg font-semibold">Error loading data</p>
+              <p className="text-sm mt-2">{error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <h1 className="text-3xl font-bold text-foreground">Data Feed</h1>
@@ -73,32 +116,17 @@ export default function DataFeedPage() {
               <DialogHeader>
                 <DialogTitle>Data Feed Information</DialogTitle>
                 <DialogDescription>
-                  Learn about each data feed and how they help detect crises from BlueSky tweets.
+                  Learn about our Bluesky Crisis Monitor and how it helps detect crises from Bluesky posts.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-3">
                   <div className="border-l-4 border-blue-500 pl-4">
-                    <h3 className="font-semibold text-foreground">Emergency Services Feed</h3>
+                    <h3 className="font-semibold text-foreground">Bluesky Crisis Monitor</h3>
                     <p className="text-sm text-muted-foreground">
-                      Monitors updates from official emergency service accounts and verified first responders. 
-                      Tracks real-time emergency calls, incident reports, and official crisis communications.
-                    </p>
-                  </div>
-                
-                  
-                  <div className="border-l-4 border-red-500 pl-4">
-                    <h3 className="font-semibold text-foreground">Data Monitoring</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Tracks data related to the crisis, such as weather, individuals affected, and other relevant data.
-                    </p>
-                  </div>
-                  
-                  <div className="border-l-4 border-purple-500 pl-4">
-                    <h3 className="font-semibold text-foreground">Social Media Monitoring</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Analyzes public sentiment and crisis mentions across BlueSky. 
-                      Uses AI to detect severe situations and verified reports from the BlueSky community.
+                      Continuously monitors Bluesky for crisis-related content using advanced keyword filtering, 
+                      sentiment analysis, and geographical tagging. Our AI model analyzes posts to detect 
+                      earthquakes, floods, fires, and other disasters in real-time.
                     </p>
                   </div>
                 </div>
@@ -106,24 +134,18 @@ export default function DataFeedPage() {
                 <div className="mt-6 p-4 bg-muted rounded-lg">
                   <h4 className="font-semibold text-foreground mb-2">Real-time Monitoring</h4>
                   <p className="text-sm text-muted-foreground mb-3">
-                    Each feed in BlueRelief continuously monitors Bluesky for crisis-related content using advanced keyword filtering, 
-                    sentiment analysis, and tagging based off geographical region. Our custom AI model analyzes tweets with &gt;95% accuracy to detect 
-                    potential crises with low hallucination, informing our website users in seconds and promoting better recovery.
+                    BlueRelief continuously scrapes Bluesky every minute for crisis-related posts. Our custom AI model 
+                    extracts disaster information including location, severity, affected population, and disaster type. 
+                    This enables us to inform website users within seconds and promote better disaster response and recovery.
                   </p>
-
                 </div>
               </div>
             </DialogContent>
           </Dialog>
         </div>
-        <div className="flex items-center space-x-4">
-
-        </div>
       </div>
 
-      {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Data Feeds Status */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -139,7 +161,7 @@ export default function DataFeedPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredFeeds.map((feed) => (
+                {feedStatus?.feeds?.map((feed: any) => (
                   <TableRow key={feed.id}>
                     <TableCell>
                       <span className="font-medium">{feed.name}</span>
@@ -158,137 +180,178 @@ export default function DataFeedPage() {
           </CardContent>
         </Card>
 
-        {/* Overall Metrics */}
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold">Crisis Detection Overview</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {/* Total Tweets Processed */}
               <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Tweets Processed</p>
                   <p className="text-2xl font-bold">
-                    {dataFeeds.reduce((sum, feed) => sum + feed.tweetsProcessed, 0).toLocaleString()}
+                    {overview?.total_tweets_processed?.toLocaleString() || 0}
                   </p>
                 </div>
                 <div className="text-4xl opacity-20">📊</div>
               </div>
 
-              {/* Total Crises Detected */}
               <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Crises Detected</p>
                   <p className="text-2xl font-bold text-red-600">
-                    {dataFeeds.reduce((sum, feed) => sum + feed.crisisDetected, 0)}
+                    {overview?.total_crises_detected || 0}
                   </p>
                 </div>
                 <div className="text-4xl opacity-20">🚨</div>
               </div>
 
-              {/* Last Crisis with Link */}
               <div className="p-4 bg-muted rounded-lg">
                 <p className="text-sm text-muted-foreground mb-2">Most Recent Crisis</p>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Nepal Floods</p>
-                    <p className="text-sm text-muted-foreground">October 2025</p>
+                {overview?.most_recent_crisis ? (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{overview.most_recent_crisis.name}</p>
+                      <p className="text-sm text-muted-foreground">{formatDate(overview.most_recent_crisis.date)}</p>
+                    </div>
+                    {overview.most_recent_crisis.bluesky_url && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => window.open(overview.most_recent_crisis.bluesky_url, '_blank')}
+                        className="flex items-center gap-2"
+                      >
+                        View Post
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </Button>
+                    )}
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => window.open('https://bsky.app/profile/emergency.bsky.social/post/3k7x2y9z8w1v', '_blank')}
-                    className="flex items-center gap-2"
-                  >
-                    View Tweet
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </Button>
-                </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No recent crises detected</p>
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-
-      {/* Weekly Crisis Details */}
       <Card>
         <CardHeader>
           <CardTitle className="text-xl font-semibold">Weekly Crisis Details</CardTitle>
           <p className="text-sm text-muted-foreground">Recent crisis events detected this week</p>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {[
-              {
-                id: 1,
-                crisisName: "Flash Floods - Nepal",
-                date: "2025-10-05",
-                time: "00:00 CST",
-                region: "Nepal",
-                severity: "Critical",
-                tweetsAnalyzed: 100,
-                status: "Active",
-                description: "Intense downpours and flash floods causing mass destruction in the country"
-              },
-              {
-                id: 2,
-                crisisName: "6.9 MagnitudeEarthquake - Philippines",
-                date: "2025-10-01",
-                time: "08:15 CST",
-                region: "Cebu, Philippines",
-                severity: "Critical",
-                tweetsAnalyzed: 100,
-                confidence: 89,
-                status: "Ongoing",
-                description: "Severe earthquake causing mass destruction in the country, with significant damage to infrastructure and multiple reported injuries"
-              },
-    
-            ].map((crisis) => (
-              <div key={crisis.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  <h3 className="font-semibold text-foreground">{crisis.crisisName}</h3>
-                  <Badge 
-                    variant={
-                      crisis.severity === "Critical" || crisis.severity === "High" 
-                        ? "destructive" 
-                        : "secondary"
-                    }
-                  >
-                    {crisis.severity}
-                  </Badge>
-                  <Badge 
-                    variant={
-                      crisis.status === "Active" || crisis.status === "Ongoing"
-                        ? "default"
-                        : "outline"
-                    }
-                  >
-                    {crisis.status}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mb-3">{crisis.description}</p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">📍 Location:</span>
-                    <span className="font-medium">{crisis.region}</span>
+          {weeklyCrises.length > 0 ? (
+            <div className="space-y-3">
+              {weeklyCrises.map((crisis) => (
+                <div key={crisis.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <h3 className="font-semibold text-foreground">{crisis.crisis_name}</h3>
+                    <Badge 
+                      variant={
+                        crisis.severity === "Critical" || crisis.severity === "High" 
+                          ? "destructive" 
+                          : "secondary"
+                      }
+                    >
+                      {crisis.severity}
+                    </Badge>
+                    <Badge 
+                      variant={
+                        crisis.status === "Active" || crisis.status === "Ongoing"
+                          ? "default"
+                          : "outline"
+                      }
+                    >
+                      {crisis.status}
+                    </Badge>
+                    {crisis.bluesky_url && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => window.open(crisis.bluesky_url, '_blank')}
+                        className="ml-auto flex items-center gap-1"
+                      >
+                        View Post
+                        <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </Button>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">📅 Date:</span>
-                    <span className="font-medium">{crisis.date} at {crisis.time}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">📊 Tweets:</span>
-                    <span className="font-medium">{crisis.tweetsAnalyzed} analyzed</span>
+                  <p className="text-sm text-muted-foreground mb-3">{crisis.description}</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">📍 Location:</span>
+                      <span className="font-medium">{crisis.region}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">📅 Date:</span>
+                      <span className="font-medium">{formatDateTime(crisis.date)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">📊 Tweets:</span>
+                      <span className="font-medium">{crisis.tweets_analyzed} analyzed</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">No crises detected in the past week</p>
+          )}
+          
+          {pagination && pagination.total_pages > 1 && (
+            <div className="mt-6 flex justify-center">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => pagination.has_prev && setCurrentPage(currentPage - 1)}
+                      className={!pagination.has_prev ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: pagination.total_pages }, (_, i) => i + 1).map((pageNum) => {
+                    if (
+                      pageNum === 1 ||
+                      pageNum === pagination.total_pages ||
+                      (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                    ) {
+                      return (
+                        <PaginationItem key={pageNum}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(pageNum)}
+                            isActive={currentPage === pageNum}
+                            className="cursor-pointer"
+                          >
+                            {pageNum}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )
+                    } else if (pageNum === currentPage - 2 || pageNum === currentPage + 2) {
+                      return (
+                        <PaginationItem key={pageNum}>
+                          <span className="px-4">...</span>
+                        </PaginationItem>
+                      )
+                    }
+                    return null
+                  })}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => pagination.has_next && setCurrentPage(currentPage + 1)}
+                      className={!pagination.has_next ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

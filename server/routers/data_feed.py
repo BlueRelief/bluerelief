@@ -77,27 +77,37 @@ def get_crisis_overview(db: Session = Depends(get_db)):
 
 
 @router.get("/weekly-crises")
-def get_weekly_crises(days: int = Query(default=7, ge=1, le=90), db: Session = Depends(get_db)):
-    """Get recent crisis events (default last 7 days)"""
+def get_weekly_crises(
+    days: int = Query(default=7, ge=1, le=90),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """Get recent crisis events with pagination (default last 7 days)"""
     cutoff_date = datetime.utcnow() - timedelta(days=days)
-    
-    disasters = (
+
+    query = (
         db.query(Disaster)
         .join(Post, Disaster.post_id == Post.id, isouter=True)
         .filter(Disaster.extracted_at >= cutoff_date)
         .order_by(desc(Disaster.extracted_at))
-        .all()
     )
-    
+
+    total_count = query.count()
+    total_pages = (total_count + page_size - 1) // page_size
+
+    offset = (page - 1) * page_size
+    disasters = query.offset(offset).limit(page_size).all()
+
     severity_map = {5: "Critical", 4: "High", 3: "Medium", 2: "Low", 1: "Low"}
-    
+
     crises = []
     for d in disasters:
         sev = int(d.severity) if d.severity else 1
         severity_label = severity_map.get(sev, "Low")
-        
+
         crisis_name = d.description or f"{d.location}" if d.location else "Unknown Event"
-        
+
         bluesky_url = None
         if d.post:
             author_handle = d.post.author_handle
@@ -105,20 +115,20 @@ def get_weekly_crises(days: int = Query(default=7, ge=1, le=90), db: Session = D
             if bluesky_id and author_handle:
                 post_id = bluesky_id.split("/")[-1] if "/" in bluesky_id else bluesky_id
                 bluesky_url = f"https://bsky.app/profile/{author_handle}/post/{post_id}"
-        
+
         disaster_type = "Unknown"
         if d.post and d.post.disaster_type:
             disaster_type = d.post.disaster_type
-        
+
         tweets_count = (
             db.query(Post)
             .filter(Post.disaster_type == disaster_type)
             .filter(Post.created_at >= cutoff_date)
             .count()
         ) if disaster_type != "Unknown" else 1
-        
+
         status = "Active" if sev >= 4 else "Ongoing" if sev >= 2 else "Resolved"
-        
+
         crises.append({
             "id": d.id,
             "crisis_name": crisis_name,
@@ -131,6 +141,15 @@ def get_weekly_crises(days: int = Query(default=7, ge=1, le=90), db: Session = D
             "disaster_type": disaster_type,
             "bluesky_url": bluesky_url,
         })
-    
-    return {"crises": crises}
 
+    return {
+        "crises": crises,
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total_count": total_count,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_prev": page > 1,
+        },
+    }

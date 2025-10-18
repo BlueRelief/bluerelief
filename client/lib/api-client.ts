@@ -79,3 +79,40 @@ export async function apiDelete<T>(endpoint: string): Promise<T> {
   }
   return response.json();
 }
+
+export async function getDataFeedStatus() {
+  return apiGet<{ feeds: Array<{ id: number; name: string; status: string; last_run: string | null; next_run: string | null }> }>('/api/data-feed/status');
+}
+
+export async function getDataFeedOverview() {
+  return apiGet<{ 
+    total_tweets_processed: number; 
+    total_crises_detected: number; 
+    most_recent_crisis: { name: string; date: string; bluesky_url: string | null; severity: string } | null 
+  }>('/api/data-feed/overview');
+}
+
+export async function getWeeklyCrises(days = 7, page = 1, pageSize = 10) {
+  return apiGet<{ 
+    crises: Array<{
+      id: number;
+      crisis_name: string;
+      date: string;
+      region: string;
+      severity: string;
+      tweets_analyzed: number;
+      status: string;
+      description: string;
+      disaster_type: string;
+      bluesky_url: string | null;
+    }>;
+    pagination: {
+      page: number;
+      page_size: number;
+      total_count: number;
+      total_pages: number;
+      has_next: boolean;
+      has_prev: boolean;
+    }
+  }>(`/api/data-feed/weekly-crises?days=${days}&page=${page}&page_size=${pageSize}`);
+}
