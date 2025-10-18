@@ -59,6 +59,7 @@ export default function DashboardPage() {
     incidents: number;
     severity: string;
     coordinates: [number, number];
+    crisis_description?: string;
   }>>([]);
   const [stats, setStats] = useState<DashboardStats>({
     total_crises: 0,
@@ -84,6 +85,7 @@ export default function DashboardPage() {
             incidents: number;
             severity: string;
             coordinates: [number, number];
+            crisis_description?: string;
           }>>('/api/incidents'),
         ]);
 
