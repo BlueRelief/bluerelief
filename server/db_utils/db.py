@@ -118,6 +118,22 @@ class Disaster(Base):
     post = relationship("Post", back_populates="disasters")
 
 
+class DataFeed(Base):
+    __tablename__ = "data_feeds"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    feed_type = Column(String(100), nullable=False)
+    status = Column(String(50), default="active", nullable=False)
+    last_run_at = Column(DateTime, nullable=True)
+    next_run_at = Column(DateTime, nullable=True)
+    total_runs = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+
 def get_db_session():
     """Get database session"""
     db = SessionLocal()
