@@ -117,6 +117,7 @@ class Disaster(Base):
     extracted_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     collection_run_id = Column(Integer, ForeignKey("collection_runs.id"), nullable=False)
     post_id = Column(Integer, ForeignKey("posts.id"), nullable=True)
+    archived = Column(Boolean, default=False, nullable=False, index=True)
     # column disaster_type may be added in the future for better affected_people calculation
     # disaster_type = Column(String(50), nullable=True)
 

@@ -1,145 +1,197 @@
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
+from sqlalchemy import func
 from db_utils.db import SessionLocal, Disaster, Post, Alert
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ArchiveService:
     def __init__(self):
         self.db = SessionLocal()
 
-    async def get_completed_disasters(self, days_threshold: int = 7) -> List[Dict[Any, Any]]:
+    def get_completed_disasters(self, days_threshold: int = 7) -> List[Disaster]:
         """Get disasters that are completed and ready for archival."""
-        threshold_date = datetime.utcnow() - timedelta(days=days_threshold)
-        query = """
-            SELECT id FROM disasters 
-            WHERE end_time IS NOT NULL 
-            AND end_time < $1 
-            AND archived = FALSE
-        """
-        return await self.db.fetch_all(query, threshold_date)
+        try:
+            threshold_date = datetime.utcnow() - timedelta(days=days_threshold)
+            disasters = (
+                self.db.query(Disaster)
+                .filter(
+                    Disaster.event_time.isnot(None),
+                    Disaster.event_time < threshold_date,
+                )
+                .all()
+            )
+            return disasters
+        except Exception as e:
+            logger.error(f"Error fetching completed disasters: {str(e)}")
+            return []
 
-    async def archive_disaster(self, disaster_id: int) -> bool:
+    def archive_disaster(self, disaster_id: int) -> bool:
         """Archive a disaster and its related data."""
-        async with self.db.transaction():
-            try:
-                # Archive the disaster
-                await self._archive_disaster_record(disaster_id)
-                # Archive related posts
-                await self._archive_disaster_posts(disaster_id)
-                # Archive related alerts
-                await self._archive_disaster_alerts(disaster_id)
-                # Mark original disaster as archived
-                await self._mark_disaster_archived(disaster_id)
-                return True
-            except Exception as e:
-                print(f"Error archiving disaster {disaster_id}: {str(e)}")
+        try:
+            # Get the disaster to archive
+            disaster = (
+                self.db.query(Disaster).filter(Disaster.id == disaster_id).first()
+            )
+            if not disaster:
+                logger.warning(f"Disaster {disaster_id} not found")
                 return False
 
-    async def _archive_disaster_record(self, disaster_id: int):
-        """Move disaster record to archive table."""
-        query = """
-            INSERT INTO archived_disasters (
-                original_id, disaster_type, location, start_time, 
-                end_time, severity, affected_population, metadata
-            )
-            SELECT 
-                id, disaster_type, location, start_time, 
-                end_time, severity, affected_population, metadata
-            FROM disasters
-            WHERE id = $1
-        """
-        await self.db.execute(query, disaster_id)
+            # Archive related posts
+            self._archive_disaster_posts(disaster_id)
 
-    async def _archive_disaster_posts(self, disaster_id: int):
-        """Move related posts to archive table."""
-        query = """
-            INSERT INTO archived_posts (
-                original_id, disaster_id, content, post_id, 
-                platform, event_time, location, sentiment, metadata
-            )
-            SELECT 
-                id, disaster_id, content, post_id, 
-                platform, event_time, location, sentiment, metadata
-            FROM posts
-            WHERE disaster_id = $1
-        """
-        await self.db.execute(query, disaster_id)
+            # Archive related alerts
+            self._archive_disaster_alerts(disaster_id)
 
-    async def _archive_disaster_alerts(self, disaster_id: int):
-        """Move related alerts to archive table."""
-        query = """
-            INSERT INTO archived_alerts (
-                original_id, disaster_id, alert_type, severity,
-                message, location, metadata
-            )
-            SELECT 
-                id, disaster_id, alert_type, severity,
-                message, location, metadata
-            FROM alerts
-            WHERE disaster_id = $1
-        """
-        await self.db.execute(query, disaster_id)
+            # Update original disaster to mark as archived
+            disaster.archived = True
+            self.db.commit()
 
-    async def _mark_disaster_archived(self, disaster_id: int):
-        """Mark the original disaster as archived."""
-        query = """
-            UPDATE disasters 
-            SET archived = TRUE 
-            WHERE id = $1
-        """
-        await self.db.execute(query, disaster_id)
+            logger.info(f"Successfully archived disaster {disaster_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error archiving disaster {disaster_id}: {str(e)}")
+            self.db.rollback()
+            return False
 
-    async def get_archived_disaster_stats(self) -> Dict[str, Any]:
+    def _archive_disaster_posts(self, disaster_id: int) -> bool:
+        """Archive related posts to archive table."""
+        try:
+            posts = self.db.query(Post).filter(Post.id == disaster_id).all()
+
+            for post in posts:
+                insert_query = """
+                    INSERT INTO archived_posts (
+                        original_id, disaster_id, content, post_id, 
+                        platform, event_time, location, sentiment, metadata, created_at
+                    )
+                    VALUES (:original_id, :disaster_id, :content, :post_id, 
+                            :platform, :event_time, :location, :sentiment, :metadata, :created_at)
+                """
+                self.db.execute(
+                    insert_query,
+                    {
+                        "original_id": post.id,
+                        "disaster_id": disaster_id,
+                        "content": post.text,
+                        "post_id": post.bluesky_id,
+                        "platform": "bluesky",
+                        "event_time": post.created_at,
+                        "location": None,
+                        "sentiment": post.sentiment,
+                        "metadata": post.raw_data,
+                        "created_at": post.collected_at,
+                    },
+                )
+
+            self.db.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Error archiving posts for disaster {disaster_id}: {str(e)}")
+            self.db.rollback()
+            return False
+
+    def _archive_disaster_alerts(self, disaster_id: int) -> bool:
+        """Archive related alerts to archive table."""
+        try:
+            alerts = self.db.query(Alert).filter(Alert.disaster_id == disaster_id).all()
+
+            for alert in alerts:
+                insert_query = """
+                    INSERT INTO archived_alerts (
+                        original_id, disaster_id, alert_type, severity,
+                        message, location, metadata, created_at
+                    )
+                    VALUES (:original_id, :disaster_id, :alert_type, :severity,
+                            :message, :location, :metadata, :created_at)
+                """
+                self.db.execute(
+                    insert_query,
+                    {
+                        "original_id": alert.id,
+                        "disaster_id": disaster_id,
+                        "alert_type": alert.alert_type,
+                        "severity": alert.severity,
+                        "message": alert.message,
+                        "location": None,
+                        "metadata": alert.alert_metadata,
+                        "created_at": alert.created_at,
+                    },
+                )
+
+            self.db.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Error archiving alerts for disaster {disaster_id}: {str(e)}")
+            self.db.rollback()
+            return False
+
+    def get_archived_disaster_stats(self) -> Dict[str, Any]:
         """Get statistics about archived disasters."""
-        query = """
-            SELECT 
-                COUNT(*) as total_archived,
-                MIN(start_time) as oldest_disaster,
-                MAX(end_time) as most_recent_disaster,
-                COUNT(DISTINCT disaster_type) as disaster_types
-            FROM archived_disasters
-        """
-        return await self.db.fetch_one(query)
+        try:
+            query = """
+                SELECT 
+                    COUNT(*) as total_archived,
+                    COUNT(DISTINCT disaster_type) as disaster_types
+                FROM archived_disasters
+            """
+            result = self.db.execute(query).fetchone()
+            return {
+                "total_archived": result[0] if result else 0,
+                "disaster_types": result[1] if result else 0,
+            }
+        except Exception as e:
+            logger.error(f"Error fetching archive statistics: {str(e)}")
+            return {}
 
-    async def search_archived_disasters(
+    def search_archived_disasters(
         self,
         start_date: datetime = None,
         end_date: datetime = None,
         disaster_type: str = None,
-        location: Dict = None,
         limit: int = 100,
-        offset: int = 0
+        offset: int = 0,
     ) -> List[Dict[Any, Any]]:
         """Search archived disasters with various filters."""
-        conditions = ["1=1"]
-        params = []
-        param_count = 1
+        try:
+            conditions = []
+            params = {}
 
-        if start_date:
-            conditions.append(f"start_time >= ${param_count}")
-            params.append(start_date)
-            param_count += 1
+            if start_date:
+                conditions.append("start_time >= :start_date")
+                params["start_date"] = start_date
 
-        if end_date:
-            conditions.append(f"end_time <= ${param_count}")
-            params.append(end_date)
-            param_count += 1
+            if end_date:
+                conditions.append("end_time <= :end_date")
+                params["end_date"] = end_date
 
-        if disaster_type:
-            conditions.append(f"disaster_type = ${param_count}")
-            params.append(disaster_type)
-            param_count += 1
+            if disaster_type:
+                conditions.append("disaster_type = :disaster_type")
+                params["disaster_type"] = disaster_type
 
-        if location:
-            conditions.append(f"location @> ${param_count}")
-            params.append(location)
-            param_count += 1
+            where_clause = " AND ".join(conditions) if conditions else "1=1"
 
-        query = f"""
-            SELECT * FROM archived_disasters
-            WHERE {" AND ".join(conditions)}
-            ORDER BY end_time DESC
-            LIMIT ${param_count} OFFSET ${param_count + 1}
-        """
-        params.extend([limit, offset])
-        
-        return await self.db.fetch_all(query, *params)
+            query = f"""
+                SELECT * FROM archived_disasters
+                WHERE {where_clause}
+                ORDER BY end_time DESC NULLS LAST
+                LIMIT :limit OFFSET :offset
+            """
+            params["limit"] = limit
+            params["offset"] = offset
+
+            results = self.db.execute(query, params).fetchall()
+            return results if results else []
+        except Exception as e:
+            logger.error(f"Error searching archived disasters: {str(e)}")
+            return []
+
+    def close(self):
+        """Close database connection"""
+        if self.db:
+            self.db.close()
+
+    def __del__(self):
+        """Cleanup on deletion"""
+        self.close()
