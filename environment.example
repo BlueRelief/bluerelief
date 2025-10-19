@@ -1,30 +1,45 @@
-# Database
-DATABASE_URL=postgresql://dev:devpassword@localhost:5432/bluerelief
+# Database Configuration
+POSTGRES_DB=bluerelief
+POSTGRES_USER=dev
+POSTGRES_PASSWORD=your-postgres-password
+PGDATA=/var/lib/postgresql/data/pgdata
+DATABASE_URL=postgresql://dev:your-postgres-password@localhost:5432/bluerelief
 
 # Redis
 REDIS_URL=redis://localhost:6379/0
 
 # Environment
 ENVIRONMENT=development
+NODE_ENV=development
 
-# Frontend
+# Frontend Configuration
 NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_MAPBOX_TOKEN=your-mapbox-token
 
-# Secrets (change these in production)
+# URLs
+REDIRECT_URL=http://localhost:3000/dashboard
+FRONTEND_URL=http://localhost:3000
+BACKEND_URL=http://localhost:8000
+
+# Security Keys (change these in production)
 SECRET_KEY=your-secret-key-here
 JWT_SECRET_KEY=your-jwt-secret-key-here
 
 # Google OAuth
 GOOGLE_CLIENT_ID=your-google-client-id-here
 GOOGLE_CLIENT_SECRET=your-google-client-secret-here
-REDIRECT_URL=http://localhost:3000/dashboard
-FRONTEND_URL=http://localhost:3000
-BACKEND_URL=http://localhost:8000
 
 # BlueSky Integration
 BlueSky_Username=your-bluesky-username
 BlueSky_Password=your-bluesky-password
 GOOGLE_API_KEY=your-google-api-key-here
+
+# Data Feed Configuration
 SEARCH_HASHTAG=#earthquake
-POST_LIMIT=50
+POST_LIMIT=5
 SCHEDULE_HOURS=24
+
+# Email Service (Resend)
+RESEND_API_KEY=your-resend-api-key-here
+SENDING_DOMAIN=your-domain.com
+EMAIL_FROM=no-reply@your-domain.com
