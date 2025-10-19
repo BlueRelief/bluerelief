@@ -44,10 +44,12 @@ interface SentimentTrend {
 interface RecentEvent {
   id: number;
   title: string;
+  description: string;
   location: string;
   time: string;
   severity: string;
   severityColor: string;
+  bluesky_url?: string;
 }
 
 export default function DashboardPage() {
@@ -423,16 +425,36 @@ export default function DashboardPage() {
               recentEvents.map((event) => (
                 <div
                   key={event.id}
-                  className="flex items-center gap-3 p-2.5 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer"
+                  className="flex flex-col gap-2 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
                 >
-                  <Badge className={`${event.severityColor} text-xs px-2 py-0.5`}>
-                    {event.severity}
-                  </Badge>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{event.title}</div>
-                    <div className="text-xs text-muted-foreground">{event.location}</div>
+                  <div className="flex items-start gap-3">
+                    <Badge className={`${event.severityColor} text-xs px-2 py-0.5 mt-0.5`}>
+                      {event.severity}
+                    </Badge>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{event.title}</div>
+                      <div className="text-xs text-muted-foreground mb-1">{event.location}</div>
+                      <div className="text-xs text-muted-foreground italic leading-relaxed line-clamp-2">
+                        {event.description}
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground whitespace-nowrap">{event.time}</div>
                   </div>
-                  <div className="text-xs text-muted-foreground whitespace-nowrap">{event.time}</div>
+                  {event.bluesky_url && (
+                    <div className="flex justify-end">
+                      <a
+                        href={event.bluesky_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors px-2 py-1 rounded-md hover:bg-blue-50"
+                      >
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.593-.218 1.267-.218 2.018 0 .751.08 1.425.218 2.018-.14-.017-.279-.036-.415-.056-2.67-.296-5.568.628-6.383 3.364C.378 21.729 0 26.689 0 27.377c0 .688.139 1.86.902 2.203.659.299 1.664.621 4.3-1.24C7.954 26.397 10.913 22.458 12 20.344c1.087 2.114 4.046 6.053 6.798 7.995 2.636 1.861 3.641 1.539 4.3 1.24.763-.343.902-1.515.902-2.203 0-.688-.378-5.648-.624-6.477-.815-2.736-3.713-3.66-6.383-3.364-.136.02-.275.039-.415.056.138-.593.218-1.267.218-2.018 0-.751-.08-1.425-.218-2.018.14.017.279.036.415.056 2.67.296 5.568-.628 6.383-3.364.246-.829.624-5.789.624-6.479 0-.688-.139-1.86-.902-2.203-.659-.299-1.664-.621-4.3 1.24C16.046 4.747 13.087 8.686 12 10.8z"/>
+                        </svg>
+                        View on Bluesky
+                      </a>
+                    </div>
+                  )}
                 </div>
               ))
             )}
