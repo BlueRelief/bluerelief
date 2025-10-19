@@ -130,6 +130,7 @@ def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None, disas
         try:
             # Bulk insert all posts at once
             if posts_to_add:
+                print("Saving posts to database...")
                 db.bulk_save_objects(posts_to_add)
                 db.commit()
                 # After successful bulk save, populate new_posts list
@@ -196,7 +197,7 @@ def save_analysis(analysis_text: str, run_id: int, posts: list = None):
                         )
                         if post_db:
                             post_map[post_uri] = post_db.id
-
+            print("Saving disasters to database...")
             for disaster_data in disasters:
                 magnitude_value = disaster_data.get("magnitude")
 
@@ -230,7 +231,10 @@ def save_analysis(analysis_text: str, run_id: int, posts: list = None):
                             break
 
                 disaster = Disaster(
-                    location=disaster_data.get("location"),
+                    location_name=disaster_data.get("location_name"),
+                    latitude=disaster_data.get("latitude"),
+                    longitude=disaster_data.get("longitude"),
+                    location=f"{disaster_data.get('location_name')} ({disaster_data.get('latitude')}, {disaster_data.get('longitude')})" if disaster_data.get('latitude') else disaster_data.get('location_name'),  # Backwards compatibility
                     event_time=disaster_data.get("event_time"),
                     severity=disaster_data.get("severity"),
                     magnitude=magnitude_value,

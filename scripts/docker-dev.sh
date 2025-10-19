@@ -45,6 +45,8 @@ case "$1" in
         else
             echo "❌ Reset cancelled"
         fi
+        docker exec bluerelief-backend python run_migrations.py
+        echo "✅ Migrations applied!"
         ;;
     "reset-rebuild")
         echo "🗑️ Resetting database and rebuilding (this will delete all data)..."

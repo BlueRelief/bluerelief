@@ -102,18 +102,21 @@ class Disaster(Base):
     __tablename__ = "disasters"
 
     id = Column(Integer, primary_key=True, index=True)
-    location = Column(String(500), nullable=True)
-    event_time = Column(String(255), nullable=True)
-    severity = Column(Integer, nullable=True)
-    magnitude = Column(Float, nullable=True)
-    description = Column(Text, nullable=True)
+    location = Column(String(500))  # Keep for backwards compatibility temporarily
+    location_name = Column(String(500), index=True)  # NEW
+    latitude = Column(Float, index=True)  # NEW
+    longitude = Column(Float, index=True)  # NEW
+    event_time = Column(String(255))
+    severity = Column(Integer)
+    magnitude = Column(Float)
+    description = Column(Text)
     affected_population = Column(Integer, nullable=True)
     extracted_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    collection_run_id = Column(
-        Integer, ForeignKey("collection_runs.id"), nullable=False
-    )
-    post_id = Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"), nullable=True)
-
+    collection_run_id = Column(Integer, ForeignKey("collection_runs.id"), nullable=False)
+    post_id = Column(Integer, ForeignKey("posts.id"), nullable=True)
+    # column disaster_type may be added in the future for better affected_people calculation
+    # disaster_type = Column(String(50), nullable=True)
+    
     collection_run = relationship("CollectionRun", back_populates="disasters")
     post = relationship("Post", back_populates="disasters")
 
