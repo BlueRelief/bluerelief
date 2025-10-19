@@ -9,6 +9,11 @@ from services.database_service import (
     save_analysis,
     get_existing_post_ids
 )
+from services.alert_generator import generate_alerts as generate_alerts_service
+from services.alert_queue_manager import (
+    manage_alert_queue as manage_alert_queue_service,
+)
+from services.alert_cleanup import cleanup_old_alerts as cleanup_old_alerts_service
 import json
 import re
 import os
@@ -135,3 +140,21 @@ def collect_and_analyze():
         complete_collection_run(run.id, 0, "failed", error_msg)
         print(f"\n[{datetime.now()}] {error_msg}")
         raise
+
+
+@celery_app.task(name="tasks.generate_alerts")
+def generate_alerts():
+    """Celery task wrapper for alert generation"""
+    return generate_alerts_service()
+
+
+@celery_app.task(name="tasks.manage_alert_queue")
+def manage_alert_queue():
+    """Celery task wrapper for alert queue management"""
+    return manage_alert_queue_service()
+
+
+@celery_app.task(name="tasks.cleanup_old_alerts")
+def cleanup_old_alerts():
+    """Celery task wrapper for alert cleanup"""
+    return cleanup_old_alerts_service()

@@ -147,7 +147,7 @@ async def auth(request: Request):
     user_id = user.get("sub") if user else user_info.get("id")
     iss = user.get("iss") if user else "https://accounts.google.com"
     user_email = user.get("email") if user else user_info.get("email")
-    
+
     # Get profile data from Google API response
     user_name = user_info.get("name")
     user_pic = user_info.get("picture")
@@ -195,3 +195,58 @@ async def logout(request: Request):
     response = JSONResponse(content={"message": "Logged out successfully."})
     response.delete_cookie("token")
     return response
+
+
+@router.post("/setup-location")
+async def setup_location(request: Request, token: str = Cookie(None)):
+    """Setup user location during signup (called from frontend)
+
+    Frontend will call this with geolocation data from browser/IP API
+    """
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    try:
+        user = get_current_user(token)
+        user_id = user["user_id"]
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    try:
+        body = await request.json()
+        location = body.get("location")
+        latitude = body.get("latitude")
+        longitude = body.get("longitude")
+
+        if not location or latitude is None or longitude is None:
+            raise HTTPException(status_code=400, detail="Missing location data")
+
+        from db_utils.db import SessionLocal, User
+
+        db = SessionLocal()
+        try:
+            user_obj = db.query(User).filter(User.id == user_id).first()
+            if not user_obj:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            user_obj.location = location
+            user_obj.latitude = float(latitude)
+            user_obj.longitude = float(longitude)
+            db.commit()
+
+            logger.info(f"✅ Set location for user {user_id}: {location}")
+
+            return {
+                "status": "success",
+                "location": location,
+                "latitude": latitude,
+                "longitude": longitude,
+            }
+        finally:
+            db.close()
+
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid latitude/longitude")
+    except Exception as e:
+        logger.error(f"Error setting location: {e}")
+        raise HTTPException(status_code=500, detail="Failed to set location")
