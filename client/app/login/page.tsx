@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Loader2, Shield, Users, Mail } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { loginWithGoogle } from "@/lib/auth";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -30,27 +30,32 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoggingIn(true);
     
-    try {
-      // Simulate login process
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      console.log("Login attempt:", { email, password });
-      // Add actual login logic here
-    } catch (error) {
-      console.error("Login failed:", error);
-    } finally {
-      setIsLoggingIn(false);
-    }
+    // try {
+    //   // Simulate login process
+    //   await new Promise(resolve => setTimeout(resolve, 1500));
+    //   // console.log("Login attempt:", { email, password });
+    //   // Add actual login logic here
+    // } catch (error) {
+    //   console.error("Login failed:", error);
+    // } finally {
+    //   setIsLoggingIn(false);
+    // }
   };
 
-  const handleGoogleAuth = async () => {
-    setIsGoogleLoading(true);
-    try {
-      await loginWithGoogle();
-    } catch (error) {
-      console.error("Google login failed:", error);
-    } finally {
-      setIsGoogleLoading(false);
-    }
+  // const handleGoogleAuth = async () => {
+  //   setIsGoogleLoading(true);
+  //   try {
+  //     await loginWithGoogle();
+  //   } catch (error) {
+  //     console.error("Google login failed:", error);
+  //   } finally {
+  //     setIsGoogleLoading(false);
+  //   }
+  // };
+
+  const handleGoogleAuth = () => {
+    // setIsGoogleLoading(true);
+    loginWithGoogle();
   };
 
   if (loading) {
