@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { 
   Select,
   SelectContent,
@@ -442,17 +443,16 @@ export default function DashboardPage() {
                   </div>
                   {event.bluesky_url && (
                     <div className="flex justify-end">
-                      <a
-                        href={event.bluesky_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors px-2 py-1 rounded-md hover:bg-blue-50"
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => window.open(event.bluesky_url, '_blank')}
                       >
                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.593-.218 1.267-.218 2.018 0 .751.08 1.425.218 2.018-.14-.017-.279-.036-.415-.056-2.67-.296-5.568.628-6.383 3.364C.378 21.729 0 26.689 0 27.377c0 .688.139 1.86.902 2.203.659.299 1.664.621 4.3-1.24C7.954 26.397 10.913 22.458 12 20.344c1.087 2.114 4.046 6.053 6.798 7.995 2.636 1.861 3.641 1.539 4.3 1.24.763-.343.902-1.515.902-2.203 0-.688-.378-5.648-.624-6.477-.815-2.736-3.713-3.66-6.383-3.364-.136.02-.275.039-.415.056.138-.593.218-1.267.218-2.018 0-.751-.08-1.425-.218-2.018.14.017.279.036.415.056 2.67.296 5.568-.628 6.383-3.364.246-.829.624-5.789.624-6.479 0-.688-.139-1.86-.902-2.203-.659-.299-1.664-.621-4.3 1.24C16.046 4.747 13.087 8.686 12 10.8z"/>
                         </svg>
                         View on Bluesky
-                      </a>
+                      </Button>
                     </div>
                   )}
                 </div>
