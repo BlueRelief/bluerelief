@@ -75,10 +75,13 @@ def get_current_user(token: str = Cookie(None)):
             raise HTTPException(status_code=401, detail="User not found")
 
         return {
-            "user_id": user_data["id"], 
+            "user_id": user_data["id"],
             "user_email": user_data["email"],
             "name": user_data["name"],
-            "picture": user_data["picture"]
+            "picture": user_data["picture"],
+            "location": user_data.get("location"),
+            "latitude": user_data.get("latitude"),
+            "longitude": user_data.get("longitude"),
         }
 
     except ExpiredSignatureError:
@@ -104,11 +107,14 @@ async def auth_status(request: Request, token: str = Cookie(None)):
         return {
             "authenticated": True,
             "user": {
-                "user_id": user["user_id"], 
+                "user_id": user["user_id"],
                 "user_email": user["user_email"],
                 "name": user.get("name"),
-                "picture": user.get("picture")
-            }
+                "picture": user.get("picture"),
+                "location": user.get("location"),
+                "latitude": user.get("latitude"),
+                "longitude": user.get("longitude"),
+            },
         }
     except HTTPException:
         return {"authenticated": False}

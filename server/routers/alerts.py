@@ -62,16 +62,18 @@ def get_user_alerts(
     """Get user's alerts with pagination"""
     if not db:
         raise HTTPException(status_code=500, detail="Database connection failed")
-    
+
     try:
-        alerts = db.query(Alert).join(
-            AlertQueue, Alert.id == AlertQueue.alert_id
-        ).filter(
-            AlertQueue.recipient_email == (
-                db.query(User.email).filter(User.id == user_id).scalar()
-            )
-        ).order_by(Alert.created_at.desc()).offset(skip).limit(limit).all()
-        
+        alerts = (
+            db.query(Alert)
+            .join(AlertQueue, Alert.id == AlertQueue.alert_id)
+            .filter(AlertQueue.user_id == user_id)
+            .order_by(Alert.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
         return alerts
     finally:
         db.close()
@@ -85,17 +87,18 @@ def get_unread_count(
     """Get unread alert count for user"""
     if not db:
         raise HTTPException(status_code=500, detail="Database connection failed")
-    
+
     try:
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        
-        count = db.query(AlertQueue).filter(
-            AlertQueue.recipient_email == user.email,
-            AlertQueue.status == "pending"
-        ).count()
-        
+
+        count = (
+            db.query(AlertQueue)
+            .filter(AlertQueue.user_id == user_id, AlertQueue.status == "pending")
+            .count()
+        )
+
         return {"unread_count": count}
     finally:
         db.close()
@@ -135,21 +138,23 @@ def mark_all_alerts_as_read(
     """Mark all alerts as read for user"""
     if not db:
         raise HTTPException(status_code=500, detail="Database connection failed")
-    
+
     try:
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        
-        updated = db.query(Alert).filter(
-            Alert.id.in_(
-                db.query(AlertQueue.alert_id).filter(
-                    AlertQueue.recipient_email == user.email
+
+        updated = (
+            db.query(Alert)
+            .filter(
+                Alert.id.in_(
+                    db.query(AlertQueue.alert_id).filter(AlertQueue.user_id == user_id)
                 )
             )
-        ).update({"is_read": True})
+            .update({"is_read": True})
+        )
         db.commit()
-        
+
         return {"status": "success", "alerts_marked": updated}
     except Exception as e:
         db.rollback()

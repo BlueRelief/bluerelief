@@ -236,10 +236,10 @@ def upsert_user(user_id: str, email: str, name: str, picture: str) -> Optional[D
         if db is None:
             logger.error("Could not establish database session")
             return None
-        
+
         # Check if user exists by email (since email is unique)
         existing_user = db.query(User).filter(User.email == email).first()
-        
+
         if existing_user:
             # Update existing user
             existing_user.id = user_id  # Update ID in case it changed
@@ -258,19 +258,22 @@ def upsert_user(user_id: str, email: str, name: str, picture: str) -> Optional[D
             )
             db.add(user)
             logger.info(f"Created new user: {email}")
-        
+
         db.commit()
         db.refresh(user)
-        
+
         return {
             "id": user.id,
             "email": user.email,
             "name": user.name,
             "picture": user.picture,
+            "location": user.location,
+            "latitude": user.latitude,
+            "longitude": user.longitude,
             "created_at": user.created_at,
-            "updated_at": user.updated_at
+            "updated_at": user.updated_at,
         }
-        
+
     except Exception as e:
         logger.error(f"Error in upsert_user: {e}")
         if db:
@@ -287,20 +290,23 @@ def get_user_by_email(email: str) -> Optional[Dict]:
         if db is None:
             logger.error("Could not establish database session")
             return None
-        
+
         user = db.query(User).filter(User.email == email).first()
-        
+
         if user:
             return {
                 "id": user.id,
                 "email": user.email,
                 "name": user.name,
                 "picture": user.picture,
+                "location": user.location,
+                "latitude": user.latitude,
+                "longitude": user.longitude,
                 "created_at": user.created_at,
-                "updated_at": user.updated_at
+                "updated_at": user.updated_at,
             }
         return None
-        
+
     except Exception as e:
         logger.error(f"Error in get_user_by_email: {e}")
         return None

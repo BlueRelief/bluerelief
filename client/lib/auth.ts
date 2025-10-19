@@ -7,6 +7,9 @@ export interface User {
   user_email: string;
   name?: string;
   picture?: string;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export async function checkAuthStatus(): Promise<User | null> {
