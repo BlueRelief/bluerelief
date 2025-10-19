@@ -119,7 +119,7 @@ export default function OnboardingPage() {
                 <div className="text-sm space-y-2">
                   <p className="font-semibold text-foreground">Location-Based Alerts</p>
                   <p className="text-muted-foreground">
-                    We'll send you instant alerts for emergencies within 100km of your location
+                    We&apos;ll send you instant alerts for emergencies within 100km of your location
                   </p>
                 </div>
               </div>
@@ -225,7 +225,7 @@ export default function OnboardingPage() {
               </div>
               <h2 className="text-2xl font-bold text-foreground">All Set!</h2>
               <p className="text-muted-foreground">
-                You'll now receive crisis alerts for your location
+                You&apos;ll now receive crisis alerts for your location
               </p>
               <div className="pt-2">
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useTheme } from "next-themes"
 import { useAuth } from "@/hooks/use-auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -38,14 +38,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
 
-  // Load alert preferences on mount
-  useEffect(() => {
-    if (user?.user_id) {
-      loadPreferences()
-    }
-  }, [user?.user_id])
-
-  const loadPreferences = async () => {
+  const loadPreferences = useCallback(async () => {
     try {
       const response = await apiClient(`/api/alerts/preferences?user_id=${user?.user_id}`)
       if (response.ok) {
@@ -57,7 +50,14 @@ export default function SettingsPage() {
     } catch (err) {
       console.error('Failed to load preferences:', err)
     }
-  }
+  }, [user?.user_id])
+
+  // Load alert preferences on mount
+  useEffect(() => {
+    if (user?.user_id) {
+      loadPreferences()
+    }
+  }, [user?.user_id, loadPreferences])
 
   const savePreferences = async () => {
     if (!user?.user_id) return

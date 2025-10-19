@@ -20,7 +20,7 @@ import {
   ChartContainer,
   type ChartConfig 
 } from "@/components/ui/chart";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { AreaChart, Area } from "recharts";
 import { apiGet } from "@/lib/api-client";
 
 const chartConfig = {

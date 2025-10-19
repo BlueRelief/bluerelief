@@ -70,7 +70,6 @@ export default function AnalysisPage() {
   ];
 
   const [regions, setRegions] = useState(regionalData);
-  const [mapError, setMapError] = useState(false);
 
   // // This will contain empty heatmap data until we add onto it
   // const heatmapData = [
@@ -255,15 +254,7 @@ export default function AnalysisPage() {
           <CardContent>
             <div className="space-y-4">
               <div className="h-80 w-full rounded-lg overflow-hidden mb-4 relative">
-                {mapError ? (
-                  <div className="h-full w-full flex flex-col items-center justify-center bg-muted/80 text-center p-4">
-                    <div className="font-medium mb-2">Map failed to load</div>
-                    <div className="text-sm">Unable to initialize the map. Please check your Mapbox token.</div>
-                  </div>
-                ) : (
-                  <CrisisMap regions={regions} />
-                  // removed maperror state
-                )}
+                <CrisisMap regions={regions} />
               </div>
               <div className="flex items-center space-x-3 text-sm text-muted-foreground mb-2">
                 <div className="flex items-center space-x-2">

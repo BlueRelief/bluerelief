@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/logo";
-import { LocationOnboarding } from "@/components/location-onboarding";
 import { NotificationCenter } from "@/components/notification-center";
 import {
   Sidebar,
@@ -196,9 +195,8 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isAuthenticated, loading, refreshAuth } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -216,7 +214,6 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (showOnboarding) {
-      setRedirecting(true);
       // Use router.replace to avoid showing the dashboard again
       const timer = setTimeout(() => {
         router.replace("/onboarding");

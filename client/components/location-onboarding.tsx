@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MapPin, Loader2 } from 'lucide-react';
@@ -9,13 +8,11 @@ import { apiClient } from '@/lib/api-client';
 
 interface LocationOnboardingProps {
   onLocationSet?: () => Promise<void> | void;
-  onClose?: () => void;
 }
 
-export function LocationOnboarding({ onLocationSet, onClose }: LocationOnboardingProps) {
+export function LocationOnboarding({ onLocationSet }: LocationOnboardingProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   const handleLocationSet = async (location: string, lat: number, lon: number) => {
     setLoading(true);

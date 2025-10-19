@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react";
-import { Search, ExternalLink, Calendar, MapPin, User, Loader2, Settings } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Search, Calendar, Loader2, Settings } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,13 +30,7 @@ export default function AlertsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!authLoading && user?.user_id) {
-      fetchAlerts();
-    }
-  }, [user?.user_id, authLoading]);
-
-  const fetchAlerts = async () => {
+  const fetchAlerts = useCallback(async () => {
     if (!user?.user_id) return;
     
     setLoading(true);
@@ -53,7 +47,13 @@ export default function AlertsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.user_id]);
+
+  useEffect(() => {
+    if (!authLoading && user?.user_id) {
+      fetchAlerts();
+    }
+  }, [user?.user_id, authLoading, fetchAlerts]);
 
   const filteredAlerts = alerts.filter(alert =>
     alert.alert_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -185,7 +185,7 @@ export default function AlertsPage() {
                         {alert.alert_type}
                       </h3>
                       <Badge 
-                        variant={getSeverityColor(alert.severity) as any}
+                        variant={getSeverityColor(alert.severity) as "default" | "secondary" | "destructive" | "outline"}
                         className="text-sm px-3 py-1"
                       >
                         {getSeverityLabel(alert.severity)}

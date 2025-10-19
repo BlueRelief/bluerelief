@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Bell, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -27,13 +27,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
-  }, [userId]);
-
-  const fetchUnreadCount = async () => {
+  const fetchUnreadCount = useCallback(async () => {
     try {
       const response = await apiClient(`/api/alerts/unread-count?user_id=${userId}`);
       const data = await response.json();
@@ -41,7 +35,13 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
     } catch (err) {
       console.error('Failed to fetch unread count:', err);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
 
   const fetchAlerts = async () => {
     setLoading(true);
