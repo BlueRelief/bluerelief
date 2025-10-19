@@ -47,13 +47,15 @@ def record_migration(conn, migration_name):
 
 
 def fix_legacy_migration_names(conn):
-    """Auto-fix old migration names to new numbered format"""
+    """Auto-fix old migration names to new timestamp format"""
     legacy_renames = {
-        "add_disaster_type_to_posts.sql": "002_add_disaster_type_to_posts.sql",
-        "add_sentiment_to_posts.sql": "003_add_sentiment_to_posts.sql",
-        "add_affected_population.sql": "004_add_affected_population.sql",
-        "add_post_id_to_disasters.sql": "005_add_post_id_to_disasters.sql",
-        "add_notifications_tables.sql": "006_add_notifications_tables.sql",
+        "001_create_base_schema.sql": "20251016090000_create_base_schema.sql",
+        "002_add_disaster_type_to_posts.sql": "20251016091500_add_disaster_type_to_posts.sql",
+        "003_add_sentiment_to_posts.sql": "20251016093000_add_sentiment_to_posts.sql",
+        "004_add_affected_population.sql": "20251016094500_add_affected_population.sql",
+        "005_add_post_id_to_disasters.sql": "20251016100000_add_post_id_to_disasters.sql",
+        "006_add_notifications_tables.sql": "20251017090000_add_notifications_tables.sql",
+        "20251018333000_fix_location_schema.sql": "20251018150000_fix_location_schema.sql",
     }
 
     result = conn.execute(text("SELECT migration_name FROM schema_migrations"))
@@ -97,7 +99,10 @@ def run_migrations():
     try:
         with engine.connect() as conn:
             create_migrations_table(conn)
+
+            logger.info("Running production database fixes...")
             fix_legacy_migration_names(conn)
+
             applied_migrations = get_applied_migrations(conn)
 
             logger.info(f"Already applied: {len(applied_migrations)} migration(s)")
