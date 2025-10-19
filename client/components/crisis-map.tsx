@@ -15,6 +15,7 @@ interface RegionData {
   incidents: number;
   severity: string;
   coordinates: [number, number];
+  crisis_description?: string;
 }
 
 interface HeatmapLayerProps {
@@ -153,7 +154,7 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ data, regions, mapboxToken,
          el.style.opacity = '0.8';
          
          const popupContent = `
-           <div class="bg-card p-4 rounded-lg border border-border min-w-[200px]">
+           <div class="bg-card p-4 rounded-lg border border-border min-w-[250px] max-w-[350px]">
              <h3 class="font-semibold text-card-foreground mb-2">${region.region}</h3>
              <div class="space-y-1 text-sm">
                <p class="text-muted-foreground">
@@ -162,6 +163,10 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ data, regions, mapboxToken,
                <p class="text-muted-foreground">
                  <span class="font-medium">Severity:</span> 
                  <span class="font-semibold" style="color: ${color}">${region.severity}</span>
+               </p>
+               <p class="text-muted-foreground">
+                 <span class="font-medium">Description:</span><br>
+                 <span style="font-style: italic; word-wrap: break-word; line-height: 1.3;">${region.crisis_description || 'No description available'}</span>
                </p>
              </div>
            </div>
