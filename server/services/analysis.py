@@ -158,7 +158,7 @@ def analyze_posts(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1)
         # Build prompt with post IDs included
         posts_text = "\n".join(
             [
-                f"{idx}. [POST_ID: {post.get('db_post_id', 'unknown')}] {post['record']['text']}"
+                f"{idx}. [POST_ID: {post.get('db_post_id', 'unknown')}] {post.get('text') or post.get('record', {}).get('text', '')}"
                 for idx, post in enumerate(batch_posts, start_idx + 1)
             ]
         )
@@ -254,7 +254,7 @@ def analyze_sentiment(posts: List[Dict], batch_size: int = 50, batch_delay: int 
 
         posts_text = "\n".join(
             [
-                f"{idx}. [ID: {post.get('uri', '')}] {post['record']['text']}"
+                f"{idx}. [ID: {post.get('uri', '')}] {post.get('text') or post.get('record', {}).get('text', '')}"
                 for idx, post in enumerate(batch_posts, start_idx + 1)
             ]
         )

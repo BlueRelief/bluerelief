@@ -90,13 +90,53 @@ class Post(Base):
     created_at = Column(DateTime, nullable=False)
     collected_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     raw_data = Column(JSON, nullable=True)
-    collection_run_id = Column(
-        Integer, ForeignKey("collection_runs.id"), nullable=False
-    )
+    collection_run_id = Column(Integer, ForeignKey("collection_runs.id"), nullable=False)
     sentiment = Column(String(50), nullable=True)
     sentiment_score = Column(Float, nullable=True)
-    disaster_type = Column(String(50), nullable=True, index=True) 
+    disaster_type = Column(String(50), nullable=True, index=True)
 
+    # Post engagement metrics
+    like_count = Column(Integer, default=0)
+    repost_count = Column(Integer, default=0)
+    reply_count = Column(Integer, default=0)
+
+    # Author profile info
+    author_display_name = Column(String(255))
+    author_description = Column(Text)
+    author_followers_count = Column(Integer)
+    author_following_count = Column(Integer)
+    author_posts_count = Column(Integer)
+    author_avatar_url = Column(Text)
+
+    # Post metadata
+    has_media = Column(Boolean, default=False)
+    media_count = Column(Integer, default=0)
+    media_urls = Column(JSON)  # Store as JSON array
+    hashtags = Column(JSON)    # Store as JSON array
+    mentions = Column(JSON)    # Store as JSON array
+    external_urls = Column(JSON)  # Store as JSON array
+    language = Column(String(10))
+
+    # Location data
+    post_location = Column(String(500))
+    post_latitude = Column(Float)
+    post_longitude = Column(Float)
+
+    # Temporal data
+    indexed_at = Column(DateTime(timezone=True))
+    last_modified_at = Column(DateTime(timezone=True))
+
+    # Labels and categorization
+    content_labels = Column(JSON)  # Store as JSON array
+    content_warnings = Column(JSON)  # Store as JSON array
+    moderation_status = Column(String(50))
+
+    # Reply context
+    reply_to_post_id = Column(String(255))
+    reply_root_post_id = Column(String(255))
+    thread_depth = Column(Integer, default=0)
+
+    # Relationships
     collection_run = relationship("CollectionRun", back_populates="posts")
     disasters = relationship("Disaster", back_populates="post")
 
