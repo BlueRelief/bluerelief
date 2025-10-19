@@ -50,11 +50,29 @@ celery_app.conf.beat_schedule = {
     "collect-bluesky-data": {
         "task": "tasks.collect_and_analyze",
         "schedule": crontab(hour=f"*/{SCHEDULE_HOURS}"),
+        "options": {"expires": 60 * 60 * 3},  # Tasks expire after 3 hours
+    },
+    "generate-alerts": {
+        "task": "tasks.generate_alerts",
+        "schedule": 300.0,  # every 5 minutes
         "options": {
-            "expires": 60 * 60 * 3  # Tasks expire after 3 hours
-        }
+            "expires": 60 * 5,  # Tasks expire after 5 minutes
+        },
+    },
+    "manage-alert-queue": {
+        "task": "tasks.manage_alert_queue",
+        "schedule": 120.0,  # every 2 minutes
+        "options": {
+            "expires": 60 * 2,  # Tasks expire after 2 minutes
+        },
+    },
+    "cleanup-alerts": {
+        "task": "tasks.cleanup_old_alerts",
+        "schedule": crontab(hour=2, minute=0),  # 2 AM daily
+        "options": {
+            "expires": 60 * 60 * 24,  # Tasks expire after 24 hours
+        },
     },
 }
 
 celery_app.conf.timezone = "UTC"
-

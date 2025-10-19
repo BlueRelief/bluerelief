@@ -35,6 +35,9 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     picture = Column(String, nullable=True)
+    location = Column(String, nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -135,6 +138,77 @@ class DataFeed(Base):
     updated_at = Column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
+
+
+class Alert(Base):
+    __tablename__ = "alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    disaster_id = Column(
+        Integer,
+        ForeignKey("disasters.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    alert_type = Column(String(50), nullable=False)
+    severity = Column(Integer, nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    is_read = Column(Boolean, default=False, nullable=False, index=True)
+    alert_metadata = Column(JSON, nullable=True)
+
+    disaster = relationship("Disaster")
+    queue_entries = relationship("AlertQueue", back_populates="alert")
+
+
+class AlertQueue(Base):
+    __tablename__ = "alert_queue"
+
+    id = Column(Integer, primary_key=True, index=True)
+    alert_id = Column(
+        Integer, ForeignKey("alerts.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    recipient_email = Column(String(255), nullable=False)
+    recipient_name = Column(String(255), nullable=True)
+    priority = Column(Integer, default=3, nullable=False, index=True)
+    status = Column(String(50), default="pending", nullable=False, index=True)
+    scheduled_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    sent_at = Column(DateTime, nullable=True)
+    error_message = Column(Text, nullable=True)
+    retry_count = Column(Integer, default=0, nullable=False)
+    max_retries = Column(Integer, default=3, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+    alert = relationship("Alert", back_populates="queue_entries")
+
+
+class UserAlertPreferences(Base):
+    __tablename__ = "user_alert_preferences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    alert_types = Column(
+        JSON, default=["new_crisis", "severity_change", "update"], nullable=False
+    )
+    min_severity = Column(Integer, default=3, nullable=False)
+    email_enabled = Column(Boolean, default=True, nullable=False)
+    regions = Column(JSON, nullable=True)
+    disaster_types = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+    user = relationship("User")
 
 
 def get_db_session():
