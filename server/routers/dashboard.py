@@ -22,11 +22,21 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     """Return aggregated dashboard stat cards"""
     from sqlalchemy import func
 
-    total_crises = db.query(Disaster).count()
-    active_regions = db.query(func.count(func.distinct(Disaster.location))).scalar() or 0
+    total_crises = db.query(Disaster).filter(Disaster.archived == False).count()
+    active_regions = (
+        db.query(func.count(func.distinct(Disaster.location)))
+        .filter(Disaster.archived == False)
+        .scalar() or 0
+    )
 
-    # urgent alerts: posts with sentiment == "urgent"
-    urgent_alerts = db.query(Post).filter(Post.sentiment == "urgent").count()
+    # urgent alerts: posts with sentiment == "urgent" from non-archived disasters
+    urgent_alerts = (
+        db.query(Post)
+        .join(Disaster)
+        .filter(Post.sentiment == "urgent")
+        .filter(Disaster.archived == False)
+        .count()
+    )
 
     # Prefer AI-extracted affected_population where available
     affected_people = db.query(func.sum(Disaster.affected_population))
@@ -102,6 +112,7 @@ def get_recent_events(limit: int = 10, db: Session = Depends(get_db)):
     disasters = (
         db.query(Disaster)
         .options(joinedload(Disaster.post))
+        .filter(Disaster.archived == False)
         .order_by(Disaster.extracted_at.desc())
         .limit(limit)
         .all()
