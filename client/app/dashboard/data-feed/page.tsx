@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,14 +14,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -31,6 +22,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { getDataFeedStatus, getDataFeedOverview, getWeeklyCrises } from "@/lib/api-client"
+import { ExternalLink } from "lucide-react"
 
 interface Feed {
   id: number
@@ -189,174 +181,181 @@ export default function DataFeedPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
+      {/* Overview Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="pt-6">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xl font-semibold">Feed Status</CardTitle>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Total Posts Analyzed</p>
+                <p className="text-2xl font-bold">
+                  {overview?.total_tweets_processed?.toLocaleString() || 0}
+                </p>
+              </div>
+              <div className="text-4xl opacity-30">📊</div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="font-semibold">Feed Name</TableHead>
-                  <TableHead className="font-semibold">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {feedStatus?.feeds?.map((feed) => (
-                  <TableRow key={feed.id}>
-                    <TableCell>
-                      <span className="font-medium">{feed.name}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={feed.status === "active" ? "default" : "secondary"}
-                      >
-                        {feed.status === "active" ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold">Crisis Detection Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Tweets Processed</p>
-                  <p className="text-2xl font-bold">
-                    {overview?.total_tweets_processed?.toLocaleString() || 0}
-                  </p>
-                </div>
-                <div className="text-4xl opacity-20">📊</div>
+        <Card className="border-l-4 border-l-destructive">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Crises Detected</p>
+                <p className="text-2xl font-bold text-destructive">
+                  {overview?.total_crises_detected || 0}
+                </p>
               </div>
+              <div className="text-4xl opacity-30">🚨</div>
+            </div>
+          </CardContent>
+        </Card>
 
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Crises Detected</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {overview?.total_crises_detected || 0}
-                  </p>
-                </div>
-                <div className="text-4xl opacity-20">🚨</div>
+        <Card className="border-l-4 border-l-green-500">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Feed Status</p>
+                <Badge className="bg-green-500 text-white">Active</Badge>
               </div>
-
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground mb-2">Most Recent Crisis</p>
-                {overview?.most_recent_crisis ? (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{overview.most_recent_crisis.name}</p>
-                      <p className="text-sm text-muted-foreground">{formatDate(overview.most_recent_crisis.date)}</p>
-                    </div>
-                    {overview.most_recent_crisis.bluesky_url && (
-                      <Link 
-                        href={overview.most_recent_crisis.bluesky_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="flex items-center gap-2"
-                        >
-                          View Post
-                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </Button>
-                      </Link>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No recent crises detected</p>
-                )}
-              </div>
+              <div className="text-4xl opacity-30">✅</div>
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Feed Details Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Feed Status Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Feed Status</CardTitle>
+            <p className="text-sm text-muted-foreground">Monitor data collection feeds</p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {feedStatus?.feeds?.map((feed) => (
+                <div key={feed.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                  <span className="font-medium text-sm">{feed.name}</span>
+                  <Badge
+                    variant={feed.status === "active" ? "default" : "secondary"}
+                    className="text-xs"
+                  >
+                    {feed.status === "active" ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Most Recent Crisis */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Latest Crisis</CardTitle>
+            <p className="text-sm text-muted-foreground">Most recently detected event</p>
+          </CardHeader>
+          <CardContent>
+            {overview?.most_recent_crisis ? (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold text-foreground">{overview.most_recent_crisis.name}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{formatDate(overview.most_recent_crisis.date)}</p>
+                  <Badge className="mt-3 bg-destructive text-white">{overview.most_recent_crisis.severity}</Badge>
+                </div>
+                {overview.most_recent_crisis.bluesky_url && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => overview.most_recent_crisis?.bluesky_url && window.open(overview.most_recent_crisis.bluesky_url, '_blank')}
+                  >
+                    View on Bluesky
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.593-.218 1.267-.218 2.018 0 .751.08 1.425.218 2.018-.14-.017-.279-.036-.415-.056-2.67-.296-5.568.628-6.383 3.364C.378 21.729 0 26.689 0 27.377c0 .688.139 1.86.902 2.203.659.299 1.664.621 4.3-1.24C7.954 26.397 10.913 22.458 12 20.344c1.087 2.114 4.046 6.053 6.798 7.995 2.636 1.861 3.641 1.539 4.3 1.24.763-.343.902-1.515.902-2.203 0-.688-.378-5.648-.624-6.477-.815-2.736-3.713-3.66-6.383-3.364-.136.02-.275.039-.415.056.138-.593.218-1.267.218-2.018 0-.751-.08-1.425-.218-2.018.14.017.279.036.415.056 2.67.296 5.568-.628 6.383-3.364.246-.829.624-5.789.624-6.479 0-.688-.139-1.86-.902-2.203-.659-.299-1.664-.621-4.3 1.24C16.046 4.747 13.087 8.686 12 10.8z"/>
+                    </svg>
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-6">No recent crises detected</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Weekly Crisis Details */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-semibold">Weekly Crisis Details</CardTitle>
+          <CardTitle className="text-lg font-semibold">Weekly Crisis Details</CardTitle>
           <p className="text-sm text-muted-foreground">Recent crisis events detected this week</p>
         </CardHeader>
         <CardContent>
           {weeklyCrises.length > 0 ? (
             <div className="space-y-3">
               {weeklyCrises.map((crisis) => (
-                <div key={crisis.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <h3 className="font-semibold text-foreground">{crisis.crisis_name}</h3>
-                    <Badge 
-                      variant={
-                        crisis.severity === "Critical" || crisis.severity === "High" 
-                          ? "destructive" 
-                          : "secondary"
-                      }
-                    >
-                      {crisis.severity}
-                    </Badge>
-                    <Badge 
-                      variant={
-                        crisis.status === "Active" || crisis.status === "Ongoing"
-                          ? "default"
-                          : "outline"
-                      }
-                    >
-                      {crisis.status}
-                    </Badge>
-                    {crisis.bluesky_url && (
-                      <Link 
-                        href={crisis.bluesky_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-auto"
+                <div key={crisis.id} className="p-4 border rounded-lg hover:bg-accent/50 transition-colors space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-foreground">{crisis.crisis_name}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">{crisis.description}</p>
+                    </div>
+                    <div className="flex gap-2 flex-wrap justify-end">
+                      <Badge 
+                        variant={
+                          crisis.severity === "Critical" || crisis.severity === "High" 
+                            ? "destructive" 
+                            : "secondary"
+                        }
+                        className="text-xs"
                       >
+                        {crisis.severity}
+                      </Badge>
+                      <Badge 
+                        variant={
+                          crisis.status === "Active" || crisis.status === "Ongoing"
+                            ? "default"
+                            : "outline"
+                        }
+                        className="text-xs"
+                      >
+                        {crisis.status}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t">
+                    <div className="text-sm">
+                      <span className="text-muted-foreground text-xs">📍 Location</span>
+                      <p className="font-medium">{crisis.region}</p>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-muted-foreground text-xs">📅 Date</span>
+                      <p className="font-medium">{formatDateTime(crisis.date)}</p>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-muted-foreground text-xs">📊 Posts</span>
+                      <p className="font-medium">{crisis.tweets_analyzed}</p>
+                    </div>
+                    {crisis.bluesky_url && (
+                      <div className="flex items-end">
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          className="flex items-center gap-1"
+                          onClick={() => crisis.bluesky_url && window.open(crisis.bluesky_url, '_blank')}
                         >
                           View Post
-                          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.593-.218 1.267-.218 2.018 0 .751.08 1.425.218 2.018-.14-.017-.279-.036-.415-.056-2.67-.296-5.568.628-6.383 3.364C.378 21.729 0 26.689 0 27.377c0 .688.139 1.86.902 2.203.659.299 1.664.621 4.3-1.24C7.954 26.397 10.913 22.458 12 20.344c1.087 2.114 4.046 6.053 6.798 7.995 2.636 1.861 3.641 1.539 4.3 1.24.763-.343.902-1.515.902-2.203 0-.688-.378-5.648-.624-6.477-.815-2.736-3.713-3.66-6.383-3.364-.136.02-.275.039-.415.056.138-.593.218-1.267.218-2.018 0-.751-.08-1.425-.218-2.018.14.017.279.036.415.056 2.67.296 5.568-.628 6.383-3.364.246-.829.624-5.789.624-6.479 0-.688-.139-1.86-.902-2.203-.659-.299-1.664-.621-4.3 1.24C16.046 4.747 13.087 8.686 12 10.8z"/>
                           </svg>
                         </Button>
-                      </Link>
+                      </div>
                     )}
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-3">{crisis.description}</p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">📍 Location:</span>
-                      <span className="font-medium">{crisis.region}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">📅 Date:</span>
-                      <span className="font-medium">{formatDateTime(crisis.date)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">📊 Tweets:</span>
-                      <span className="font-medium">{crisis.tweets_analyzed} analyzed</span>
-                    </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-center text-muted-foreground py-8">No crises detected in the past week</p>
+            <p className="text-center text-muted-foreground py-12">No crises detected in the past week</p>
           )}
           
           {pagination && pagination.total_pages > 1 && (

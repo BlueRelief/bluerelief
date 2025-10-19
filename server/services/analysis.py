@@ -5,32 +5,61 @@ from dotenv import load_dotenv
 import time
 from typing import List, Dict, Any, Optional
 import json
+import re
 
 load_dotenv()
 
+
+def normalize_event_time(time_str: str) -> Optional[datetime]:
+    """Normalize event time from AI analysis to datetime object
+
+    AI now returns ONLY ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ), so this is much simpler.
+    Just handles parsing and timezone conversion.
+
+    Args:
+        time_str: ISO 8601 timestamp string from AI
+
+    Returns:
+        datetime object or None if unable to parse
+    """
+    if not time_str or not isinstance(time_str, str):
+        return None
+
+    time_str = time_str.strip()
+
+    try:
+        # Handle both uppercase and lowercase ISO 8601
+        normalized = time_str.upper()
+        # Convert Z to +00:00 for Python's fromisoformat
+        parsed = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
+        return parsed
+    except (ValueError, AttributeError) as e:
+        print(f"⚠️ Failed to parse event_time: {time_str} - {e}")
+        return None
+
+
 def clean_json_response(text: str) -> str:
     """Clean JSON response from AI model by removing markdown and code blocks
-    
+
     Args:
         text: Raw response from AI model
-        
+
     Returns:
         Cleaned JSON string
     """
-    import re
-    
+
     # Remove markdown code block markers
     text = re.sub(r'```\s*json\s*', '', text)
     text = re.sub(r'```', '', text)
-    
+
     # Remove leading/trailing whitespace
     text = text.strip()
-    
+
     # Try to find the actual JSON content
     json_match = re.search(r'(\[[\s\S]*\]|\{[\s\S]*\})', text)
     if json_match:
         text = json_match.group(1)
-    
+
     # Validate JSON structure
     try:
         import json
@@ -40,7 +69,7 @@ def clean_json_response(text: str) -> str:
         print(f"⚠️ JSON validation failed: {str(e)}")
         print(f"Content was: {text[:200]}...")
         return text  # Return cleaned but invalid JSON for retry logic
-    
+
     return text
 
 def process_batch_with_retry(model, prompt: str, batch_num: int, max_retries: int = 3, delay: int = 2) -> Optional[Any]:
@@ -88,14 +117,14 @@ def process_batch_with_retry(model, prompt: str, batch_num: int, max_retries: in
 
 def analyze_posts(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1) -> str:
     """Process posts with Gemini AI for disaster extraction in batches
-    
+
     Args:
-        posts: List of posts to analyze
+        posts: List of posts to analyze (should include db_post_id if available)
         batch_size: Number of posts to process in each batch (default: 50)
         batch_delay: Delay between batches in seconds (default: 1)
-    
+
     Returns:
-        JSON string containing array of extracted disasters
+        JSON string containing array of extracted disasters with source post_ids
     """
     if not posts:
         print("No posts to process")
@@ -110,6 +139,7 @@ def analyze_posts(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1)
 
     all_disasters = []
     total_batches = (len(posts) + batch_size - 1) // batch_size
+    now = datetime.utcnow()
 
     print(f"\n🔄 Processing {len(posts)} posts in {total_batches} batches of {batch_size}...")
 
@@ -125,21 +155,36 @@ def analyze_posts(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1)
 
         print(f"\n📦 Processing batch {batch_num + 1}/{total_batches} ({len(batch_posts)} posts)")
 
+        # Build prompt with post IDs included
+        posts_text = "\n".join(
+            [
+                f"{idx}. [POST_ID: {post.get('db_post_id', 'unknown')}] {post['record']['text']}"
+                for idx, post in enumerate(batch_posts, start_idx + 1)
+            ]
+        )
+
         prompt = (
+            f"CURRENT TIME (UTC): {now.isoformat()}Z\n\n"
             "Analyze these social media posts about disasters and extract structured information. "
             "For each disaster mentioned, return a JSON array with objects containing:\n"
+            "- post_id: the database post ID from the [POST_ID: X] marker (MUST be an integer or null)\n"
             "- location_name: the place name (e.g., 'Tokyo, Japan', 'Manila, Philippines')\n"
             "- latitude: decimal latitude coordinate (e.g., 35.6762)\n"
             "- longitude: decimal longitude coordinate (e.g., 139.6503)\n"
-            "- event_time: when the disaster occurred\n"
+            "- event_time: **ONLY ISO 8601 format YYYY-MM-DDTHH:MM:SSZ** when the disaster occurred. "
+            "If the exact time is unknown, use the post's timestamp or estimate based on context. "
+            "NEVER use vague terms like 'next week', 'upcoming', 'ongoing', 'recently', etc. "
+            "ALWAYS return a valid ISO 8601 timestamp. If completely unknown, use current time.\n"
             "- severity: rate 1-5 (1=minor, 5=catastrophic)\n"
-            "- magnitude: single numerical value if applicable\n"
+            "- magnitude: single numerical value if applicable, null otherwise\n"
             "- description: brief summary\n"
             "- affected_population: estimate number of people affected. "
             "Look for mentions like 'X families evacuated', 'Y people without power'. "
             "Convert to individual counts (1 family ≈ 4 people, 1 home ≈ 3 people). "
             "Provide best-effort estimates: neighborhood=5000, city block=500, building=50, regional=50000. "
             "Return null if completely unknown.\n\n"
+            f"Posts:\n{posts_text}\n\n"
+            "Return ONLY valid JSON. CRITICAL: event_time MUST be ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ), never vague text."
         )
 
         try:

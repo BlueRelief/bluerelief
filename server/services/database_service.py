@@ -4,6 +4,54 @@ from db_utils.db import CollectionRun, Post, Disaster, SessionLocal
 import json
 import re
 
+
+def extract_post_timestamp(post_data: dict) -> datetime:
+    """Extract and normalize post timestamp using Bluesky's sortAt logic
+
+    Bluesky recommends using sortAt = earlier of (createdAt, indexedAt) to handle
+    clock skews in distributed systems. Both timestamps are ISO 8601 format strings.
+
+    Args:
+        post_data: Post object from Bluesky API
+
+    Returns:
+        Parsed datetime object
+    """
+    # Try to get both timestamps - they're ISO 8601 strings like "2023-08-07T05:31:12.156888Z"
+    indexed_at = post_data.get("indexedAt")  # Top-level timestamp
+    created_at_str = post_data.get("record", {}).get(
+        "createdAt"
+    )  # Nested in record object
+
+    timestamps = []
+
+    # Parse indexedAt if available
+    if indexed_at:
+        try:
+            ts = indexed_at.replace("Z", "+00:00")
+            timestamps.append(datetime.fromisoformat(ts))
+        except (ValueError, AttributeError) as e:
+            print(f"Warning: Failed to parse indexedAt '{indexed_at}': {e}")
+
+    # Parse createdAt if available
+    if created_at_str:
+        try:
+            ts = created_at_str.replace("Z", "+00:00")
+            timestamps.append(datetime.fromisoformat(ts))
+        except (ValueError, AttributeError) as e:
+            print(f"Warning: Failed to parse createdAt '{created_at_str}': {e}")
+
+    # Use sortAt logic: pick the earlier timestamp (handles clock skews)
+    if timestamps:
+        sorted_timestamp = min(timestamps)
+        print(f"✓ Extracted timestamp: {sorted_timestamp.isoformat()}")
+        return sorted_timestamp
+
+    # Fallback to current time if no valid timestamp found
+    print(f"⚠️  No valid timestamp found in post, using current time")
+    return datetime.utcnow()
+
+
 def create_collection_run() -> CollectionRun:
     """Create a new collection run"""
     db = SessionLocal()
@@ -58,19 +106,20 @@ def get_existing_post_ids(post_uris: list) -> set:
 
 def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None, disaster_type: str = None) -> tuple[int, list]:
     """Save posts to database with deduplication, disaster type, and optional sentiment data
-    
+
     Args:
         posts_data: List of posts to save
         run_id: ID of the collection run
         sentiment_data: Optional sentiment analysis results
         disaster_type: Type of disaster for these posts
-        
+
     Returns:
-        Tuple of (number of posts saved, list of new posts)
+        Tuple of (number of posts saved, list of new posts WITH database post IDs)
     """
     db = SessionLocal()
     saved_count = 0
     new_posts = []
+    posts_with_db_ids = []  # Track posts with their DB IDs
 
     # Prepare all posts for batch insertion
     posts_to_add = []
@@ -89,14 +138,8 @@ def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None, disas
 
             seen_ids.add(bluesky_id)
 
-            indexed_at = post_data.get(
-                "indexedAt", post_data.get("record", {}).get("createdAt", "")
-            )
-            if indexed_at:
-                indexed_at = indexed_at.replace("Z", "+00:00")
-                created_at = datetime.fromisoformat(indexed_at)
-            else:
-                created_at = datetime.utcnow()
+            # Use proper timestamp extraction with sortAt logic
+            created_at = extract_post_timestamp(post_data)
 
             sentiment = None
             sentiment_score = None
@@ -133,18 +176,32 @@ def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None, disas
                 print("Saving posts to database...")
                 db.bulk_save_objects(posts_to_add)
                 db.commit()
-                # After successful bulk save, populate new_posts list
+                
+                # After successful bulk save, fetch posts from DB to get their IDs
                 for post in posts_to_add:
                     original_data = next(
                         p for p in posts_data if p.get("uri") == post.bluesky_id
                     )
                     new_posts.append(original_data)
+                    
+                    # Query the saved post to get the actual database ID
+                    saved_post = db.query(Post).filter(Post.bluesky_id == post.bluesky_id).first()
+                    if saved_post:
+                        post_with_id = dict(original_data)
+                        post_with_id["db_post_id"] = saved_post.id
+                        posts_with_db_ids.append(post_with_id)
+                    else:
+                        # Fallback: add without ID
+                        post_with_id = dict(original_data)
+                        post_with_id["db_post_id"] = None
+                        posts_with_db_ids.append(post_with_id)
         except Exception as e:
             print(f"Error during bulk save: {str(e)}")
             db.rollback()
             # Try one by one as fallback
             saved_count = 0
             new_posts = []
+            posts_with_db_ids = []
             for post in posts_to_add:
                 try:
                     db.add(post)
@@ -153,11 +210,15 @@ def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None, disas
                     # Find original post data
                     original_data = next(p for p in posts_data if p.get("uri") == post.bluesky_id)
                     new_posts.append(original_data)
+                    # Add post with DB ID for AI analysis
+                    post_with_id = dict(original_data)
+                    post_with_id["db_post_id"] = post.id
+                    posts_with_db_ids.append(post_with_id)
                 except Exception:
                     db.rollback()
                     continue
 
-        return saved_count, new_posts
+        return saved_count, posts_with_db_ids
     except Exception as e:
         db.rollback()
         raise e
@@ -167,6 +228,8 @@ def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None, disas
 
 def save_analysis(analysis_text: str, run_id: int, posts: list = None):
     """Parse and save disaster data from AI analysis, linking to source posts when possible"""
+    from services.analysis import normalize_event_time
+
     db = SessionLocal()
 
     try:
@@ -186,17 +249,6 @@ def save_analysis(analysis_text: str, run_id: int, posts: list = None):
             if isinstance(disasters, dict):
                 disasters = [disasters]
 
-            # Get all posts from this run to link disasters
-            post_map = {}
-            if posts:
-                for post_data in posts:
-                    post_uri = post_data.get("uri")
-                    if post_uri:
-                        post_db = (
-                            db.query(Post).filter(Post.bluesky_id == post_uri).first()
-                        )
-                        if post_db:
-                            post_map[post_uri] = post_db.id
             print("Saving disasters to database...")
             for disaster_data in disasters:
                 magnitude_value = disaster_data.get("magnitude")
@@ -214,28 +266,33 @@ def save_analysis(analysis_text: str, run_id: int, posts: list = None):
                         except (ValueError, TypeError):
                             magnitude_value = None
 
-                # Try to find matching post based on location/magnitude
-                post_id = None
-                if posts:
-                    location = disaster_data.get("location") or ""
-                    location = location.lower() if location else ""
-                    magnitude = disaster_data.get("magnitude")
+                # Get post_id directly from AI response (much more reliable!)
+                post_id = disaster_data.get("post_id")
+                # Handle cases where AI returns "None" as a string or other non-numeric values
+                if post_id and post_id != "None" and post_id != "none":
+                    try:
+                        post_id = int(post_id)
+                    except (ValueError, TypeError):
+                        post_id = None
+                else:
+                    post_id = None
 
-                    for post_data in posts:
-                        post_text = post_data.get("record", {}).get("text", "").lower()
-                        if location and location in post_text:
-                            post_id = post_map.get(post_data.get("uri"))
-                            break
-                        elif magnitude and str(magnitude) in post_text:
-                            post_id = post_map.get(post_data.get("uri"))
-                            break
+                # Normalize event_time to proper datetime format
+                event_time = disaster_data.get("event_time")
+                normalized_event_time = (
+                    normalize_event_time(event_time) if event_time else None
+                )
 
                 disaster = Disaster(
                     location_name=disaster_data.get("location_name"),
                     latitude=disaster_data.get("latitude"),
                     longitude=disaster_data.get("longitude"),
-                    location=f"{disaster_data.get('location_name')} ({disaster_data.get('latitude')}, {disaster_data.get('longitude')})" if disaster_data.get('latitude') else disaster_data.get('location_name'),  # Backwards compatibility
-                    event_time=disaster_data.get("event_time"),
+                    location=(
+                        f"{disaster_data.get('location_name')} ({disaster_data.get('latitude')}, {disaster_data.get('longitude')})"
+                        if disaster_data.get("latitude")
+                        else disaster_data.get("location_name")
+                    ),  # Backwards compatibility
+                    event_time=normalized_event_time,
                     severity=disaster_data.get("severity"),
                     magnitude=magnitude_value,
                     description=disaster_data.get("description"),
@@ -250,7 +307,7 @@ def save_analysis(analysis_text: str, run_id: int, posts: list = None):
                 db.add(disaster)
 
             db.commit()
-            linked = sum(1 for d in disasters if post_id is not None)
+            linked = sum(1 for d in disasters if d.get("post_id") is not None)
             print(
                 f"Saved {len(disasters)} disasters from AI analysis ({linked} linked to posts)"
             )

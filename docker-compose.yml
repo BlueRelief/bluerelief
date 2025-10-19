@@ -47,8 +47,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
+      DATABASE_URL: postgresql://dev:devpassword@postgres:5432/bluerelief
+      REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: ${ENVIRONMENT}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
@@ -85,8 +85,8 @@ services:
     restart: unless-stopped
     command: celery -A celery_app worker --loglevel=info
     environment:
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
+      DATABASE_URL: postgresql://dev:devpassword@postgres:5432/bluerelief
+      REDIS_URL: redis://redis:6379/0
       BlueSky_Username: ${BlueSky_Username}
       BlueSky_Password: ${BlueSky_Password}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
@@ -114,8 +114,8 @@ services:
     restart: unless-stopped
     command: celery -A celery_app beat --loglevel=info
     environment:
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
+      DATABASE_URL: postgresql://dev:devpassword@postgres:5432/bluerelief
+      REDIS_URL: redis://redis:6379/0
       BlueSky_Username: ${BlueSky_Username}
       BlueSky_Password: ${BlueSky_Password}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}

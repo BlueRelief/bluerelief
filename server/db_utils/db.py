@@ -106,7 +106,7 @@ class Disaster(Base):
     location_name = Column(String(500), index=True)  # NEW
     latitude = Column(Float, index=True)  # NEW
     longitude = Column(Float, index=True)  # NEW
-    event_time = Column(String(255))
+    event_time = Column(DateTime, nullable=True, index=True)
     severity = Column(Integer)
     magnitude = Column(Float)
     description = Column(Text)
@@ -116,7 +116,7 @@ class Disaster(Base):
     post_id = Column(Integer, ForeignKey("posts.id"), nullable=True)
     # column disaster_type may be added in the future for better affected_people calculation
     # disaster_type = Column(String(50), nullable=True)
-    
+
     collection_run = relationship("CollectionRun", back_populates="disasters")
     post = relationship("Post", back_populates="disasters")
 
