@@ -1,6 +1,0 @@
--- Migration: fix_event_time_isoformat_error_in_alert_generation
--- Created: 2025-10-19 11:49:25
--- Context: Fixed bug in alert_generator.py where disaster.event_time is stored as VARCHAR (string)
---   but code tried to call .isoformat() on it, causing AttributeError
--- Fix: Updated alert_generator.py to check if event_time is already a string before calling isoformat()
--- This is a code fix, not a schema change, so no SQL is needed
