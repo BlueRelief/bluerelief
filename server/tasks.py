@@ -9,6 +9,7 @@ from services.database_service import (
     save_analysis,
     get_existing_post_ids
 )
+from services.archive_service import ArchiveService
 from services.alert_generator import generate_alerts as generate_alerts_service
 from services.alert_queue_manager import (
     manage_alert_queue as manage_alert_queue_service,
@@ -158,3 +159,61 @@ def manage_alert_queue():
 def cleanup_old_alerts():
     """Celery task wrapper for alert cleanup"""
     return cleanup_old_alerts_service()
+
+
+@celery_app.task(name="tasks.archive_completed_disasters")
+def archive_completed_disasters(days_threshold: int = 2):
+    """
+    Archive disasters that have been completed for more than the specified number of days.
+    
+    Args:
+        days_threshold: Number of days after completion before a disaster is archived.
+                       Default is 2 days to keep the dashboard focused on current events
+                       while allowing time for final updates and verifications.
+    """
+    try:
+        archive_service = ArchiveService()
+        completed_disasters = archive_service.get_completed_disasters(days_threshold)
+        
+        results = {
+            "total_disasters": len(completed_disasters),
+            "archived": 0,
+            "failed": 0,
+            "details": []
+        }
+        
+        for disaster in completed_disasters:
+            try:
+                success = archive_service.archive_disaster(disaster['id'])
+                if success:
+                    results["archived"] += 1
+                    results["details"].append({
+                        "disaster_id": disaster['id'],
+                        "status": "archived"
+                    })
+                else:
+                    results["failed"] += 1
+                    results["details"].append({
+                        "disaster_id": disaster['id'],
+                        "status": "failed"
+                    })
+            except Exception as e:
+                results["failed"] += 1
+                results["details"].append({
+                    "disaster_id": disaster['id'],
+                    "status": "failed",
+                    "error": str(e)
+                })
+                print(f"Failed to archive disaster {disaster['id']}: {str(e)}")
+                continue
+        
+        print(f"Archive job completed: {results['archived']} archived, {results['failed']} failed")
+        return results
+        
+    except Exception as e:
+        error_msg = f"Error in disaster archival process: {str(e)}"
+        print(error_msg)
+        raise
+    finally:
+        if 'archive_service' in locals():
+            del archive_service  # This will trigger the __del__ method to close the DB connection
