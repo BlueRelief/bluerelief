@@ -22,7 +22,6 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { getDataFeedStatus, getDataFeedOverview, getWeeklyCrises } from "@/lib/api-client"
-import { ExternalLink } from "lucide-react"
 
 interface Feed {
   id: number

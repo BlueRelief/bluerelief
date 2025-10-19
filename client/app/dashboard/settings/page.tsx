@@ -1,15 +1,25 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useTheme } from "next-themes"
 import { useAuth } from "@/hooks/use-auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Search, Check } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Search, Check, AlertCircle, Loader2, Sun, Moon, Monitor } from "lucide-react"
+import { apiClient } from "@/lib/api-client"
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
@@ -20,6 +30,66 @@ export default function SettingsPage() {
   const [allowTracking, setAllowTracking] = useState(true)
   const [shareUsageData, setShareUsageData] = useState(true)
   const [personalizedAds, setPersonalizedAds] = useState(true)
+
+  // Alert preferences
+  const [minSeverity, setMinSeverity] = useState(3)
+  const [alertTypes, setAlertTypes] = useState(['new_crisis', 'severity_change', 'update'])
+  const [regions, setRegions] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+
+  const loadPreferences = useCallback(async () => {
+    try {
+      const response = await apiClient(`/api/alerts/preferences?user_id=${user?.user_id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setMinSeverity(data.min_severity || 3)
+        setAlertTypes(data.alert_types || ['new_crisis', 'severity_change', 'update'])
+        setRegions(data.regions?.join(', ') || '')
+      }
+    } catch (err) {
+      console.error('Failed to load preferences:', err)
+    }
+  }, [user?.user_id])
+
+  // Load alert preferences on mount
+  useEffect(() => {
+    if (user?.user_id) {
+      loadPreferences()
+    }
+  }, [user?.user_id, loadPreferences])
+
+  const savePreferences = async () => {
+    if (!user?.user_id) return
+
+    setSaving(true)
+    try {
+      const response = await apiClient(`/api/alerts/preferences?user_id=${user.user_id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          min_severity: minSeverity,
+          alert_types: alertTypes,
+          regions: regions ? regions.split(',').map(r => r.trim()).filter(r => r) : null,
+          email_enabled: emailNotifications,
+        }),
+      })
+
+      if (response.ok) {
+        setSaveSuccess(true)
+        setTimeout(() => setSaveSuccess(false), 3000)
+      }
+    } catch (err) {
+      console.error('Failed to save preferences:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const toggleAlertType = (type: string) => {
+    setAlertTypes(prev =>
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    )
+  }
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -81,6 +151,88 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Alert Preferences Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" />
+              Alert Preferences
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-base font-semibold mb-3 block">Minimum Severity</Label>
+              <Select value={String(minSeverity)} onValueChange={(value) => setMinSeverity(Number(value))}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Low (1)</SelectItem>
+                  <SelectItem value="2">Medium (2)</SelectItem>
+                  <SelectItem value="3">High (3)</SelectItem>
+                  <SelectItem value="4">Very High (4)</SelectItem>
+                  <SelectItem value="5">Critical (5)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-2">Only get alerts for crises at this severity level or higher</p>
+            </div>
+
+            <div>
+              <Label className="text-base font-semibold mb-3 block">Alert Types</Label>
+              <div className="space-y-2">
+                {['new_crisis', 'severity_change', 'update'].map(type => (
+                  <div key={type} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={type}
+                      checked={alertTypes.includes(type)}
+                      onCheckedChange={() => toggleAlertType(type)}
+                    />
+                    <Label htmlFor={type} className="font-normal cursor-pointer text-sm">
+                      {type === 'new_crisis' ? 'New Crisis' : type === 'severity_change' ? 'Severity Change' : 'Updates'}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="regions" className="text-base font-semibold mb-2 block">
+                Regions (Optional)
+              </Label>
+              <Input
+                id="regions"
+                placeholder="e.g., Texas, California, New York"
+                value={regions}
+                onChange={(e) => setRegions(e.target.value)}
+                className="text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-2">Comma-separated list. Leave empty to get alerts based on location radius.</p>
+            </div>
+
+            <div className="pt-2">
+              <Button
+                onClick={savePreferences}
+                disabled={saving}
+                className="w-full"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : saveSuccess ? (
+                  <>
+                    <Check className="w-4 h-4 mr-2" />
+                    Saved!
+                  </>
+                ) : (
+                  'Save Preferences'
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Account Card */}
         <Card>
           <CardHeader>
@@ -127,41 +279,32 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setAllowTracking(!allowTracking)}
-                className={`h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                  allowTracking ? "bg-primary text-primary-foreground" : ""
-                }`}
-              >
-                {allowTracking && <Check className="h-4 w-4" />}
-              </button>
-              <Label htmlFor="allow-tracking" className="text-base font-normal cursor-pointer" onClick={() => setAllowTracking(!allowTracking)}>
+              <Checkbox
+                id="allow-tracking"
+                checked={allowTracking}
+                onCheckedChange={(checked) => setAllowTracking(checked as boolean)}
+              />
+              <Label htmlFor="allow-tracking" className="text-base font-normal cursor-pointer">
                 Allow Tracking
               </Label>
             </div>
             <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setShareUsageData(!shareUsageData)}
-                className={`h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                  shareUsageData ? "bg-primary text-primary-foreground" : ""
-                }`}
-              >
-                {shareUsageData && <Check className="h-4 w-4" />}
-              </button>
-              <Label htmlFor="share-usage-data" className="text-base font-normal cursor-pointer" onClick={() => setShareUsageData(!shareUsageData)}>
+              <Checkbox
+                id="share-usage-data"
+                checked={shareUsageData}
+                onCheckedChange={(checked) => setShareUsageData(checked as boolean)}
+              />
+              <Label htmlFor="share-usage-data" className="text-base font-normal cursor-pointer">
                 Share Usage Data
               </Label>
             </div>
             <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setPersonalizedAds(!personalizedAds)}
-                className={`h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                  personalizedAds ? "bg-primary text-primary-foreground" : ""
-                }`}
-              >
-                {personalizedAds && <Check className="h-4 w-4" />}
-              </button>
-              <Label htmlFor="personalized-ads" className="text-base font-normal cursor-pointer" onClick={() => setPersonalizedAds(!personalizedAds)}>
+              <Checkbox
+                id="personalized-ads"
+                checked={personalizedAds}
+                onCheckedChange={(checked) => setPersonalizedAds(checked as boolean)}
+              />
+              <Label htmlFor="personalized-ads" className="text-base font-normal cursor-pointer">
                 Personalized Ads
               </Label>
             </div>
@@ -175,35 +318,47 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setTheme("light")}
-                className="h-4 w-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex items-center justify-center"
-              >
-                {theme === "light" && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
-              </button>
-              <Label htmlFor="light" className="text-base font-normal cursor-pointer" onClick={() => setTheme("light")}>
+              <input
+                type="radio"
+                name="theme"
+                value="light"
+                id="light"
+                checked={theme === "light"}
+                onChange={() => setTheme("light")}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="light" className="text-base font-normal cursor-pointer flex items-center gap-2">
+                <Sun className="w-4 h-4" />
                 Light
               </Label>
             </div>
             <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setTheme("dark")}
-                className="h-4 w-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex items-center justify-center"
-              >
-                {theme === "dark" && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
-              </button>
-              <Label htmlFor="dark" className="text-base font-normal cursor-pointer" onClick={() => setTheme("dark")}>
+              <input
+                type="radio"
+                name="theme"
+                value="dark"
+                id="dark"
+                checked={theme === "dark"}
+                onChange={() => setTheme("dark")}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="dark" className="text-base font-normal cursor-pointer flex items-center gap-2">
+                <Moon className="w-4 h-4" />
                 Dark
               </Label>
             </div>
             <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setTheme("system")}
-                className="h-4 w-4 rounded-full border border-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex items-center justify-center"
-              >
-                {theme === "system" && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
-              </button>
-              <Label htmlFor="system" className="text-base font-normal cursor-pointer" onClick={() => setTheme("system")}>
+              <input
+                type="radio"
+                name="theme"
+                value="system"
+                id="system"
+                checked={theme === "system"}
+                onChange={() => setTheme("system")}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="system" className="text-base font-normal cursor-pointer flex items-center gap-2">
+                <Monitor className="w-4 h-4" />
                 System
               </Label>
             </div>

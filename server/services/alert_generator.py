@@ -159,7 +159,7 @@ def create_alert_and_queue(
     try:
         title, message = get_alert_title_and_message(disaster, alert_type)
         priority = get_severity_priority(disaster.severity)
-        
+
         alert = Alert(
             disaster_id=disaster.id,
             alert_type=alert_type,
@@ -170,26 +170,32 @@ def create_alert_and_queue(
                 "location": disaster.location_name,
                 "latitude": disaster.latitude,
                 "longitude": disaster.longitude,
-                "event_time": disaster.event_time.isoformat() if disaster.event_time else None,
+                "event_time": (
+                    disaster.event_time
+                    if isinstance(disaster.event_time, str)
+                    else (
+                        disaster.event_time.isoformat() if disaster.event_time else None
+                    )
+                ),
                 "affected_population": disaster.affected_population,
-            }
+            },
         )
         db.add(alert)
         db.flush()
-        
+
         # Get all users with their preferences
         users = db.query(User).all()
         queued_count = 0
-        
+
         for user in users:
             prefs = db.query(UserAlertPreferences).filter(
                 UserAlertPreferences.user_id == user.id
             ).first()
-            
+
             # Check if user should receive this alert
             if not should_alert_user_for_disaster(prefs, user, disaster):
                 continue
-            
+
             queue_entry = AlertQueue(
                 alert_id=alert.id,
                 user_id=user.id,
@@ -200,11 +206,11 @@ def create_alert_and_queue(
             )
             db.add(queue_entry)
             queued_count += 1
-        
+
         db.commit()
         logger.info(f"Created alert for disaster {disaster.id} ({alert_type}): queued for {queued_count} users")
         return alert
-        
+
     except Exception as e:
         db.rollback()
         logger.error(f"Error creating alert for disaster {disaster.id}: {str(e)}")

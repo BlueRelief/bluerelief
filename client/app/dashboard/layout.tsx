@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/logo";
+import { NotificationCenter } from "@/components/notification-center";
 import {
   Sidebar,
   SidebarContent,
@@ -42,7 +43,6 @@ import {
   ChevronUp,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { logout } from "@/lib/auth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -194,13 +194,33 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isAuthenticated, loading } = useAuth();
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push("/login");
     }
   }, [isAuthenticated, loading, router]);
+
+  useEffect(() => {
+    if (user && !user.location) {
+      setShowOnboarding(true);
+    } else {
+      setShowOnboarding(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (showOnboarding) {
+      // Use router.replace to avoid showing the dashboard again
+      const timer = setTimeout(() => {
+        router.replace("/onboarding");
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [showOnboarding, router]);
 
   if (loading) {
     return (
@@ -214,13 +234,23 @@ export default function DashboardLayout({
     return null;
   }
 
+  // Show loading screen while checking onboarding status
+  if (showOnboarding && pathname !== '/dashboard/onboarding') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar user={user} />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-4">
+            {user?.user_id && <NotificationCenter userId={user.user_id} />}
             <span className="text-sm text-muted-foreground">
               Crisis Detection Platform
             </span>
