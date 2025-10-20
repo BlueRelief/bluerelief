@@ -357,7 +357,7 @@ def save_analysis(analysis_text: str, run_id: int, posts: list = None):
                     collection_run_id=run_id,
                     post_id=post_id,
                 )
-                
+
                 db.add(disaster)
 
             db.commit()
@@ -386,7 +386,7 @@ def get_recent_disasters(limit: int = 50):
         return [
             {
                 "id": d.id,
-                "location": d.location,
+                "location": d.location_name,
                 "event_time": d.event_time,
                 "severity": d.severity,
                 "magnitude": d.magnitude,

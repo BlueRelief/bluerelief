@@ -32,6 +32,15 @@ export function loginWithGoogle() {
   window.location.href = `${API_URL}/auth/google/login`;
 }
 
+export function loginWithDemo() {
+  window.location.href = `${API_URL}/auth/demo/login`;
+}
+
+export function isDemoAuthAvailable(): boolean {
+  const isPreview = process.env.NEXT_PUBLIC_IS_PREVIEW === "true";
+  return isPreview || process.env.NODE_ENV === "development";
+}
+
 export async function logout() {
   try {
     const response = await apiClient("/auth/logout");

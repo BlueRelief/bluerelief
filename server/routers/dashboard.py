@@ -41,7 +41,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     from services.population_estimator import PopulationEstimator
 
     affected_people = 0
-    for disaster in db.query(Disaster).all():
+    for disaster in db.query(Disaster).filter(Disaster.archived == False).all():
         try:
             affected_people += disaster.affected_population or 0
         except Exception:
@@ -151,8 +151,8 @@ def get_recent_events(limit: int = 10, db: Session = Depends(get_db)):
                 title = d.description
             description = d.description
         else:
-            title = f"Event at {d.location}"
-            description = f"Crisis event detected at {d.location}"
+            title = f"Event at {d.location_name}"
+            description = f"Crisis event detected at {d.location_name}"
 
         # Get Bluesky URL if disaster is linked to a post
         bluesky_url = None
@@ -175,7 +175,7 @@ def get_recent_events(limit: int = 10, db: Session = Depends(get_db)):
                 "id": d.id,
                 "title": title,
                 "description": description,
-                "location": d.location,
+                "location": d.location_name,
                 "time": rel,
                 "severity": label,
                 "severityColor": color,

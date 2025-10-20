@@ -256,6 +256,54 @@ class UserAlertPreferences(Base):
     user = relationship("User")
 
 
+class ArchivedDisaster(Base):
+    __tablename__ = "archived_disasters"
+
+    id = Column(Integer, primary_key=True, index=True)
+    original_id = Column(Integer, nullable=False, index=True)
+    disaster_type = Column(String(100), nullable=False)
+    location = Column(JSON, nullable=False)
+    start_time = Column(DateTime, nullable=False, index=True)
+    end_time = Column(DateTime, nullable=True, index=True)
+    severity = Column(Integer, nullable=True)
+    affected_population = Column(Integer, nullable=True)
+    archive_metadata = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    archived_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ArchivedPost(Base):
+    __tablename__ = "archived_posts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    original_id = Column(Integer, nullable=False, index=True)
+    disaster_id = Column(Integer, nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    post_id = Column(String(255), nullable=False)
+    platform = Column(String(50), nullable=False)
+    event_time = Column(DateTime, nullable=False, index=True)
+    location = Column(JSON, nullable=True)
+    sentiment = Column(Float, nullable=True)
+    archive_metadata = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    archived_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ArchivedAlert(Base):
+    __tablename__ = "archived_alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    original_id = Column(Integer, nullable=False, index=True)
+    disaster_id = Column(Integer, nullable=False, index=True)
+    alert_type = Column(String(50), nullable=False)
+    severity = Column(Integer, nullable=False)
+    message = Column(Text, nullable=False)
+    location = Column(JSON, nullable=True)
+    archive_metadata = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    archived_at = Column(DateTime, default=datetime.utcnow)
+
+
 def get_db_session():
     """Get database session"""
     db = SessionLocal()

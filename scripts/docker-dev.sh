@@ -45,7 +45,7 @@ case "$1" in
         else
             echo "❌ Reset cancelled"
         fi
-        docker exec bluerelief-backend python run_migrations.py
+        docker exec bluerelief-backend alembic upgrade head
         echo "✅ Migrations applied!"
         ;;
     "reset-rebuild")
@@ -59,6 +59,41 @@ case "$1" in
         else
             echo "❌ Reset-rebuild cancelled"
         fi
+        ;;
+    "migrate")
+        echo "🔄 Running database migrations..."
+        docker exec bluerelief-backend alembic upgrade head
+        echo "✅ Migrations applied!"
+        ;;
+    "migrate-validate")
+        echo "🔍 Validating schema..."
+        docker exec bluerelief-backend python3 manage_migrations.py validate
+        ;;
+    "migrate-generate")
+        if [ -z "$2" ]; then
+            echo "❌ Error: Migration name required"
+            echo "Usage: $0 migrate-generate \"description\""
+            exit 1
+        fi
+        echo "📝 Generating migration: $2"
+        docker exec bluerelief-backend alembic revision --autogenerate -m "$2"
+        echo "✅ Migration generated!"
+        ;;
+    "migrate-status")
+        echo "📊 Migration status:"
+        docker exec bluerelief-backend alembic current
+        echo ""
+        docker exec bluerelief-backend alembic history
+        ;;
+    "migrate-downgrade")
+        if [ -z "$2" ]; then
+            echo "❌ Error: Revision required"
+            echo "Usage: $0 migrate-downgrade <revision>"
+            exit 1
+        fi
+        echo "⬇️ Downgrading to: $2"
+        docker exec bluerelief-backend alembic downgrade "$2"
+        echo "✅ Downgrade complete!"
         ;;
     "shell")
         if [ "$2" = "backend" ]; then
@@ -78,18 +113,26 @@ case "$1" in
         echo "Usage: $0 {start|stop|restart|rebuild|logs|reset|reset-rebuild|shell}"
         echo ""
         echo "Commands:"
-        echo "  start         - Start all services"
-        echo "  stop          - Stop all services"
-        echo "  restart       - Restart all services"
-        echo "  rebuild       - Rebuild and start all services"
-        echo "  logs          - Show logs (optionally specify service)"
-        echo "  reset         - Reset database (deletes all data)"
-        echo "  reset-rebuild - Reset database and rebuild all services"
-        echo "  shell         - Access service shell [backend|frontend|postgres|redis]"
+        echo "  start              - Start all services"
+        echo "  stop               - Stop all services"
+        echo "  restart            - Restart all services"
+        echo "  rebuild            - Rebuild and start all services"
+        echo "  logs               - Show logs (optionally specify service)"
+        echo "  reset              - Reset database (deletes all data)"
+        echo "  reset-rebuild      - Reset database and rebuild all services"
+        echo "  migrate            - Run pending migrations"
+        echo "  migrate-validate   - Validate schema vs ORM"
+        echo "  migrate-generate   - Generate new migration (e.g. migrate-generate \"add users table\")"
+        echo "  migrate-status     - Show migration history and current revision"
+        echo "  migrate-downgrade  - Downgrade to specific revision"
+        echo "  shell              - Access service shell [backend|frontend|postgres|redis]"
         echo ""
         echo "Examples:"
         echo "  $0 start"
         echo "  $0 logs backend"
         echo "  $0 shell postgres"
+        echo "  $0 migrate-generate \"add users table\""
+        echo "  $0 migrate-validate"
+        echo "  $0 migrate-downgrade abc1234"
         ;;
 esac

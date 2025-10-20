@@ -130,6 +130,18 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ data, regions, mapboxToken,
        regions.forEach(region => {
          if (!map.current) return;
          
+         // skip regions with invalid coordinates
+         if (!region.coordinates || !Array.isArray(region.coordinates) || region.coordinates.length !== 2) {
+           console.warn('Skipping region with invalid coordinates:', region);
+           return;
+         }
+         
+         const [lng, lat] = region.coordinates;
+         if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) {
+           console.warn('Skipping region with invalid coordinate values:', region);
+           return;
+         }
+         
          const severityColors = {
            'Critical': '#dc2626',
            'High': '#ea580c',
@@ -176,7 +188,7 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ data, regions, mapboxToken,
          }).setHTML(popupContent);
          
          const marker = new mapboxgl.Marker({ element: el })
-           .setLngLat(region.coordinates)
+           .setLngLat([lng, lat])
            .setPopup(popup)
            .addTo(map.current);
          
@@ -337,7 +349,15 @@ export default function CrisisMap({ regions, focusRegion }: CrisisMapProps) {
     );
   }
 
-  const heatmapData: HeatmapPoint[] = regions.map(region => {
+  const validRegions = regions.filter(region => {
+    if (!region.coordinates || !Array.isArray(region.coordinates) || region.coordinates.length !== 2) {
+      return false;
+    }
+    const [lng, lat] = region.coordinates;
+    return typeof lng === 'number' && typeof lat === 'number' && !isNaN(lng) && !isNaN(lat);
+  });
+
+  const heatmapData: HeatmapPoint[] = validRegions.map(region => {
     const severity_weights = {
       'Critical': 1.0,
       'High': 0.8,
@@ -357,7 +377,7 @@ export default function CrisisMap({ regions, focusRegion }: CrisisMapProps) {
   return (
     <HeatmapLayer 
       data={heatmapData}
-      regions={regions}
+      regions={validRegions}
       mapboxToken={mapboxToken}
       focusRegion={focusRegion}
     />

@@ -21,7 +21,7 @@ from pathlib import Path
 load_dotenv()
 
 # Initialize database tables
-init_db()
+# init_db()  # Handled by Alembic migrations now
 
 
 def get_version():

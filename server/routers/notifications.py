@@ -1,7 +1,14 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List, Dict, Any
-from services.email_service import send_email_via_microservice, log_email_event
+from services.email_service import (
+    send_email_via_microservice, 
+    log_email_event,
+    send_crisis_alert_email,
+    send_weekly_digest_email,
+    send_mention_notification_email,
+    send_welcome_email
+)
 from db_utils.db import SessionLocal, UserNotificationPreference, EmailLog, Disaster, User
 from sqlalchemy.orm import Session
 from celery_app import celery_app
@@ -20,6 +27,43 @@ class EmailSendRequest(BaseModel):
 
 class BatchEmailRequest(BaseModel):
     recipients: List[EmailSendRequest]
+
+
+class CrisisAlertRequest(BaseModel):
+    to: EmailStr
+    disaster_type: str
+    location: str
+    severity: str
+    description: str
+    affected_area: Optional[str] = None
+    user_id: Optional[str] = None
+    crisis_id: Optional[int] = None
+
+
+class WeeklyDigestRequest(BaseModel):
+    to: EmailStr
+    user_name: str
+    week_start: str
+    week_end: str
+    crisis_count: int
+    crises: List[Dict[str, Any]]
+    user_id: Optional[str] = None
+
+
+class MentionNotificationRequest(BaseModel):
+    to: EmailStr
+    user_name: str
+    mentioned_by: str
+    context: str
+    post_title: Optional[str] = None
+    post_content: Optional[str] = None
+    user_id: Optional[str] = None
+
+
+class WelcomeEmailRequest(BaseModel):
+    to: EmailStr
+    user_name: str
+    user_id: Optional[str] = None
 
 
 def get_db():
@@ -73,6 +117,108 @@ def send_batch_emails_task(recipients: List[Dict[str, Any]]):
                 log_id = None
             results.append({"to": r.get("to"), "status": "failed", "error": str(e), "log_id": log_id})
     return results
+
+
+@router.post("/api/notifications/email/crisis-alert")
+def send_crisis_alert(req: CrisisAlertRequest):
+    """Send a crisis alert email using template."""
+    try:
+        if req.user_id:
+            db = SessionLocal()
+            pref = db.query(UserNotificationPreference).filter(UserNotificationPreference.user_id == req.user_id).first()
+            if pref and not pref.email_opt_in:
+                log_id = log_email_event(req.user_id, req.crisis_id, "skipped_opt_out", None, req.dict())
+                return {"status": "skipped", "log_id": log_id}
+
+        resp = send_crisis_alert_email(
+            req.to, req.disaster_type, req.location, req.severity, 
+            req.description, req.affected_area, req.user_id, req.crisis_id
+        )
+        provider_msg_id = resp.get("messageId")
+        log_id = log_email_event(req.user_id, req.crisis_id, "sent", provider_msg_id, req.dict())
+        return {"status": "sent", "provider": resp, "log_id": log_id}
+    except Exception as e:
+        tb = traceback.format_exc()
+        log_id = None
+        try:
+            log_id = log_email_event(req.user_id, req.crisis_id, "failed", None, {"request": req.dict(), "error": str(e), "trace": tb})
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail={"error": str(e), "log_id": log_id})
+
+
+@router.post("/api/notifications/email/weekly-digest")
+def send_weekly_digest(req: WeeklyDigestRequest):
+    """Send a weekly digest email using template."""
+    try:
+        if req.user_id:
+            db = SessionLocal()
+            pref = db.query(UserNotificationPreference).filter(UserNotificationPreference.user_id == req.user_id).first()
+            if pref and not pref.email_opt_in:
+                log_id = log_email_event(req.user_id, None, "skipped_opt_out", None, req.dict())
+                return {"status": "skipped", "log_id": log_id}
+
+        resp = send_weekly_digest_email(
+            req.to, req.user_name, req.week_start, req.week_end, 
+            req.crisis_count, req.crises, req.user_id
+        )
+        provider_msg_id = resp.get("messageId")
+        log_id = log_email_event(req.user_id, None, "sent", provider_msg_id, req.dict())
+        return {"status": "sent", "provider": resp, "log_id": log_id}
+    except Exception as e:
+        tb = traceback.format_exc()
+        log_id = None
+        try:
+            log_id = log_email_event(req.user_id, None, "failed", None, {"request": req.dict(), "error": str(e), "trace": tb})
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail={"error": str(e), "log_id": log_id})
+
+
+@router.post("/api/notifications/email/mention")
+def send_mention_notification(req: MentionNotificationRequest):
+    """Send a mention notification email using template."""
+    try:
+        if req.user_id:
+            db = SessionLocal()
+            pref = db.query(UserNotificationPreference).filter(UserNotificationPreference.user_id == req.user_id).first()
+            if pref and not pref.email_opt_in:
+                log_id = log_email_event(req.user_id, None, "skipped_opt_out", None, req.dict())
+                return {"status": "skipped", "log_id": log_id}
+
+        resp = send_mention_notification_email(
+            req.to, req.user_name, req.mentioned_by, req.context, 
+            req.post_title, req.post_content, req.user_id
+        )
+        provider_msg_id = resp.get("messageId")
+        log_id = log_email_event(req.user_id, None, "sent", provider_msg_id, req.dict())
+        return {"status": "sent", "provider": resp, "log_id": log_id}
+    except Exception as e:
+        tb = traceback.format_exc()
+        log_id = None
+        try:
+            log_id = log_email_event(req.user_id, None, "failed", None, {"request": req.dict(), "error": str(e), "trace": tb})
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail={"error": str(e), "log_id": log_id})
+
+
+@router.post("/api/notifications/email/welcome")
+def send_welcome(req: WelcomeEmailRequest):
+    """Send a welcome email using template."""
+    try:
+        resp = send_welcome_email(req.to, req.user_name, req.user_id)
+        provider_msg_id = resp.get("messageId")
+        log_id = log_email_event(req.user_id, None, "sent", provider_msg_id, req.dict())
+        return {"status": "sent", "provider": resp, "log_id": log_id}
+    except Exception as e:
+        tb = traceback.format_exc()
+        log_id = None
+        try:
+            log_id = log_email_event(req.user_id, None, "failed", None, {"request": req.dict(), "error": str(e), "trace": tb})
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail={"error": str(e), "log_id": log_id})
 
 
 @router.post("/api/notifications/email/batch")
