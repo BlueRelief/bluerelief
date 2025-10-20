@@ -89,7 +89,7 @@ def get_crisis_trends(days: int = 30, db: Session = Depends(get_db)):
                 elif disaster.severity and disaster.severity >= 3:
                     daily_data[date_str]["medium_priority"] += 1
     
-    return {"trends": [{"month": k, **v} for k, v in daily_data.items()]}
+    return [{"date": k, **v} for k, v in daily_data.items()]
 
 
 @router.get("/regional-analysis")
@@ -151,13 +151,10 @@ def get_patterns(db: Session = Depends(get_db)):
             "count": pattern_count,
             "description": "AI has identified recurring patterns in crisis data across multiple regions",
         },
-        "pattern_types": [
-            {
-                "type": disaster_type or "Unknown",
-                "count": count,
-            }
+        "pattern_types": {
+            disaster_type or "Unknown": count
             for disaster_type, count in disasters_by_type
-        ],
+        },
     }
 
 
