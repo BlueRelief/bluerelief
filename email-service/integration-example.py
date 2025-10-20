@@ -3,6 +3,7 @@ Example integration code for the Python backend to use the email service.
 This file is for reference only and should be integrated into the main backend.
 """
 
+import asyncio
 import requests
 import json
 from typing import Dict, Any, Optional
@@ -53,7 +54,7 @@ class EmailServiceClient:
         except requests.exceptions.RequestException as e:
             return {
                 "success": False,
-                "error": f"Email service request failed: {str(e)}"
+                "error": f"Email service request failed: {e!s}"
             }
     
     def send_alert_email(
@@ -178,7 +179,7 @@ class UpdatedEmailService:
     
     async def send_emergency_alert(self, user_email: str, alert_data: dict):
         """Send emergency alert email using the new service."""
-        return self.email_client.send_alert_email(
+        return await asyncio.to_thread(self.email_client.send_alert_email,
             to=user_email,
             alert_type=alert_data.get("type", "Emergency Alert"),
             severity=alert_data.get("severity", "High"),
@@ -189,7 +190,7 @@ class UpdatedEmailService:
     
     async def send_user_notification(self, user_email: str, notification_data: dict):
         """Send user notification email using the new service."""
-        return self.email_client.send_notification_email(
+        return await asyncio.to_thread(self.email_client.send_notification_email,
             to=user_email,
             title=notification_data.get("title", "Notification"),
             message=notification_data.get("message", "You have a new notification."),

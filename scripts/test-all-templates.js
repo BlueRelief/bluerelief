@@ -1,6 +1,6 @@
 /**
  * Test script for all email templates
- * Run with: node test-all-templates.js
+ * Usage: TEST_EMAIL=your@email.com node test-all-templates.js
  * 
  * Make sure the email service is running via Docker:
  * docker-compose up email-service
@@ -9,11 +9,12 @@
 const http = require('http');
 
 const EMAIL_SERVICE_URL = 'http://localhost:3002';
+const TEST_EMAIL = process.env.TEST_EMAIL || 'test@example.com';
 
 // Test data for all templates
 const testData = {
   crisisAlert: {
-    to: 'smjkazmi14@gmail.com',
+    to: TEST_EMAIL,
     subject: 'Earthquake Alert - San Francisco',
     template: 'crisis-alert',
     data: {
@@ -33,7 +34,7 @@ const testData = {
   },
 
   weeklyDigest: {
-    to: 'smjkazmi14@gmail.com',
+    to: TEST_EMAIL,
     subject: 'Weekly Crisis Digest - 2024-01-01 to 2024-01-07',
     template: 'weekly-digest',
     data: {
@@ -69,7 +70,7 @@ const testData = {
   },
 
   mentionNotification: {
-    to: 'smjkazmi14@gmail.com',
+    to: TEST_EMAIL,
     subject: "You've been mentioned by @jane_doe",
     template: 'mention-notification',
     data: {
@@ -88,12 +89,12 @@ const testData = {
   },
 
   welcome: {
-    to: 'smjkazmi14@gmail.com',
+    to: TEST_EMAIL,
     subject: 'Welcome to BlueRelief!',
     template: 'welcome',
     data: {
       userName: 'John Doe',
-      userEmail: 'smjkazmi14@gmail.com',
+      userEmail: TEST_EMAIL,
       dashboardUrl: 'https://bluerelief.com/dashboard',
       settingsUrl: 'https://bluerelief.com/settings',
       helpUrl: 'https://bluerelief.com/help'
@@ -199,7 +200,7 @@ async function testAllTemplates() {
     }
 
     console.log('🎉 All template tests completed!');
-    console.log('📧 Check your email at smjkazmi14@gmail.com for all test emails.');
+    console.log('📧 Check your email at ' + TEST_EMAIL + ' for all test emails.');
     console.log('\n📋 Templates tested:');
     console.log('   • Crisis Alert (High-priority emergency notifications)');
     console.log('   • Weekly Digest (Weekly crisis summary)');

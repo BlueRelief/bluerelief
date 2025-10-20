@@ -60,7 +60,7 @@ export const WeeklyDigestTemplate = ({
   return (
     <Html>
       <Head />
-      <Preview>Weekly Crisis Digest for {userName} - {crisisCount} incidents reported</Preview>
+      <Preview>Weekly Crisis Digest for {userName} - {String(crisisCount)} incidents reported</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={logoContainer}>

@@ -5,8 +5,17 @@ import { emailService } from './services/email-service';
 // Load environment variables
 dotenv.config();
 
-const app = express();
+// Log startup info
 const PORT = process.env.PORT || 3002;
+const hasApiKey = !!process.env.RESEND_API_KEY;
+const emailFrom = process.env.EMAIL_FROM || 'noreply@bluerelief.com';
+
+if (!hasApiKey) {
+  console.warn('⚠️  Warning: RESEND_API_KEY not found. Email sending will fail.');
+  console.warn('    Make sure your .env file is loaded or RESEND_API_KEY is set.');
+}
+
+const app: express.Express = express();
 
 // Middleware
 app.use(express.json());

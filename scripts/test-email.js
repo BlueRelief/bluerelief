@@ -1,8 +1,11 @@
 const http = require('http');
 
+// Usage: TEST_EMAIL=your@email.com node test-email.js
+const TEST_EMAIL = process.env.TEST_EMAIL || 'test@example.com';
+
 // Test email data
 const testEmail = {
-  to: 'smjkazmi14@gmail.com',
+  to: TEST_EMAIL,
   subject: 'Test Email from BlueRelief',
   template: 'email',
   data: {
@@ -18,7 +21,7 @@ const testEmail = {
 };
 
 const testAlert = {
-  to: 'smjkazmi14@gmail.com',
+  to: TEST_EMAIL,
   subject: 'Emergency Alert Test - BlueRelief',
   template: 'alert',
   data: {
@@ -87,7 +90,7 @@ async function testEmailService() {
     console.log('   ✅ Health check passed\n');
 
     // Test 2: Send basic email
-    console.log('2. Sending test email to smjkazmi14@gmail.com...');
+    console.log(`2. Sending test email to ${TEST_EMAIL}...`);
     const emailResponse = await makeRequest('/send', 'POST', testEmail);
     console.log(`   Status: ${emailResponse.status}`);
     console.log(`   Response:`, emailResponse.data);
@@ -98,7 +101,7 @@ async function testEmailService() {
     }
 
     // Test 3: Send alert email
-    console.log('3. Sending test alert email to smjkazmi14@gmail.com...');
+    console.log(`3. Sending test alert email to ${TEST_EMAIL}...`);
     const alertResponse = await makeRequest('/send', 'POST', testAlert);
     console.log(`   Status: ${alertResponse.status}`);
     console.log(`   Response:`, alertResponse.data);
@@ -109,7 +112,7 @@ async function testEmailService() {
     }
 
     console.log('🎉 Email testing completed!');
-    console.log('📧 Check your email at smjkazmi14@gmail.com for the test emails.');
+    console.log(`📧 Check your email at ${TEST_EMAIL} for the test emails.`);
 
   } catch (error) {
     console.error('❌ Test failed with error:', error.message);

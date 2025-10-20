@@ -48,7 +48,10 @@ class EmailService {
         tags: [
           { name: 'service', value: 'bluerelief' },
           { name: 'template', value: template },
-          ...(metadata ? Object.entries(metadata).map(([key, value]) => ({ name: key, value: String(value) })) : [])
+          ...(metadata ? Object.entries(metadata).map(([key, value]) => ({ 
+            name: key.replace(/[^a-zA-Z0-9_-]/g, '-'),
+            value: String(value).replace(/[^a-zA-Z0-9_-]/g, '-').substring(0, 100)
+          })) : [])
         ]
       });
 
@@ -81,22 +84,22 @@ class EmailService {
       
       switch (templateName.toLowerCase()) {
         case 'crisis-alert':
-          template = CrisisAlertTemplate(data);
+          template = CrisisAlertTemplate(data as any);
           break;
         case 'weekly-digest':
-          template = WeeklyDigestTemplate(data);
+          template = WeeklyDigestTemplate(data as any);
           break;
         case 'mention-notification':
-          template = MentionNotificationTemplate(data);
+          template = MentionNotificationTemplate(data as any);
           break;
         case 'welcome':
-          template = WelcomeTemplate(data);
+          template = WelcomeTemplate(data as any);
           break;
         case 'alert':
-          template = CrisisAlertTemplate(data);
+          template = CrisisAlertTemplate(data as any);
           break;
         case 'notification':
-          template = MentionNotificationTemplate(data);
+          template = MentionNotificationTemplate(data as any);
           break;
         case 'email':
         default:

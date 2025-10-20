@@ -7,7 +7,11 @@ from datetime import datetime
 EMAIL_MICROSERVICE_URL = os.getenv("EMAIL_MICROSERVICE_URL", "http://email-service:3002")
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 # Prefer an explicit EMAIL_FROM so provider accepts the sending domain
-EMAIL_FROM = os.getenv("EMAIL_FROM") or os.getenv("SENDING_DOMAIN") and f"no-reply@{os.getenv('SENDING_DOMAIN')}" or "no-reply@bluerelief.dev"
+EMAIL_FROM = (
+    os.getenv("EMAIL_FROM")
+    or (os.getenv("SENDING_DOMAIN") and f"no-reply@{os.getenv('SENDING_DOMAIN')}")
+    or "no-reply@bluerelief.dev"
+)
 
 
 def send_email_via_microservice(

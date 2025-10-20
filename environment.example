@@ -44,5 +44,8 @@ RESEND_API_KEY=your-resend-api-key-here
 SENDING_DOMAIN=your-domain.com
 EMAIL_FROM=no-reply@your-domain.com
 
-# Email Microservice
+# Email Microservice Configuration
 EMAIL_MICROSERVICE_URL=http://email-service:3002
+EMAIL_SERVICE_PORT=3002
+SERVICE_NAME=BlueRelief Email Service
+SERVICE_VERSION=1.0.0
