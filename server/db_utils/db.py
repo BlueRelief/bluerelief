@@ -118,6 +118,7 @@ class Disaster(Base):
     collection_run_id = Column(Integer, ForeignKey("collection_runs.id"), nullable=False)
     post_id = Column(Integer, ForeignKey("posts.id"), nullable=True)
     disaster_type = Column(String(50), nullable=True)
+    archived = Column(Boolean, default=False, nullable=False, index=True)
 
     collection_run = relationship("CollectionRun", back_populates="disasters")
     post = relationship("Post", back_populates="disasters")
