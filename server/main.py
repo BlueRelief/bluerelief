@@ -12,6 +12,7 @@ from routers import admin_auth
 from routers import admin_users
 from routers import admin_settings
 from routers import analysis
+from routers import archive
 from db_utils.db import init_db
 import os
 from dotenv import load_dotenv
@@ -19,8 +20,8 @@ from pathlib import Path
 
 load_dotenv()
 
-# Initialize database tables
-# init_db()  # Handled by Alembic migrations now
+# Database migrations handled by Alembic
+# Run: ./scripts/docker-dev.sh migrate
 
 
 def get_version():
@@ -89,6 +90,7 @@ app.include_router(admin_auth.router)
 app.include_router(admin_users.router)
 app.include_router(admin_settings.router)
 app.include_router(analysis.router)
+app.include_router(archive.router)
 
 @app.get("/")
 async def root():

@@ -70,7 +70,7 @@ def get_crisis_trends(days: int = 30, db: Session = Depends(get_db)):
     )
     
     daily_data = {}
-    for i in range(days):
+    for i in range(days + 1):
         date = (start_date + timedelta(days=i)).date()
         date_str = date.strftime("%b %d")
         daily_data[date_str] = {
@@ -84,12 +84,12 @@ def get_crisis_trends(days: int = 30, db: Session = Depends(get_db)):
             date_str = disaster.extracted_at.date().strftime("%b %d")
             if date_str in daily_data:
                 daily_data[date_str]["total_incidents"] += 1
-                if disaster.severity >= 4:
+                if disaster.severity and disaster.severity >= 4:
                     daily_data[date_str]["high_priority"] += 1
-                elif disaster.severity >= 3:
+                elif disaster.severity and disaster.severity >= 3:
                     daily_data[date_str]["medium_priority"] += 1
     
-    return {"trends": [{"month": k, **v} for k, v in daily_data.items()]}
+    return [{"date": k, **v} for k, v in daily_data.items()]
 
 
 @router.get("/regional-analysis")
@@ -119,12 +119,12 @@ def get_regional_analysis(db: Session = Depends(get_db)):
         severity_int = int(avg_severity) if avg_severity else 1
         result.append({
             "region": region_name,
-            "incidents": incident_count,
+            "incident_count": incident_count,
             "severity": severity_map.get(severity_int, "Medium"),
             "coordinates": [lon, lat] if lat and lon else None,
         })
     
-    return {"regions": result}
+    return result
 
 
 @router.get("/patterns")
@@ -151,13 +151,10 @@ def get_patterns(db: Session = Depends(get_db)):
             "count": pattern_count,
             "description": "AI has identified recurring patterns in crisis data across multiple regions",
         },
-        "pattern_types": [
-            {
-                "type": disaster_type or "Unknown",
-                "count": count,
-            }
+        "pattern_types": {
+            disaster_type or "Unknown": count
             for disaster_type, count in disasters_by_type
-        ],
+        },
     }
 
 

@@ -116,3 +116,61 @@ export async function getWeeklyCrises(days = 7, page = 1, pageSize = 10) {
     }
   }>(`/api/data-feed/weekly-crises?days=${days}&page=${page}&page_size=${pageSize}`);
 }
+
+// Analysis API functions
+export async function getAnalysisKeyMetrics() {
+  return apiGet<{
+    total_incidents: number;
+    high_priority: number;
+    response_rate: number;
+    avg_response_time: number;
+    tweets_recognized: number;
+    prediction_accuracy: number;
+    anomalies_detected: number;
+  }>('/api/analysis/key-metrics');
+}
+
+export async function getAnalysisTrends(days = 365) {
+  return apiGet<Array<{
+    date: string;
+    high_priority: number;
+    medium_priority: number;
+    total_incidents: number;
+  }>>(`/api/analysis/crisis-trends?days=${days}`);
+}
+
+export async function getAnalysisRegionalAnalysis() {
+  return apiGet<Array<{
+    region: string;
+    incident_count: number;
+    severity: string;
+    coordinates: [number, number];
+  }>>('/api/analysis/regional-analysis');
+}
+
+export async function getAnalysisStatistics() {
+  return apiGet<{
+    tweets_recognized: number;
+    prediction_accuracy: number;
+    anomalies_detected: number;
+    total_affected_population: number;
+    sentiment_breakdown: {
+      positive: number;
+      negative: number;
+      neutral: number;
+      urgent: number;
+      fearful: number;
+    };
+  }>('/api/analysis/statistics');
+}
+
+export async function getAnalysisPatterns() {
+  return apiGet<{
+    recurring_patterns: {
+      count: number;
+    };
+    pattern_types: {
+      [key: string]: number;
+    };
+  }>('/api/analysis/patterns');
+}
