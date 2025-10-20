@@ -20,8 +20,8 @@ from pathlib import Path
 
 load_dotenv()
 
-# Initialize database tables
-# init_db()  # Handled by Alembic migrations in entrypoint.sh
+# Database migrations handled by Alembic
+# Run: ./scripts/docker-dev.sh migrate
 
 
 def get_version():
