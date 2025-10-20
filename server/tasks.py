@@ -58,7 +58,7 @@ def collect_and_analyze(include_enhanced: bool = True):
             for hashtag in hashtags:
                 try:
                     # Pass our set of seen IDs and session for global deduplication
-                    posts, seen_post_ids, session_data = fetch_posts(hashtag, seen_post_ids, session_data)
+                    posts, seen_post_ids, session_data = fetch_posts(hashtag, seen_post_ids, session_data, include_enhanced)
                     # Tag posts with disaster type
                     for post in posts:
                         post["disaster_type"] = disaster_type

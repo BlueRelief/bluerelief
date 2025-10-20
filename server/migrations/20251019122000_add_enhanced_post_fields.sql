@@ -51,19 +51,19 @@ BEGIN
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'posts' AND column_name = 'media_urls') THEN
-        ALTER TABLE posts ADD COLUMN media_urls TEXT[];
+        ALTER TABLE posts ADD COLUMN media_urls JSONB;
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'posts' AND column_name = 'hashtags') THEN
-        ALTER TABLE posts ADD COLUMN hashtags TEXT[];
+        ALTER TABLE posts ADD COLUMN hashtags JSONB;
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'posts' AND column_name = 'mentions') THEN
-        ALTER TABLE posts ADD COLUMN mentions TEXT[];
+        ALTER TABLE posts ADD COLUMN mentions JSONB;
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'posts' AND column_name = 'external_urls') THEN
-        ALTER TABLE posts ADD COLUMN external_urls TEXT[];
+        ALTER TABLE posts ADD COLUMN external_urls JSONB;
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'posts' AND column_name = 'language') THEN
@@ -94,11 +94,11 @@ BEGIN
 
     -- Labels and categorization
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'posts' AND column_name = 'content_labels') THEN
-        ALTER TABLE posts ADD COLUMN content_labels TEXT[];
+        ALTER TABLE posts ADD COLUMN content_labels JSONB;
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'posts' AND column_name = 'content_warnings') THEN
-        ALTER TABLE posts ADD COLUMN content_warnings TEXT[];
+        ALTER TABLE posts ADD COLUMN content_warnings JSONB;
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'posts' AND column_name = 'moderation_status') THEN

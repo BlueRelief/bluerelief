@@ -6,8 +6,13 @@ import time
 from typing import List, Dict, Set, Optional, Tuple
 import json
 import langdetect
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 load_dotenv()
+
+DEFAULT_TIMEOUT = int(os.getenv("BLUESKY_TIMEOUT_SECONDS", "10"))
+USER_AGENT = "BlueRelief/1.0 (+https://github.com/BlueRelief)"
 
 DISASTER_HASHTAGS = {
     "earthquake": ["#earthquake", "#quake", "#seismic"],
@@ -21,29 +26,38 @@ class BlueskyAPI:
     def __init__(self):
         self.username = os.getenv("BlueSky_Username")
         self.password = os.getenv("BlueSky_Password")
+        if not self.username or not self.password:
+            raise ValueError("Missing BlueSky_Username/BlueSky_Password environment variables")
         self.base_url = "https://bsky.social/xrpc"
         self.session_data = None
         self.headers = None
+        self.http = requests.Session()
+        retry = Retry(total=3, backoff_factor=0.5, status_forcelist=(429, 500, 502, 503, 504))
+        self.http.mount("https://", HTTPAdapter(max_retries=retry))
+        self.http.headers.update({"User-Agent": USER_AGENT})
         
     def create_session(self) -> None:
         """Create a new Bluesky session"""
-        response = requests.post(
+        response = self.http.post(
             f"{self.base_url}/com.atproto.server.createSession",
-            json={"identifier": self.username, "password": self.password}
+            json={"identifier": self.username, "password": self.password},
+            timeout=DEFAULT_TIMEOUT,
         )
         response.raise_for_status()
         self.session_data = response.json()
         self.headers = {"Authorization": f"Bearer {self.session_data['accessJwt']}"}
+        self.http.headers.update(self.headers)
 
     def get_post_details(self, post_uri: str) -> Optional[Dict]:
         """Get detailed information about a specific post"""
         if not self.headers:
             self.create_session()
 
-        response = requests.get(
+        response = self.http.get(
             f"{self.base_url}/app.bsky.feed.getPosts",
             headers=self.headers,
-            params={"uris": [post_uri]}
+            params={"uris": [post_uri]},
+            timeout=DEFAULT_TIMEOUT,
         )
         response.raise_for_status()
         posts = response.json().get("posts", [])
@@ -54,10 +68,11 @@ class BlueskyAPI:
         if not self.headers:
             self.create_session()
 
-        response = requests.get(
+        response = self.http.get(
             f"{self.base_url}/app.bsky.actor.getProfile",
             headers=self.headers,
-            params={"actor": actor}
+            params={"actor": actor},
+            timeout=DEFAULT_TIMEOUT,
         )
         response.raise_for_status()
         return response.json()
@@ -67,10 +82,11 @@ class BlueskyAPI:
         if not self.headers:
             self.create_session()
 
-        response = requests.get(
+        response = self.http.get(
             f"{self.base_url}/app.bsky.feed.getPostThread",
             headers=self.headers,
-            params={"uri": post_uri}
+            params={"uri": post_uri},
+            timeout=DEFAULT_TIMEOUT,
         )
         response.raise_for_status()
         return response.json().get("thread", {})
@@ -96,15 +112,14 @@ def extract_mentions(text: str) -> List[str]:
 def detect_language(text: str) -> str:
     """Detect the language of the post text"""
     try:
-        return langdetect.detect(text)
-    except:
-        return "unknown"
+        return langdetect.detect(text or "")
+    except langdetect.lang_detect_exception.LangDetectException:
+        return "und"
 
 def enrich_post_data(post: Dict, api: BlueskyAPI) -> Dict:
     """Enrich post data with additional information"""
-    # Get detailed post information
+    # Basic post reference
     post_uri = post.get("uri")
-    post_details = api.get_post_details(post_uri)
     
     # Get author profile information
     author = post.get("author", {}).get("handle")
@@ -181,13 +196,14 @@ def enrich_post_data(post: Dict, api: BlueskyAPI) -> Dict:
 
     return enriched_data
 
-def fetch_posts(hashtag: str = None, seen_ids: Set[str] = None, session_data: Dict = None) -> Tuple[List[Dict], Set[str], Dict]:
-    """Fetch posts from BlueSky based on hashtag, with deduplication and enriched data
+def fetch_posts(hashtag: str = None, seen_ids: Set[str] = None, session_data: Dict = None, include_enhanced: bool = True) -> Tuple[List[Dict], Set[str], Dict]:
+    """Fetch posts from BlueSky based on hashtag, with deduplication and optional enriched data
     
     Args:
         hashtag: Optional specific hashtag to search. If None, defaults to #earthquake
         seen_ids: Set of already seen post IDs for deduplication
         session_data: Reuse existing session data to avoid extra login calls
+        include_enhanced: Whether to collect enhanced post data (profile info, engagement, etc.)
 
     Returns:
         Tuple of (unique posts list, updated seen_ids set, session data)
@@ -207,10 +223,11 @@ def fetch_posts(hashtag: str = None, seen_ids: Set[str] = None, session_data: Di
         session_data = api.session_data
 
     # Search for posts
-    response = requests.get(
+    response = api.http.get(
         f"{api.base_url}/app.bsky.feed.searchPosts",
         headers=api.headers,
-        params={"q": search_hashtag, "limit": POST_LIMIT}
+        params={"q": search_hashtag, "limit": POST_LIMIT},
+        timeout=DEFAULT_TIMEOUT,
     )
     response.raise_for_status()
     all_posts = response.json().get("posts", [])
@@ -221,8 +238,11 @@ def fetch_posts(hashtag: str = None, seen_ids: Set[str] = None, session_data: Di
         post_uri = post.get("uri")
         if post_uri and post_uri not in seen_ids:
             seen_ids.add(post_uri)
-            enriched_post = enrich_post_data(post, api)
-            unique_posts.append(enriched_post)
+            if include_enhanced:
+                enriched_post = enrich_post_data(post, api)
+                unique_posts.append(enriched_post)
+            else:
+                unique_posts.append(post)
             time.sleep(0.5)  # Small delay between API calls
 
     print(f"[{datetime.now()}] Fetched {len(all_posts)} posts from BlueSky for {search_hashtag}")

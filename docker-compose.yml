@@ -96,6 +96,7 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY}
       SENDING_DOMAIN: ${SENDING_DOMAIN}
       EMAIL_FROM: ${EMAIL_FROM}
+      GEONAMES_USERNAME: ${GEONAMES_USERNAME}
     depends_on:
       postgres:
         condition: service_healthy

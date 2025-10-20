@@ -175,6 +175,7 @@ def analyze_posts(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1)
             "If the exact time is unknown, use the post's timestamp or estimate based on context. "
             "NEVER use vague terms like 'next week', 'upcoming', 'ongoing', 'recently', etc. "
             "ALWAYS return a valid ISO 8601 timestamp. If completely unknown, use current time.\n"
+            "- disaster_type: type of disaster (e.g., 'earthquake', 'hurricane', 'flood', 'wildfire', 'tornado')\n"
             "- severity: rate 1-5 (1=minor, 5=catastrophic)\n"
             "- magnitude: single numerical value if applicable, null otherwise\n"
             "- description: brief summary\n"
