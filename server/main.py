@@ -8,6 +8,9 @@ from routers import dashboard
 from routers import notifications
 from routers import data_feed
 from routers import alerts
+from routers import admin_auth
+from routers import admin_users
+from routers import admin_settings
 from db_utils.db import init_db
 import os
 from dotenv import load_dotenv
@@ -81,6 +84,9 @@ app.include_router(dashboard.router)
 app.include_router(notifications.router)
 app.include_router(data_feed.router)
 app.include_router(alerts.router)
+app.include_router(admin_auth.router)
+app.include_router(admin_users.router)
+app.include_router(admin_settings.router)
 
 @app.get("/")
 async def root():
