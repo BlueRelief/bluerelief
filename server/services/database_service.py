@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from db_utils.db import CollectionRun, Post, Disaster, SessionLocal
 import json
 import re
+from services.population_estimator import PopulationEstimator
 
 
 def extract_post_timestamp(post_data: dict) -> datetime:
@@ -283,6 +284,13 @@ def save_analysis(analysis_text: str, run_id: int, posts: list = None):
                     normalize_event_time(event_time) if event_time else None
                 )
 
+                affected_population = PopulationEstimator.estimate_population(
+                    longitude=disaster_data.get("longitude"),
+                    latitude=disaster_data.get("latitude"),
+                    disaster_type=disaster_data.get("disaster_type"),
+                    severity=disaster_data.get("severity")
+                )
+
                 disaster = Disaster(
                     location_name=disaster_data.get("location_name"),
                     latitude=disaster_data.get("latitude"),
@@ -296,14 +304,12 @@ def save_analysis(analysis_text: str, run_id: int, posts: list = None):
                     severity=disaster_data.get("severity"),
                     magnitude=magnitude_value,
                     description=disaster_data.get("description"),
-                    affected_population=(
-                        int(disaster_data.get("affected_population"))
-                        if disaster_data.get("affected_population") is not None
-                        else None
-                    ),
+                    affected_population=affected_population,
+                    disaster_type=disaster_data.get("disaster_type", None),
                     collection_run_id=run_id,
                     post_id=post_id,
                 )
+                
                 db.add(disaster)
 
             db.commit()

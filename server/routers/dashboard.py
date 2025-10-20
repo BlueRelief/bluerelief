@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from db_utils.db import SessionLocal, Post, Disaster
 from services import database_service
 
-
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
@@ -38,25 +37,16 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         .count()
     )
 
-    # Prefer AI-extracted affected_population where available
-    affected_people = db.query(func.sum(Disaster.affected_population))
-    affected_people = (
-        affected_people.filter(Disaster.affected_population.isnot(None)).scalar() or 0
-    )
+    # Improved affected_people calculation using PopulationEstimator
+    from services.population_estimator import PopulationEstimator
 
-    # If no AI-extracted data exists yet, fall back to severity-based estimate
-    if not affected_people:
-        severity_map = {5: 10000, 4: 5000, 3: 1000, 2: 200, 1: 50}
-        severity_rows = (
-            db.query(Disaster.severity, func.count(Disaster.id).label("cnt"))
-            .group_by(Disaster.severity)
-            .all()
-        )
-
-        for sev, cnt in severity_rows:
-            if sev is None:
-                continue
-            affected_people += severity_map.get(int(sev), 0) * int(cnt)
+    affected_people = 0
+    for disaster in db.query(Disaster).all():
+        try:
+            affected_people += disaster.affected_population or 0
+        except Exception:
+            # If estimation fails for any disaster, skip and continue
+            continue
 
     return {
         "total_crises": total_crises,
