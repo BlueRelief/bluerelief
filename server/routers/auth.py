@@ -138,7 +138,7 @@ async def login(request: Request):
 @router.get("/demo/login")
 async def demo_login(request: Request):
     """Demo authentication for preview/testing environments (non-production only)"""
-    if ENVIRONMENT == "production":
+    if not IS_PREVIEW:
         raise HTTPException(
             status_code=403, detail="Demo auth not available in production"
         )
