@@ -73,6 +73,13 @@ celery_app.conf.beat_schedule = {
             "expires": 60 * 60 * 24,  # Tasks expire after 24 hours
         },
     },
+    "archive-completed-disasters": {
+        "task": "tasks.archive_completed_disasters",
+        "schedule": crontab(hour=3, minute=0),  # 3 AM daily
+        "options": {
+            "expires": 60 * 60 * 24,  # Tasks expire after 24 hours
+        },
+    },
 }
 
 celery_app.conf.timezone = "UTC"
