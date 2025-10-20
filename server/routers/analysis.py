@@ -84,9 +84,9 @@ def get_crisis_trends(days: int = 30, db: Session = Depends(get_db)):
             date_str = disaster.extracted_at.date().strftime("%b %d")
             if date_str in daily_data:
                 daily_data[date_str]["total_incidents"] += 1
-                if disaster.severity >= 4:
+                if disaster.severity and disaster.severity >= 4:
                     daily_data[date_str]["high_priority"] += 1
-                elif disaster.severity >= 3:
+                elif disaster.severity and disaster.severity >= 3:
                     daily_data[date_str]["medium_priority"] += 1
     
     return {"trends": [{"month": k, **v} for k, v in daily_data.items()]}
