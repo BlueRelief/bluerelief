@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   LineChart,
   Line,
@@ -21,6 +22,13 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { TrendingUp, AlertTriangle, Activity, Target } from "lucide-react";
+import { 
+  getAnalysisKeyMetrics,
+  getAnalysisTrends,
+  getAnalysisRegionalAnalysis,
+  getAnalysisStatistics,
+  getAnalysisPatterns
+} from "@/lib/api-client";
 
 const CrisisMap = dynamic(() => import("@/components/crisis-map"), {
   ssr: false,
@@ -31,21 +39,91 @@ const CrisisMap = dynamic(() => import("@/components/crisis-map"), {
   ),
 });
 
+// Utility functions for data formatting
+const formatNumber = (num: number | null | undefined): string => {
+  if (num === null || num === undefined) return '0';
+  return num.toLocaleString();
+};
+
+const formatPercentage = (num: number | null | undefined): string => {
+  if (num === null || num === undefined) return '0%';
+  return `${num.toFixed(0)}%`;
+};
+
+const formatTime = (minutes: number | null | undefined): string => {
+  if (minutes === null || minutes === undefined) return '0m';
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+};
+
+const formatLargeNumber = (num: number | null | undefined): string => {
+  if (num === null || num === undefined) return '0';
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  return num.toLocaleString();
+};
+
+const validateApiData = (data: unknown, dataType: string): boolean => {
+  if (!data) {
+    console.warn(`${dataType} data is null or undefined`);
+    return false;
+  }
+  return true;
+};
+
 export default function AnalysisPage() {
-  const crisisData = [
-    { month: 'Jan', highPriority: 45, mediumPriority: 32, totalIncidents: 120 },
-    { month: 'Feb', highPriority: 52, mediumPriority: 28, totalIncidents: 135 },
-    { month: 'Mar', highPriority: 38, mediumPriority: 45, totalIncidents: 145 },
-    { month: 'Apr', highPriority: 63, mediumPriority: 38, totalIncidents: 160 },
-    { month: 'May', highPriority: 48, mediumPriority: 52, totalIncidents: 155 },
-    { month: 'Jun', highPriority: 55, mediumPriority: 42, totalIncidents: 142 },
-    { month: 'Jul', highPriority: 42, mediumPriority: 48, totalIncidents: 138 },
-    { month: 'Aug', highPriority: 58, mediumPriority: 35, totalIncidents: 148 },
-    { month: 'Sep', highPriority: 47, mediumPriority: 41, totalIncidents: 152 },
-    { month: 'Oct', highPriority: 61, mediumPriority: 46, totalIncidents: 168 },
-    { month: 'Nov', highPriority: 53, mediumPriority: 39, totalIncidents: 158 },
-    { month: 'Dec', highPriority: 49, mediumPriority: 44, totalIncidents: 163 }
-  ];
+  // State for API data
+  const [keyMetrics, setKeyMetrics] = useState<{
+    total_incidents: number;
+    high_priority: number;
+    response_rate: number;
+    avg_response_time: number;
+    tweets_recognized: number;
+    prediction_accuracy: number;
+    anomalies_detected: number;
+  } | null>(null);
+
+  const [trends, setTrends] = useState<Array<{
+    date: string;
+    high_priority: number;
+    medium_priority: number;
+    total_incidents: number;
+  }>>([]);
+
+  const [statistics, setStatistics] = useState<{
+    tweets_recognized: number;
+    prediction_accuracy: number;
+    anomalies_detected: number;
+    total_affected_population: number;
+    sentiment_breakdown: {
+      positive: number;
+      negative: number;
+      neutral: number;
+      urgent: number;
+      fearful: number;
+    };
+  } | null>(null);
+
+  const [patterns, setPatterns] = useState<{
+    recurring_patterns: {
+      count: number;
+    };
+    pattern_types: {
+      [key: string]: number;
+    };
+  } | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const retryFetch = () => {
+    setError(null);
+    setLoading(true);
+    // Trigger useEffect by updating a dependency
+    window.location.reload();
+  };
 
   const chartConfig = {
     highPriority: {
@@ -101,21 +179,85 @@ export default function AnalysisPage() {
   };
 
   useEffect(() => {
-    const fetchIncidents = async () => {
+    const fetchAnalysisData = async () => {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
-        const res = await fetch(`${apiBase}/api/incidents`);
-        if (res.ok) {
-          const json = await res.json();
-          setRegions(json);
+        setLoading(true);
+        setError(null);
+
+        // Fetch all analysis data in parallel
+        const [
+          keyMetricsData,
+          trendsData,
+          regionalData,
+          statisticsData,
+          patternsData
+        ] = await Promise.all([
+          getAnalysisKeyMetrics(),
+          getAnalysisTrends(365),
+          getAnalysisRegionalAnalysis(),
+          getAnalysisStatistics(),
+          getAnalysisPatterns()
+        ]);
+
+        // Validate and set data
+        if (validateApiData(keyMetricsData, 'Key Metrics')) {
+          setKeyMetrics(keyMetricsData);
         }
-      } catch (e) {
-        console.warn('Failed to fetch incidents:', e);
+        if (validateApiData(trendsData, 'Trends')) {
+          setTrends(trendsData);
+        }
+        if (validateApiData(regionalData, 'Regional')) {
+          // Transform API data to match component interface
+          const transformedRegions = regionalData.map(region => ({
+            region: region.region,
+            incidents: region.incident_count,
+            severity: region.severity,
+            coordinates: region.coordinates
+          }));
+          setRegions(transformedRegions);
+        }
+        if (validateApiData(statisticsData, 'Statistics')) {
+          setStatistics(statisticsData);
+        }
+        if (validateApiData(patternsData, 'Patterns')) {
+          setPatterns(patternsData);
+        }
+        } catch (e) {
+        console.error('Failed to fetch analysis data:', e);
+        const errorMessage = e instanceof Error ? e.message : 'Unknown error occurred';
+        setError(`Failed to load analysis data: ${errorMessage}. Please check your connection and try again.`);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchIncidents();
+    fetchAnalysisData();
   }, []);
+
+  if (error) {
+    return (
+      <div className="space-y-6 p-6">
+        <div>
+          <h1 className="text-3xl font-bold">Analysis</h1>
+          <p className="text-muted-foreground">
+            Crisis data analysis and trends visualization
+          </p>
+        </div>
+        <div className="flex items-center justify-center p-8">
+          <div className="text-center">
+            <div className="text-lg font-medium text-destructive mb-2">Error Loading Data</div>
+            <div className="text-sm text-muted-foreground mb-4">{error}</div>
+            <button 
+              onClick={retryFetch} 
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -124,6 +266,11 @@ export default function AnalysisPage() {
         <p className="text-muted-foreground">
           Crisis data analysis and trends visualization
         </p>
+        {loading && (
+          <div className="mt-2 text-sm text-muted-foreground">
+            Loading real-time analysis data...
+          </div>
+        )}
       </div>
 
       {/* Key Metrics Cards */}
@@ -134,9 +281,15 @@ export default function AnalysisPage() {
             <Activity className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,000</div>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold">
+                {formatNumber(keyMetrics?.total_incidents)}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
-              +10% from last period
+              {keyMetrics && keyMetrics.total_incidents > 0 ? `${((keyMetrics.high_priority / keyMetrics.total_incidents) * 100).toFixed(1)}% high priority` : 'Loading...'}
             </p>
           </CardContent>
         </Card>
@@ -147,9 +300,15 @@ export default function AnalysisPage() {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">100</div>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold">
+                {formatNumber(keyMetrics?.high_priority)}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
-              10% of total incidents
+              {keyMetrics && keyMetrics.total_incidents > 0 ? `${((keyMetrics.high_priority / keyMetrics.total_incidents) * 100).toFixed(1)}% of total incidents` : 'Loading...'}
             </p>
           </CardContent>
         </Card>
@@ -160,9 +319,15 @@ export default function AnalysisPage() {
             <Target className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">100%</div>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold">
+                {formatPercentage(keyMetrics?.response_rate)}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
-              +10% from last month
+              System response efficiency
             </p>
           </CardContent>
         </Card>
@@ -173,9 +338,15 @@ export default function AnalysisPage() {
             <TrendingUp className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">10m</div>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold">
+                {formatTime(keyMetrics?.avg_response_time)}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
-              -0.1m from last month
+              Average response time
             </p>
           </CardContent>
         </Card>
@@ -190,11 +361,16 @@ export default function AnalysisPage() {
           </p>
         </CardHeader>
         <CardContent>
-          <ChartContainer config={chartConfig} className="h-96 w-full">
-            <LineChart data={crisisData} accessibilityLayer>
+          {loading ? (
+            <div className="h-96 w-full flex items-center justify-center">
+              <Skeleton className="h-full w-full" />
+            </div>
+          ) : (
+            <ChartContainer config={chartConfig} className="h-96 w-full">
+              <LineChart data={trends} accessibilityLayer>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
-                dataKey="month" 
+                dataKey="date" 
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
@@ -214,7 +390,7 @@ export default function AnalysisPage() {
               />
               <Line 
                 type="monotone" 
-                dataKey="highPriority" 
+                dataKey="high_priority" 
                 stroke="var(--color-highPriority)" 
                 strokeWidth={3}
                 dot={{ fill: "var(--color-highPriority)", strokeWidth: 2, r: 4 }}
@@ -222,7 +398,7 @@ export default function AnalysisPage() {
               />
               <Line 
                 type="monotone" 
-                dataKey="mediumPriority" 
+                dataKey="medium_priority" 
                 stroke="var(--color-mediumPriority)" 
                 strokeWidth={3}
                 dot={{ fill: "var(--color-mediumPriority)", strokeWidth: 2, r: 4 }}
@@ -230,7 +406,7 @@ export default function AnalysisPage() {
               />
               <Line 
                 type="monotone" 
-                dataKey="totalIncidents" 
+                dataKey="total_incidents" 
                 stroke="var(--color-totalIncidents)" 
                 strokeWidth={2}
                 strokeDasharray="5 5"
@@ -238,6 +414,7 @@ export default function AnalysisPage() {
               />
             </LineChart>
           </ChartContainer>
+          )}
         </CardContent>
       </Card>
 
@@ -254,7 +431,16 @@ export default function AnalysisPage() {
           <CardContent>
             <div className="space-y-4">
               <div className="h-80 w-full rounded-lg overflow-hidden mb-4 relative">
-                <CrisisMap regions={regions} />
+                {loading ? (
+                  <div className="h-full w-full flex items-center justify-center bg-muted/20">
+                    <div className="text-center">
+                      <Skeleton className="h-8 w-8 rounded-full mx-auto mb-2" />
+                      <div className="text-sm text-muted-foreground">Loading map...</div>
+                    </div>
+                  </div>
+                ) : (
+                  <CrisisMap regions={regions} />
+                )}
               </div>
               <div className="flex items-center space-x-3 text-sm text-muted-foreground mb-2">
                 <div className="flex items-center space-x-2">
@@ -266,13 +452,28 @@ export default function AnalysisPage() {
                   <span>Medium</span>
                 </div>
               </div>
-              {regions.length > 0 ? (
+              {loading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex-1">
+                        <Skeleton className="h-4 w-32 mb-2" />
+                        <Skeleton className="h-3 w-20" />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Skeleton className="h-5 w-16" />
+                        <Skeleton className="h-2 w-20 rounded-full" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : regions.length > 0 ? (
                 regions.map((region, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div className="flex-1">
                       <div className="font-medium">{region.region}</div>
                       <div className="text-sm text-muted-foreground">
-                        {region.incidents} incidents
+                        {formatNumber(region.incidents)} incidents
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -317,15 +518,17 @@ export default function AnalysisPage() {
                     <div className="w-4 h-4 bg-primary rounded-full"></div>
                     <span className="text-lg font-semibold">Recurring Crisis Patterns</span>
                   </div>
-                  <Badge variant="default" className="text-lg px-3 py-1">10</Badge>
+                  {loading ? (
+                    <Skeleton className="h-6 w-8" />
+                  ) : (
+                    <Badge variant="default" className="text-lg px-3 py-1">
+                      {patterns?.recurring_patterns?.count || 0}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground mb-4">
                   AI has identified recurring patterns in crisis data across multiple regions
                 </p>
-                {/* <div className="flex items-center spa ce-x-2 text-sm">
-                  <span className="text-green-600 font-medium">↑ 15%</span>
-                  <span className="text-muted-foreground">from last month</span>
-                </div> */}
               </div>
 
               {/* Secondary Cards */}
@@ -336,7 +539,13 @@ export default function AnalysisPage() {
                       <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
                       <span className="font-medium">Tweets Recognized</span>
                     </div>
-                    <Badge variant="secondary" className="text-base px-2 py-1">10K</Badge>
+                    {loading ? (
+                      <Skeleton className="h-5 w-12" />
+                    ) : (
+                      <Badge variant="secondary" className="text-base px-2 py-1">
+                        {formatLargeNumber(statistics?.tweets_recognized)}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Social media posts analyzed for crisis indicators
@@ -349,7 +558,13 @@ export default function AnalysisPage() {
                       <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                       <span className="font-medium">Prediction Accuracy</span>
                     </div>
-                    <Badge variant="secondary" className="text-base px-2 py-1">100%</Badge>
+                    {loading ? (
+                      <Skeleton className="h-5 w-12" />
+                    ) : (
+                      <Badge variant="secondary" className="text-base px-2 py-1">
+                        {formatPercentage(statistics?.prediction_accuracy)}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     AI model accuracy in crisis prediction
@@ -362,7 +577,13 @@ export default function AnalysisPage() {
                       <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                       <span className="font-medium">Anomalies Detected</span>
                     </div>
-                    <Badge variant="secondary" className="text-base px-2 py-1">3</Badge>
+                    {loading ? (
+                      <Skeleton className="h-5 w-12" />
+                    ) : (
+                      <Badge variant="secondary" className="text-base px-2 py-1">
+                        {statistics?.anomalies_detected || '0'}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Unusual patterns requiring immediate attention
