@@ -108,6 +108,7 @@ def get_recent_events(limit: int = 10, db: Session = Depends(get_db)):
         .all()
     )
 
+    # same labels colors for both light mode and dark mode for consistency
     severity_labels = {5: ("Critical", "bg-red-100 text-red-800"),
                        4: ("High", "bg-orange-100 text-orange-800"),
                        3: ("Medium", "bg-yellow-100 text-yellow-800"),
