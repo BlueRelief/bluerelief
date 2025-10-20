@@ -145,10 +145,9 @@ class Disaster(Base):
     __tablename__ = "disasters"
 
     id = Column(Integer, primary_key=True, index=True)
-    location = Column(String(500))  # Keep for backwards compatibility temporarily
-    location_name = Column(String(500), index=True)  # NEW
-    latitude = Column(Float, index=True)  # NEW
-    longitude = Column(Float, index=True)  # NEW
+    location_name = Column(String(500), index=True)
+    latitude = Column(Float, index=True)
+    longitude = Column(Float, index=True)
     event_time = Column(DateTime, nullable=True, index=True)
     severity = Column(Integer)
     magnitude = Column(Float)

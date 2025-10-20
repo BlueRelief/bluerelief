@@ -23,7 +23,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
 
     total_crises = db.query(Disaster).filter(Disaster.archived == False).count()
     active_regions = (
-        db.query(func.count(func.distinct(Disaster.location)))
+        db.query(func.count(func.distinct(Disaster.location_name)))
         .filter(Disaster.archived == False)
         .scalar() or 0
     )
