@@ -119,12 +119,12 @@ def get_regional_analysis(db: Session = Depends(get_db)):
         severity_int = int(avg_severity) if avg_severity else 1
         result.append({
             "region": region_name,
-            "incidents": incident_count,
+            "incident_count": incident_count,
             "severity": severity_map.get(severity_int, "Medium"),
             "coordinates": [lon, lat] if lat and lon else None,
         })
     
-    return {"regions": result}
+    return result
 
 
 @router.get("/patterns")
