@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { loginWithGoogle } from "@/lib/auth";
+import { loginWithGoogle, loginWithDemo, isDemoAuthAvailable } from "@/lib/auth";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function LoginPage() {
@@ -17,8 +17,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
   const router = useRouter();
   const { isAuthenticated, loading } = useAuth();
+  const showDemoAuth = isDemoAuthAvailable();
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
@@ -56,6 +58,11 @@ export default function LoginPage() {
   const handleGoogleAuth = () => {
     // setIsGoogleLoading(true);
     loginWithGoogle();
+  };
+
+  const handleDemoAuth = () => {
+    setIsDemoLoading(true);
+    loginWithDemo();
   };
 
   if (loading) {
@@ -126,6 +133,23 @@ export default function LoginPage() {
               )}
               {isGoogleLoading ? "Signing in..." : "Continue with Google"}
             </Button>
+
+            {showDemoAuth && (
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                onClick={handleDemoAuth}
+                disabled={isDemoLoading}
+              >
+                {isDemoLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  "🧪"
+                )}
+                {isDemoLoading ? "Loading demo..." : "Demo Login"}
+              </Button>
+            )}
             
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -203,4 +227,4 @@ export default function LoginPage() {
       </div>
     </div>
   );
-}
+} 

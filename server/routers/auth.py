@@ -42,6 +42,10 @@ REDIRECT_URL = config("REDIRECT_URL")
 FRONTEND_URL = config("FRONTEND_URL")
 BACKEND_URL = config("BACKEND_URL", default="http://localhost:8000")
 
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+IS_PREVIEW = os.getenv("IS_PREVIEW", "false").lower() == "true"
+PREVIEW_AUTH_BYPASS = os.getenv("PREVIEW_AUTH_BYPASS", "false").lower() == "true"
+
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
     if expires_delta:
@@ -129,6 +133,44 @@ async def login(request: Request):
     return await oauth.auth_demo.authorize_redirect(
         request, callback_url, prompt="consent"
     )
+
+
+@router.get("/demo/login")
+async def demo_login(request: Request):
+    """Demo authentication for preview/testing environments (non-production only)"""
+    if ENVIRONMENT == "production":
+        raise HTTPException(
+            status_code=403, detail="Demo auth not available in production"
+        )
+
+    demo_user = {
+        "id": "demo-user-001",
+        "email": "demo@bluerelief.test",
+        "name": "Demo User",
+        "picture": "https://api.dicebear.com/7.x/avataaars/svg?seed=demo",
+    }
+
+    upsert_user(
+        demo_user["id"], demo_user["email"], demo_user["name"], demo_user["picture"]
+    )
+
+    access_token_expires = timedelta(days=7)
+    access_token = create_access_token(
+        data={"email": demo_user["email"]}, expires_delta=access_token_expires
+    )
+
+    response = RedirectResponse(REDIRECT_URL)
+    response.set_cookie(
+        key="token",
+        value=access_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=604800,
+        path="/",
+    )
+
+    return response
 
 
 @router.get("/google/callback")
