@@ -348,11 +348,6 @@ def save_analysis(analysis_text: str, run_id: int, posts: list = None):
                     location_name=disaster_data.get("location_name"),
                     latitude=disaster_data.get("latitude"),
                     longitude=disaster_data.get("longitude"),
-                    location=(
-                        f"{disaster_data.get('location_name')} ({disaster_data.get('latitude')}, {disaster_data.get('longitude')})"
-                        if disaster_data.get("latitude")
-                        else disaster_data.get("location_name")
-                    ),  # Backwards compatibility
                     event_time=normalized_event_time,
                     severity=disaster_data.get("severity"),
                     magnitude=magnitude_value,
