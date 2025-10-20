@@ -28,6 +28,9 @@ RUN uv pip install --system --no-cache -r requirements.txt
 
 COPY . .
 
+# Create entrypoint script
+RUN echo '#!/bin/bash\nset -e\necho "Running database migrations..."\nalembic upgrade head\necho "Migrations complete. Starting server..."\nexec uvicorn main:app --host 0.0.0.0 --port 8000 --reload' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["/app/entrypoint.sh"]
