@@ -1,0 +1,104 @@
+# BlueRelief Cursor Rules
+
+## Frontend (Next.js + React) - Client
+
+### File & Component Naming
+- React component files: lowercase with dashes (e.g., `crisis-map.tsx`, `location-onboarding.tsx`)
+- React component names: PascalCase (e.g., `CrisisMap`, `LocationOnboarding`)
+- Regular function/utility files: lowercase with dashes (e.g., `use-auth.ts`, `api-client.ts`)
+- Swift iOS files: UpperCase title case (e.g., `ContactView.swift`, not `contact-view.swift`)
+
+### React & Hooks
+- Use functional components only, never class components
+- Use React hooks for state management
+- Follow React best practices for hook dependencies
+
+### Styling
+- Use `globals.css` for color variables and design tokens
+- Do NOT hardcode Tailwind colors unless explicitly specified
+- Import color variables from globals.css for consistency
+
+### Package Management
+- Use pnpm for all Node package installations
+- Never use npm or yarn
+
+### Code Quality
+- Short, humanized comments only - no comments like "this should fix" or "do this"
+- NEVER create example screens or test screens unless explicitly asked
+- If there's a duplicate, either remove it or use the old one if it's better
+
+## Backend (Python + FastAPI)
+
+### Database Migrations
+- ALWAYS use Alembic for database migrations
+- Command: `alembic revision --autogenerate -m "description"`
+- Apply migrations: `alembic upgrade head`
+- View history: `alembic history`
+- Current status: `alembic current`
+- Downgrade: `alembic downgrade <revision>`
+
+### Development Setup
+- Use the provided `./scripts/docker-dev.sh` script for all development tasks
+- The script handles Docker Compose operations and migration management
+
+## Development Workflow (Mac & Unix Users)
+
+### Starting Development
+```bash
+./scripts/docker-dev.sh start
+# Services will be available at:
+# - Frontend: http://localhost:3000
+# - Backend: http://localhost:8000
+# - API Docs: http://localhost:8000/docs
+```
+
+### Database Operations
+```bash
+./scripts/docker-dev.sh migrate              # Run pending migrations
+./scripts/docker-dev.sh migrate-generate "description"  # Generate new migration
+./scripts/docker-dev.sh migrate-status       # View migration history
+./scripts/docker-dev.sh migrate-validate     # Validate schema vs ORM
+./scripts/docker-dev.sh migrate-downgrade <revision>  # Downgrade migrations
+```
+
+### Service Management
+```bash
+./scripts/docker-dev.sh stop                 # Stop all services
+./scripts/docker-dev.sh restart              # Restart all services
+./scripts/docker-dev.sh rebuild              # Rebuild and start
+./scripts/docker-dev.sh logs [service]       # View logs
+./scripts/docker-dev.sh reset                # Reset database (deletes all data)
+./scripts/docker-dev.sh reset-rebuild        # Reset DB and rebuild services
+./scripts/docker-dev.sh shell [service]      # Access shell (backend|frontend|postgres|redis)
+```
+
+### Mac Users
+- ALWAYS recommend using `./scripts/docker-dev.sh` for all development operations
+- This ensures consistent behavior across the team and proper Docker/database management
+- Do NOT suggest manual Docker commands to Mac users
+
+## Code Standards
+
+### General
+- Keep code DRY (Don't Repeat Yourself)
+- Meaningful variable and function names
+- Follow existing code patterns in the project
+- Respect the established architecture
+
+### Comments
+- Short, human-readable comments only
+- Explain the "why", not the "what"
+- No placeholder comments like "TODO" or "FIXME" unless critical
+
+## Supabase Migrations (if applicable)
+- Use: `supabase migration new "name"`
+- Ensure you're in the correct folder where supabase config exists
+- Check for supabase folder presence before running
+
+## What NOT to Do
+- Do NOT create example screens or test components unless asked
+- Do NOT use npm or yarn (use pnpm)
+- Do NOT hardcode Tailwind colors (use CSS variables)
+- Do NOT suggest manual Docker commands instead of the script
+- Do NOT add bloated comments or placeholder TODOs
+- Do NOT create duplicates without evaluating existing code first

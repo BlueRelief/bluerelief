@@ -105,6 +105,7 @@ jobs:
             --build-arg NEXT_PUBLIC_API_URL=${{ steps.vars.outputs.backend_url }} \
             --build-arg NEXT_PUBLIC_MAPBOX_TOKEN=${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }} \
             --build-arg VERSION=${{ steps.version_prediction.outputs.new_version }} \
+            --build-arg NEXT_PUBLIC_IS_PREVIEW=true \
             -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} .
           docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
 
@@ -120,6 +121,12 @@ jobs:
             --set ingress.host="api-${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app" \
             --set frontend.ingress.host="${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app" \
             --set frontend.env.NEXT_PUBLIC_API_URL="${{ steps.vars.outputs.backend_url }}" \
+            --set frontend.env.NEXT_PUBLIC_IS_PREVIEW="true" \
+            --set app.env.IS_PREVIEW="true" \
+            --set app.env.PREVIEW_AUTH_BYPASS="true" \
+            --set app.env.REDIRECT_URL="https://${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app/dashboard" \
+            --set app.env.BACKEND_URL="${{ steps.vars.outputs.backend_url }}" \
+            --set app.env.FRONTEND_URL="https://${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app" \
             --wait
 
       - name: Comment on PR
@@ -136,6 +143,11 @@ jobs:
                     `**Backend:** ${{ steps.vars.outputs.backend_url }}\n` +
                     `**Frontend:** ${{ steps.vars.outputs.frontend_url }}\n\n` +
                     `Commit: \`${{ steps.vars.outputs.commit_sha }}\`\n\n` +
+                    `---\n\n` +
+                    `## 🔐 Authentication\n` +
+                    `**Demo Login:** Click "Google Sign In" → Use demo auth (no Google account needed)\n` +
+                    `Demo Account: \`demo@bluerelief.test\`\n` +
+                    `_Note: Google OAuth not available for preview domains. Demo mode enabled for testing._\n\n` +
                     `---\n\n` +
                     `## ✨ Version Bump Prediction\n` +
                     `When this PR is merged to main, the version will be bumped:\n\n` +

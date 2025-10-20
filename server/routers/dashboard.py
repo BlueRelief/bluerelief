@@ -41,7 +41,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     from services.population_estimator import PopulationEstimator
 
     affected_people = 0
-    for disaster in db.query(Disaster).all():
+    for disaster in db.query(Disaster).filter(Disaster.archived == False).all():
         try:
             affected_people += disaster.affected_population or 0
         except Exception:
