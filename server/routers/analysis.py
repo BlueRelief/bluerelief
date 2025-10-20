@@ -70,7 +70,7 @@ def get_crisis_trends(days: int = 30, db: Session = Depends(get_db)):
     )
     
     daily_data = {}
-    for i in range(days):
+    for i in range(days + 1):
         date = (start_date + timedelta(days=i)).date()
         date_str = date.strftime("%b %d")
         daily_data[date_str] = {
