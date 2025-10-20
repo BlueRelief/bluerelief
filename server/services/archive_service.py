@@ -64,10 +64,10 @@ class ArchiveService:
                 insert_query = """
                     INSERT INTO archived_posts (
                         original_id, disaster_id, content, post_id, 
-                        platform, event_time, location, sentiment, metadata, created_at
+                        platform, event_time, location, sentiment, archive_metadata, created_at
                     )
                     VALUES (:original_id, :disaster_id, :content, :post_id, 
-                            :platform, :event_time, :location, :sentiment, :metadata, :created_at)
+                            :platform, :event_time, :location, :sentiment, :archive_metadata, :created_at)
                 """
                 self.db.execute(
                     insert_query,
@@ -80,7 +80,7 @@ class ArchiveService:
                         "event_time": post.created_at,
                         "location": None,
                         "sentiment": post.sentiment,
-                        "metadata": post.raw_data,
+                        "archive_metadata": post.raw_data,
                         "created_at": post.collected_at,
                     },
                 )
@@ -101,10 +101,10 @@ class ArchiveService:
                 insert_query = """
                     INSERT INTO archived_alerts (
                         original_id, disaster_id, alert_type, severity,
-                        message, location, metadata, created_at
+                        message, location, archive_metadata, created_at
                     )
                     VALUES (:original_id, :disaster_id, :alert_type, :severity,
-                            :message, :location, :metadata, :created_at)
+                            :message, :location, :archive_metadata, :created_at)
                 """
                 self.db.execute(
                     insert_query,
@@ -115,7 +115,7 @@ class ArchiveService:
                         "severity": alert.severity,
                         "message": alert.message,
                         "location": None,
-                        "metadata": alert.alert_metadata,
+                        "archive_metadata": alert.alert_metadata,
                         "created_at": alert.created_at,
                     },
                 )
