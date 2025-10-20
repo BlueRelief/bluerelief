@@ -54,5 +54,15 @@ CREATE INDEX idx_archived_posts_original_id ON archived_posts(original_id);
 CREATE INDEX idx_archived_alerts_disaster_id ON archived_alerts(disaster_id);
 CREATE INDEX idx_archived_alerts_original_id ON archived_alerts(original_id);
 
--- Add archive status to existing disasters table
-ALTER TABLE disasters ADD COLUMN archived BOOLEAN DEFAULT FALSE;
+-- Add archive status to existing disasters table if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'disasters'
+        AND column_name = 'archived'
+    ) THEN
+        ALTER TABLE disasters ADD COLUMN archived BOOLEAN DEFAULT FALSE;
+    END IF;
+END $$;

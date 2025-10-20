@@ -153,8 +153,18 @@ def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None, disas
             post_disaster_type = post_data.get("disaster_type") or disaster_type
 
             try:
+                # Extract engagement metrics
+                engagement = post_data.get("engagement", {})
+                author_info = post_data.get("author", {})
+                media_info = post_data.get("media", {})
+                content_info = post_data.get("content", {})
+                location_info = post_data.get("location", {})
+                thread_info = post_data.get("thread", {})
+                moderation_info = post_data.get("moderation", {})
+                
                 # Prepare post object
                 post = Post(
+                    # Basic post info
                     bluesky_id=bluesky_id,
                     author_handle=post_data.get("author", {}).get("handle", ""),
                     text=post_data.get("record", {}).get("text", ""),
@@ -164,6 +174,49 @@ def save_posts(posts_data: list, run_id: int, sentiment_data: dict = None, disas
                     sentiment=sentiment,
                     sentiment_score=sentiment_score,
                     disaster_type=post_disaster_type,
+
+                    # Engagement metrics
+                    like_count=engagement.get("likes", 0),
+                    repost_count=engagement.get("reposts", 0),
+                    reply_count=engagement.get("replies", 0),
+
+                    # Author profile info
+                    author_display_name=author_info.get("display_name"),
+                    author_description=author_info.get("description"),
+                    author_followers_count=author_info.get("followers_count"),
+                    author_following_count=author_info.get("following_count"),
+                    author_posts_count=author_info.get("posts_count"),
+                    author_avatar_url=author_info.get("avatar_url"),
+
+                    # Media information
+                    has_media=media_info.get("has_media", False),
+                    media_count=media_info.get("count", 0),
+                    media_urls=media_info.get("urls", []),
+
+                    # Content analysis
+                    hashtags=content_info.get("hashtags", []),
+                    mentions=content_info.get("mentions", []),
+                    external_urls=content_info.get("external_urls", []),
+                    language=content_info.get("language"),
+
+                    # Location data
+                    post_location=location_info.get("name"),
+                    post_latitude=location_info.get("latitude"),
+                    post_longitude=location_info.get("longitude"),
+
+                    # Temporal data
+                    indexed_at=post_data.get("indexed_at"),
+                    last_modified_at=datetime.utcnow(),
+
+                    # Thread context
+                    reply_to_post_id=thread_info.get("reply_to"),
+                    reply_root_post_id=thread_info.get("root"),
+                    thread_depth=thread_info.get("depth", 0),
+
+                    # Moderation
+                    moderation_status=moderation_info.get("status", "active"),
+                    content_labels=moderation_info.get("labels", []),
+                    content_warnings=moderation_info.get("warnings", [])
                 )
                 posts_to_add.append(post)
                 saved_count += 1

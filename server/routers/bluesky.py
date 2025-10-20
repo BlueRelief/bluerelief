@@ -43,12 +43,18 @@ def get_stats():
     return get_collection_stats()
 
 @router.post("/trigger")
-def trigger_collection():
-    """Trigger data collection asynchronously"""
-    task = collect_and_analyze.delay()
+def trigger_collection(include_enhanced: bool = True):
+    """
+    Trigger data collection asynchronously
+    
+    Args:
+        include_enhanced: Whether to collect enhanced post data (profile info, engagement, etc.)
+    """
+    task = collect_and_analyze.delay(include_enhanced=include_enhanced)
     return {
         "status": "accepted",
-        "message": "Data collection task started",
+        "message": f"Data collection task started {'with' if include_enhanced else 'without'} enhanced data collection",
+        "enhanced_collection": include_enhanced,
         "task_id": task.id
     }
 
@@ -187,4 +193,134 @@ def get_runs(limit: int = 10, db: Session = Depends(get_db)):
             }
             for r in runs
         ]
+    }
+
+@router.get("/posts/enhanced")
+def get_enhanced_posts(
+    limit: int = 10,
+    with_media: bool = None,
+    min_engagement: int = None,
+    language: str = None,
+    has_location: bool = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Get posts with enhanced data and filtering options
+    
+    Args:
+        limit: Number of posts to return
+        with_media: Filter posts with media
+        min_engagement: Minimum total engagement (likes + reposts + replies)
+        language: Filter by specific language
+        has_location: Filter posts with location data
+    """
+    query = db.query(Post)
+
+    # Apply filters if provided
+    if with_media is not None:
+        query = query.filter(Post.has_media == with_media)
+    
+    if min_engagement is not None:
+        query = query.filter(
+            (Post.like_count + Post.repost_count + Post.reply_count) >= min_engagement
+        )
+    
+    if language:
+        query = query.filter(Post.language == language)
+    
+    if has_location is not None:
+        if has_location:
+            query = query.filter(Post.post_latitude.isnot(None))
+        else:
+            query = query.filter(Post.post_latitude.is_(None))
+
+    # Get results
+    posts = query.order_by(Post.collected_at.desc()).limit(limit).all()
+
+    # Prepare response with detailed post information
+    return {
+        "count": len(posts),
+        "posts": [
+            {
+                # Basic post info
+                "id": p.id,
+                "bluesky_id": p.bluesky_id,
+                "text": p.text,
+                "disaster_type": p.disaster_type,
+                
+                # Temporal data
+                "created_at": p.created_at.isoformat(),
+                "collected_at": p.collected_at.isoformat(),
+                "indexed_at": p.indexed_at.isoformat() if p.indexed_at else None,
+                "last_modified_at": p.last_modified_at.isoformat() if p.last_modified_at else None,
+                
+                # Author info
+                "author": {
+                    "handle": p.author_handle,
+                    "display_name": p.author_display_name,
+                    "description": p.author_description,
+                    "followers_count": p.author_followers_count,
+                    "following_count": p.author_following_count,
+                    "posts_count": p.author_posts_count,
+                    "avatar_url": p.author_avatar_url
+                },
+                
+                # Engagement metrics
+                "engagement": {
+                    "likes": p.like_count,
+                    "reposts": p.repost_count,
+                    "replies": p.reply_count,
+                    "total": (p.like_count or 0) + (p.repost_count or 0) + (p.reply_count or 0)
+                },
+                
+                # Media information
+                "media": {
+                    "has_media": p.has_media,
+                    "count": p.media_count,
+                    "urls": p.media_urls
+                } if p.has_media else None,
+                
+                # Content analysis
+                "content": {
+                    "hashtags": p.hashtags,
+                    "mentions": p.mentions,
+                    "external_urls": p.external_urls,
+                    "language": p.language
+                },
+                
+                # Sentiment analysis
+                "sentiment": {
+                    "label": p.sentiment,
+                    "score": p.sentiment_score
+                } if p.sentiment else None,
+                
+                # Location data
+                "location": {
+                    "name": p.post_location,
+                    "latitude": p.post_latitude,
+                    "longitude": p.post_longitude
+                } if p.post_location or p.post_latitude else None,
+                
+                # Thread context
+                "thread": {
+                    "reply_to": p.reply_to_post_id,
+                    "root": p.reply_root_post_id,
+                    "depth": p.thread_depth
+                } if p.reply_to_post_id or p.reply_root_post_id else None,
+                
+                # Moderation
+                "moderation": {
+                    "status": p.moderation_status,
+                    "labels": p.content_labels,
+                    "warnings": p.content_warnings
+                } if p.moderation_status or p.content_labels or p.content_warnings else None
+            }
+            for p in posts
+        ],
+        "filters_applied": {
+            "with_media": with_media,
+            "min_engagement": min_engagement,
+            "language": language,
+            "has_location": has_location
+        }
     }

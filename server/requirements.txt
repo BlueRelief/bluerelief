@@ -40,6 +40,7 @@ idna==3.10
 itsdangerous==2.2.0
 Jinja2==3.1.6
 kombu==5.5.4
+langdetect==1.0.9
 libipld==3.1.1
 markdown-it-py==4.0.0
 MarkupSafe==3.0.3

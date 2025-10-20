@@ -30,10 +30,16 @@ DISASTER_CONFIG: Dict[str, List[str]] = {
 }
 
 @celery_app.task(name="tasks.collect_and_analyze")
-def collect_and_analyze():
-    """Main task to collect and analyze BlueSky data for multiple disaster types"""
+def collect_and_analyze(include_enhanced: bool = True):
+    """Main task to collect and analyze BlueSky data for multiple disaster types
+    
+    Args:
+        include_enhanced: Whether to collect enhanced post data (profile info, engagement, etc.)
+    """
     print(f"\n{'='*50}")
     print(f"Starting Multi-Disaster BlueSky collection - {datetime.now()}")
+    if include_enhanced:
+        print("Enhanced data collection enabled")
     print(f"{'='*50}\n")
 
     run = create_collection_run()
@@ -52,7 +58,7 @@ def collect_and_analyze():
             for hashtag in hashtags:
                 try:
                     # Pass our set of seen IDs and session for global deduplication
-                    posts, seen_post_ids, session_data = fetch_posts(hashtag, seen_post_ids, session_data)
+                    posts, seen_post_ids, session_data = fetch_posts(hashtag, seen_post_ids, session_data, include_enhanced)
                     # Tag posts with disaster type
                     for post in posts:
                         post["disaster_type"] = disaster_type
