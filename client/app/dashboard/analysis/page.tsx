@@ -52,9 +52,10 @@ const formatPercentage = (num: number | null | undefined): string => {
 
 const formatTime = (minutes: number | null | undefined): string => {
   if (minutes === null || minutes === undefined) return '0m';
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
+  const total = Math.max(0, Math.round(minutes));
+  if (total < 60) return `${total}m`;
+  const hours = Math.floor(total / 60);
+  const remainingMinutes = total % 60;
   return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
 };
 
@@ -289,7 +290,9 @@ export default function AnalysisPage() {
               </div>
             )}
             <p className="text-xs text-muted-foreground">
-              {keyMetrics && keyMetrics.total_incidents > 0 ? `${((keyMetrics.high_priority / keyMetrics.total_incidents) * 100).toFixed(1)}% high priority` : 'Loading...'}
+              {keyMetrics
+                ? `${(keyMetrics.total_incidents === 0 ? 0 : (keyMetrics.high_priority / keyMetrics.total_incidents) * 100).toFixed(1)}% high priority`
+                : 'Loading...'}
             </p>
           </CardContent>
         </Card>
@@ -308,7 +311,9 @@ export default function AnalysisPage() {
               </div>
             )}
             <p className="text-xs text-muted-foreground">
-              {keyMetrics && keyMetrics.total_incidents > 0 ? `${((keyMetrics.high_priority / keyMetrics.total_incidents) * 100).toFixed(1)}% of total incidents` : 'Loading...'}
+              {keyMetrics
+                ? `${(keyMetrics.total_incidents === 0 ? 0 : (keyMetrics.high_priority / keyMetrics.total_incidents) * 100).toFixed(1)}% of total incidents`
+                : 'Loading...'}
             </p>
           </CardContent>
         </Card>
