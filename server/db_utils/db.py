@@ -38,6 +38,12 @@ class User(Base):
     location = Column(String, nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+    role = Column(String(50), default='user', nullable=False, index=True)
+    is_admin = Column(Boolean, default=False, nullable=False, index=True)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+    last_login = Column(DateTime, nullable=True)
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    account_locked_until = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

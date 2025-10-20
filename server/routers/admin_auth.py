@@ -6,6 +6,7 @@ import os
 from services.admin_domain_validator import domain_validator
 from services.admin_logger import log_admin_activity
 from db_utils.db import SessionLocal, User
+from middleware.admin_auth import get_current_admin
 
 router = APIRouter()
 
@@ -19,34 +20,29 @@ class LoginCredentials(BaseModel):
 
 
 @router.post('/api/admin/login')
-def admin_login(credentials: LoginCredentials, request: Request):
+async def admin_login(credentials: LoginCredentials, request: Request):
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.email == credentials.email).first()
         if not user:
-            raise HTTPException(401, 'Invalid credentials')
+            raise HTTPException(status_code=401, detail='Invalid credentials')
 
         # TODO: verify password properly (placeholder)
         if credentials.password != 'admin-placeholder':
-            # increment failed attempts
             user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
             db.commit()
-            raise HTTPException(401, 'Invalid credentials')
+            raise HTTPException(status_code=401, detail='Invalid credentials')
 
-        # Must be admin flag
-        if not getattr(user, 'is_admin', False):
-            raise HTTPException(403, 'User is not an administrator')
+        if not user.is_admin:
+            raise HTTPException(status_code=403, detail='User is not an administrator')
 
-        # Domain restriction
         if not domain_validator.is_valid_admin_email(user.email):
             log_admin_activity(admin_id=user.id, action='ADMIN_LOGIN_DENIED_DOMAIN', details={'email': user.email})
-            raise HTTPException(403, f'Admin access restricted to {", ".join(domain_validator.get_allowed_domains())} domains')
+            raise HTTPException(status_code=403, detail=f'Admin access restricted to {", ".join(domain_validator.get_allowed_domains())} domains')
 
-        # Check lock
-        if getattr(user, 'account_locked_until', None) and user.account_locked_until > datetime.utcnow():
-            raise HTTPException(423, 'Account is locked')
+        if user.account_locked_until and user.account_locked_until > datetime.utcnow():
+            raise HTTPException(status_code=423, detail='Account is locked')
 
-        # Reset failed attempts
         user.failed_login_attempts = 0
         user.last_login = datetime.utcnow()
         db.commit()
@@ -66,6 +62,5 @@ def admin_login(credentials: LoginCredentials, request: Request):
 
 
 @router.post('/api/admin/logout')
-def admin_logout(request: Request):
-    # For stateless JWTs, instruct client to discard token. Optionally implement token revocation.
+async def admin_logout(request: Request, current_admin: User = Depends(get_current_admin)):
     return {'message': 'Logged out'}

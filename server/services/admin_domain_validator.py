@@ -32,17 +32,18 @@ class AdminDomainValidator:
 
         email_lower = email.lower().strip()
 
-        # Check exception list first
         if email_lower in self.exception_emails:
             return True
 
-        # Extract domain from email
         if '@' not in email_lower:
             return False
 
-        domain = email_lower.split('@')[1]
+        parts = email_lower.split('@')
+        if len(parts) != 2:
+            return False
 
-        # Check if domain is in allowed list
+        domain = parts[1]
+
         return domain in self.allowed_domains
 
     def get_allowed_domains(self) -> List[str]:
