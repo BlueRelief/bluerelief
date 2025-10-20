@@ -51,7 +51,6 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ data, regions, mapboxToken,
        if (!map.current) return;
 
        isMapLoaded.current = true;
-       console.log('Map loaded, creating heatmap with data:', data);
 
        const geojsonData: GeoJSON.FeatureCollection = {
          type: 'FeatureCollection',
@@ -67,7 +66,6 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ data, regions, mapboxToken,
          }))
        };
 
-       console.log('GeoJSON data created:', geojsonData);
 
       map.current.addSource('heatmap-source', {
         type: 'geojson',
@@ -125,7 +123,6 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ data, regions, mapboxToken,
          }
        });
 
-       console.log('Heatmap layer added');
        
        markersRef.current.forEach(marker => marker.remove());
        markersRef.current = [];
@@ -325,8 +322,20 @@ interface CrisisMapProps {
 }
 
 export default function CrisisMap({ regions, focusRegion }: CrisisMapProps) {
-  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? 
-    'pk.eyJ1IjoiZ3NnMjEwMDAxIiwiYSI6ImNtZzRpNjZ4ejFsNTgybW9mbnlyNmIxY28ifQ.01BgG4RXjP9pn8PYGc7sDw';
+  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+
+  if (!mapboxToken) {
+    return (
+      <div className="flex items-center justify-center h-[600px] bg-muted/50 rounded-lg border border-dashed">
+        <div className="text-center">
+          <div className="text-lg font-medium text-destructive mb-2">Mapbox Token Missing</div>
+          <div className="text-sm text-muted-foreground">
+            Please set NEXT_PUBLIC_MAPBOX_TOKEN in your environment variables
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const heatmapData: HeatmapPoint[] = regions.map(region => {
     const severity_weights = {
@@ -344,7 +353,6 @@ export default function CrisisMap({ regions, focusRegion }: CrisisMapProps) {
     };
   });
 
-  console.log('Heatmap data prepared:', heatmapData);
 
   return (
     <HeatmapLayer 
