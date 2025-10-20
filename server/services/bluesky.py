@@ -120,14 +120,14 @@ def enrich_post_data(post: Dict, api: BlueskyAPI) -> Dict:
     """Enrich post data with additional information"""
     # Basic post reference
     post_uri = post.get("uri")
-    
+
     # Get author profile information
     author = post.get("author", {}).get("handle")
     if author:
         profile = api.get_profile(author)
     else:
         profile = {}
-    
+
     # Get thread context if it's a reply
     thread_info = {}
     if "reply" in post.get("record", {}):
@@ -154,44 +154,57 @@ def enrich_post_data(post: Dict, api: BlueskyAPI) -> Dict:
         # Basic post info
         "uri": post_uri,
         "text": text,
-        "created_at": post.get("record", {}).get("createdAt"),
-        "indexed_at": post.get("indexedAt"),
-
-        # Engagement metrics
-        **engagement,
-
-        # Author profile info
-        "author_handle": author,
-        "author_display_name": profile.get("displayName"),
-        "author_description": profile.get("description"),
-        "author_followers_count": profile.get("followersCount"),
-        "author_following_count": profile.get("followsCount"),
-        "author_posts_count": profile.get("postsCount"),
-        "author_avatar_url": profile.get("avatar"),
-
-        # Media information
-        "has_media": has_media,
-        "media_count": len(media_urls),
-        "media_urls": media_urls,
-
-        # Extracted content
-        "hashtags": extract_hashtags(text),
-        "mentions": extract_mentions(text),
-        "external_urls": extract_urls(text),
-        "language": detect_language(text),
-
-        # Content labels/warnings
-        "content_labels": post.get("labels", []),
-        "content_warnings": [],  # To be filled if present
-        "moderation_status": "active",  # Default status
-
-        # Reply context
-        "reply_to_post_id": thread_info.get("parent", {}).get("uri"),
-        "reply_root_post_id": thread_info.get("root", {}).get("uri"),
-        "thread_depth": thread_info.get("depth", 0),
-
+        "record": post.get("record", {}),
+        "indexedAt": post.get("indexedAt"),
+        # Engagement metrics (nested under "engagement")
+        "engagement": {
+            "likes": post.get("likeCount", 0),
+            "reposts": post.get("repostCount", 0),
+            "replies": post.get("replyCount", 0),
+        },
+        # Author profile info (nested under "author")
+        "author": {
+            "handle": author,
+            "display_name": profile.get("displayName"),
+            "description": profile.get("description"),
+            "followers_count": profile.get("followersCount"),
+            "following_count": profile.get("followsCount"),
+            "posts_count": profile.get("postsCount"),
+            "avatar_url": profile.get("avatar"),
+        },
+        # Media information (nested under "media")
+        "media": {
+            "has_media": has_media,
+            "count": len(media_urls),
+            "urls": media_urls,
+        },
+        # Content analysis (nested under "content")
+        "content": {
+            "hashtags": extract_hashtags(text),
+            "mentions": extract_mentions(text),
+            "external_urls": extract_urls(text),
+            "language": detect_language(text),
+        },
+        # Labels/warnings (nested under "moderation")
+        "moderation": {
+            "labels": post.get("labels", []),
+            "warnings": [],
+            "status": "active",
+        },
+        # Reply context (nested under "thread")
+        "thread": {
+            "parent_uri": thread_info.get("parent", {}).get("uri"),
+            "root_uri": thread_info.get("root", {}).get("uri"),
+            "depth": thread_info.get("depth", 0),
+        },
+        # Location information (nested under "location")
+        "location": {
+            "name": None,
+            "latitude": None,
+            "longitude": None,
+        },
         # Original raw data
-        "raw_data": post
+        "raw_data": post,
     }
 
     return enriched_data
@@ -249,4 +262,3 @@ def fetch_posts(hashtag: str = None, seen_ids: Set[str] = None, session_data: Di
     print(f"📋 Found {len(unique_posts)} unique posts (filtered {len(all_posts) - len(unique_posts)} duplicates)")
     
     return unique_posts, seen_ids, session_data
-
