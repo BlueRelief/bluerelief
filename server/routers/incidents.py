@@ -30,10 +30,35 @@ async def list_incidents(db: Session = Depends(get_db)):
     for d in disasters:
         result.append({
             "id": d.id,
-            "region": d.location_name or d.location,  # Use new field, fallback to old
+            "region": d.location_name or "Unknown",
             "incidents": 1,
             "severity": get_severity_label(d.severity),
-            "coordinates": [d.longitude, d.latitude] if d.latitude and d.longitude else None
+            "coordinates": [d.longitude, d.latitude] if d.latitude and d.longitude else None,
+            "crisis_description": d.description or "No description available",
         })
     
     return result
+
+
+
+@router.get("/api/incidents/nearby")
+async def get_nearby_disasters(lat: float, lon: float, radius_km: float = 50, db: Session = Depends(get_db)):
+    """Get disasters within radius of coordinates"""
+    from services.population_estimator import PopulationEstimator
+
+    nearby = PopulationEstimator.find_nearby_disasters(db, lat, lon, radius_km)
+
+    return [
+        {
+            "id": d.id,
+            "location_name": d.location_name,
+            "latitude": d.latitude,
+            "longitude": d.longitude,
+            "distance_km": round(distance, 2),
+            "severity": d.severity,
+            "affected_population": d.affected_population,
+            "disaster_type": getattr(d, "disaster_type", None),
+            "description": d.description,
+        }
+        for d, distance in nearby
+    ]
