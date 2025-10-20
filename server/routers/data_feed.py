@@ -106,7 +106,7 @@ def get_weekly_crises(
         sev = int(d.severity) if d.severity else 1
         severity_label = severity_map.get(sev, "Low")
 
-        crisis_name = d.description or f"{d.location}" if d.location else "Unknown Event"
+        crisis_name = d.description or f"{d.location_name}" if d.location_name else "Unknown Event"
 
         bluesky_url = None
         if d.post:
@@ -133,7 +133,7 @@ def get_weekly_crises(
             "id": d.id,
             "crisis_name": crisis_name,
             "date": d.extracted_at.isoformat(),
-            "region": d.location or "Unknown",
+            "region": d.location_name or "Unknown",
             "severity": severity_label,
             "tweets_analyzed": tweets_count,
             "status": status,

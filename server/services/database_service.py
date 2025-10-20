@@ -386,7 +386,7 @@ def get_recent_disasters(limit: int = 50):
         return [
             {
                 "id": d.id,
-                "location": d.location,
+                "location": d.location_name,
                 "event_time": d.event_time,
                 "severity": d.severity,
                 "magnitude": d.magnitude,
