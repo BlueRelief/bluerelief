@@ -194,7 +194,7 @@ export default function AnalysisPage() {
           patternsData
         ] = await Promise.all([
           getAnalysisKeyMetrics(),
-          getAnalysisTrends(365),
+          getAnalysisTrends(30),
           getAnalysisRegionalAnalysis(),
           getAnalysisStatistics(),
           getAnalysisPatterns()
