@@ -7,7 +7,6 @@ from services import database_service
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
-
 def get_db():
     db = SessionLocal()
     try:
@@ -36,9 +35,6 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         .filter(Disaster.archived == False)
         .count()
     )
-
-    # Improved affected_people calculation using PopulationEstimator
-    from services.population_estimator import PopulationEstimator
 
     affected_people = 0
     for disaster in db.query(Disaster).all():
