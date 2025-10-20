@@ -124,6 +124,8 @@ jobs:
             --set frontend.env.NEXT_PUBLIC_IS_PREVIEW="true" \
             --set app.env.IS_PREVIEW="true" \
             --set app.env.PREVIEW_AUTH_BYPASS="true" \
+            --set app.env.REDIRECT_URL="https://${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app/dashboard" \
+            --set app.env.BACKEND_URL="${{ steps.vars.outputs.backend_url }}" \
             --wait
 
       - name: Comment on PR
