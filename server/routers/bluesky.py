@@ -82,7 +82,7 @@ def get_disaster(disaster_id: int, db: Session = Depends(get_db)):
     
     return {
         "id": disaster.id,
-        "location": disaster.location,
+        "location": disaster.location_name,
         "latitude": disaster.latitude,
         "longitude": disaster.longitude,
         "disaster_type": disaster.disaster_type or None,

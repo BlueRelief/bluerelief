@@ -151,8 +151,8 @@ def get_recent_events(limit: int = 10, db: Session = Depends(get_db)):
                 title = d.description
             description = d.description
         else:
-            title = f"Event at {d.location}"
-            description = f"Crisis event detected at {d.location}"
+            title = f"Event at {d.location_name}"
+            description = f"Crisis event detected at {d.location_name}"
 
         # Get Bluesky URL if disaster is linked to a post
         bluesky_url = None
@@ -175,7 +175,7 @@ def get_recent_events(limit: int = 10, db: Session = Depends(get_db)):
                 "id": d.id,
                 "title": title,
                 "description": description,
-                "location": d.location,
+                "location": d.location_name,
                 "time": rel,
                 "severity": label,
                 "severityColor": color,
