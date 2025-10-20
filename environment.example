@@ -43,3 +43,6 @@ SCHEDULE_HOURS=24
 RESEND_API_KEY=your-resend-api-key-here
 SENDING_DOMAIN=your-domain.com
 EMAIL_FROM=no-reply@your-domain.com
+
+# Email Microservice
+EMAIL_MICROSERVICE_URL=http://email-service:3002
