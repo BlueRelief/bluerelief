@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
-SCHEDULE_HOURS = int(os.getenv("SCHEDULE_HOURS", "24"))
 
 celery_app = Celery(
     "bluerelief_tasks",
@@ -49,7 +48,7 @@ SCHEDULE_HOURS = int(os.getenv("SCHEDULE_HOURS", "8"))
 celery_app.conf.beat_schedule = {
     "collect-bluesky-data": {
         "task": "tasks.collect_and_analyze",
-        "schedule": crontab(hour=f"*/{SCHEDULE_HOURS}"),
+        "schedule": crontab(hour=f"*/{SCHEDULE_HOURS}", minute=0),
         "options": {"expires": 60 * 60 * 3},  # Tasks expire after 3 hours
     },
     "generate-alerts": {
