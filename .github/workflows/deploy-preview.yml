@@ -131,6 +131,8 @@ jobs:
             --set emailService.image.tag=${{ steps.vars.outputs.image_tag }} \
             --set ingress.host="api-${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app" \
             --set frontend.ingress.host="${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app" \
+            --set emailService.ingress.enabled=true \
+            --set emailService.ingress.host="email-api-${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app" \
             --set frontend.env.NEXT_PUBLIC_API_URL="${{ steps.vars.outputs.backend_url }}" \
             --set frontend.env.NEXT_PUBLIC_IS_PREVIEW="true" \
             --set app.env.IS_PREVIEW="true" \
@@ -152,7 +154,8 @@ jobs:
               repo: context.repo.repo,
               body: `## 🚀 Preview Deployment Ready!\n\n` +
                     `**Backend:** ${{ steps.vars.outputs.backend_url }}\n` +
-                    `**Frontend:** ${{ steps.vars.outputs.frontend_url }}\n\n` +
+                    `**Frontend:** ${{ steps.vars.outputs.frontend_url }}\n` +
+                    `**Email Service:** https://email-api-${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app\n\n` +
                     `Commit: \`${{ steps.vars.outputs.commit_sha }}\`\n\n` +
                     `---\n\n` +
                     `## 🔐 Authentication\n` +
@@ -176,9 +179,10 @@ jobs:
           echo "🚀 Preview Deployment Ready!"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo ""
-          echo "Backend:  ${{ steps.vars.outputs.backend_url }}"
-          echo "Frontend: ${{ steps.vars.outputs.frontend_url }}"
-          echo "Commit:   ${{ steps.vars.outputs.commit_sha }}"
+          echo "Backend:       ${{ steps.vars.outputs.backend_url }}"
+          echo "Frontend:      ${{ steps.vars.outputs.frontend_url }}"
+          echo "Email Service: https://email-api-${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app"
+          echo "Commit:        ${{ steps.vars.outputs.commit_sha }}"
           echo ""
           echo "Version Prediction:"
           echo "  Current:  v${{ steps.version_prediction.outputs.main_version }}"
