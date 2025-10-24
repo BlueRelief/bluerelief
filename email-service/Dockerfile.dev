@@ -4,11 +4,14 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 # Copy package files
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml ./
 
 # Install all dependencies (including dev dependencies)
-RUN npm install
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY . .
@@ -25,4 +28,4 @@ USER nodejs
 EXPOSE 3002
 
 # Start the application in development mode with hot reloading
-CMD ["npx", "nodemon", "--exec", "ts-node", "src/server.ts"]
+CMD ["pnpm", "exec", "nodemon", "--exec", "ts-node", "src/server.ts"]

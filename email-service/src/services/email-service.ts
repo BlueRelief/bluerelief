@@ -1,10 +1,14 @@
 import { Resend } from 'resend';
-import { createSimpleTemplate } from '../templates/simple-template';
-import { CrisisAlertTemplate } from '../templates/CrisisAlertTemplate';
-import { WeeklyDigestTemplate } from '../templates/WeeklyDigestTemplate';
-import { MentionNotificationTemplate } from '../templates/MentionNotificationTemplate';
-import { WelcomeTemplate } from '../templates/WelcomeTemplate';
 import { render } from '@react-email/render';
+import {
+  EmailTemplate,
+  CrisisAlertTemplate,
+  WeeklyDigestTemplate,
+  MentionNotificationTemplate,
+  WelcomeTemplate,
+  AlertTemplate,
+  NotificationTemplate
+} from '../templates';
 
 interface EmailData {
   to: string;
@@ -96,15 +100,15 @@ class EmailService {
           template = WelcomeTemplate(data as any);
           break;
         case 'alert':
-          template = CrisisAlertTemplate(data as any);
+          template = AlertTemplate(data as any);
           break;
         case 'notification':
-          template = MentionNotificationTemplate(data as any);
+          template = NotificationTemplate(data as any);
           break;
         case 'email':
         default:
-          // Use the simple template for basic emails
-          return createSimpleTemplate(data);
+          template = EmailTemplate(data as any);
+          break;
       }
       
       return render(template);

@@ -47,6 +47,20 @@ docker buildx build \
 echo "✅ Frontend image built and pushed successfully"
 echo ""
 
+echo "🔨 Building email-service image for AMD64 (no cache)..."
+docker buildx build \
+  --platform linux/amd64 \
+  --no-cache \
+  --pull \
+  -f email-service/Dockerfile \
+  -t ${REGISTRY}/${PROJECT}/email-service:${VERSION} \
+  -t ${REGISTRY}/${PROJECT}/email-service:latest \
+  --push \
+  ./email-service
+
+echo "✅ Email service image built and pushed successfully"
+echo ""
+
 echo "🎉 All images built and pushed successfully!"
 echo ""
 echo "Images pushed:"
@@ -54,3 +68,5 @@ echo "  - ${REGISTRY}/${PROJECT}/backend:${VERSION}"
 echo "  - ${REGISTRY}/${PROJECT}/backend:latest"
 echo "  - ${REGISTRY}/${PROJECT}/frontend:${VERSION}"
 echo "  - ${REGISTRY}/${PROJECT}/frontend:latest"
+echo "  - ${REGISTRY}/${PROJECT}/email-service:${VERSION}"
+echo "  - ${REGISTRY}/${PROJECT}/email-service:latest"

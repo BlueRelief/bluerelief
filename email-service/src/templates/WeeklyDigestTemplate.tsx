@@ -4,7 +4,6 @@ import {
   Head,
   Heading,
   Html,
-  Img,
   Link,
   Preview,
   Section,
@@ -26,9 +25,34 @@ interface WeeklyDigestProps {
   weekEnd: string;
   crisisCount: number;
   crises: Crisis[];
-  logoUrl?: string;
   dashboardUrl?: string;
 }
+
+const Logo = () => (
+  <svg
+    width="48"
+    height="48"
+    viewBox="0 0 100 100"
+    style={{ margin: '0 auto', display: 'block' }}
+  >
+    <defs>
+      <mask id="logo-mask">
+        <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
+        <rect x="25" y="25" width="50" height="50" rx="8" ry="8" fill="black" />
+      </mask>
+    </defs>
+    <rect
+      x="0"
+      y="0"
+      width="100"
+      height="100"
+      rx="20"
+      ry="20"
+      fill="#196EE3"
+      mask="url(#logo-mask)"
+    />
+  </svg>
+);
 
 export const WeeklyDigestTemplate = ({
   userName = 'User',
@@ -36,7 +60,6 @@ export const WeeklyDigestTemplate = ({
   weekEnd = '2024-01-07',
   crisisCount = 0,
   crises = [],
-  logoUrl = 'https://bluerelief.com/logo.png',
   dashboardUrl = 'https://bluerelief.com/dashboard',
 }: WeeklyDigestProps) => {
   const formatDate = (dateString: string) => {
@@ -47,14 +70,14 @@ export const WeeklyDigestTemplate = ({
     });
   };
 
-  const getSeverityColor = (severity?: string) => {
-    switch (severity?.toLowerCase()) {
-      case 'critical': return '#dc3545';
-      case 'high': return '#fd7e14';
-      case 'medium': return '#ffc107';
-      case 'low': return '#28a745';
-      default: return '#6c757d';
-    }
+  const getSeverityConfig = (severity?: string) => {
+    const configs = {
+      'critical': { color: '#ef4444', bg: '#fee2e2' },
+      'high': { color: '#f97316', bg: '#ffedd5' },
+      'medium': { color: '#f59e0b', bg: '#fef3c7' },
+      'low': { color: '#22c55e', bg: '#dcfce7' },
+    };
+    return configs[severity?.toLowerCase() as keyof typeof configs] || { color: '#64748b', bg: '#f1f5f9' };
   };
 
   return (
@@ -64,13 +87,7 @@ export const WeeklyDigestTemplate = ({
       <Body style={main}>
         <Container style={container}>
           <Section style={logoContainer}>
-            <Img
-              src={logoUrl}
-              width="120"
-              height="40"
-              alt="BlueRelief"
-              style={logo}
-            />
+            <Logo />
           </Section>
           
           <Section style={headerSection}>
@@ -82,15 +99,18 @@ export const WeeklyDigestTemplate = ({
           </Section>
           
           <Section style={summarySection}>
-            <Text style={summaryTitle}>📊 This Week's Summary</Text>
-            <Text style={crisisCountText}>
-              <strong>{crisisCount}</strong> crisis incidents reported
-            </Text>
-            {crisisCount > 0 && (
-              <Text style={summarySubtext}>
-                Stay informed about the latest developments in your area.
+            <Section style={summaryCard}>
+              <Text style={summaryIcon}>📊</Text>
+              <Text style={summaryTitle}>This Week's Summary</Text>
+              <Text style={crisisCountText}>
+                <span style={countNumber}>{crisisCount}</span> crisis incidents reported
               </Text>
-            )}
+              {crisisCount > 0 && (
+                <Text style={summarySubtext}>
+                  Stay informed about the latest developments in your area.
+                </Text>
+              )}
+            </Section>
           </Section>
           
           {crises.length > 0 && (
@@ -98,23 +118,28 @@ export const WeeklyDigestTemplate = ({
               <Text style={crisesTitle}>🚨 Recent Incidents</Text>
               {crises.slice(0, 5).map((crisis, index) => (
                 <Section key={index} style={crisisItem}>
-                  <Text style={crisisType}>{crisis.type}</Text>
+                  <Section style={crisisHeader}>
+                    <Text style={crisisType}>{crisis.type}</Text>
+                    {crisis.severity && (
+                      <Text style={{
+                        ...severityTag,
+                        backgroundColor: getSeverityConfig(crisis.severity).bg,
+                        color: getSeverityConfig(crisis.severity).color,
+                      }}>
+                        {crisis.severity.toUpperCase()}
+                      </Text>
+                    )}
+                  </Section>
                   <Text style={crisisLocation}>📍 {crisis.location}</Text>
                   <Text style={crisisDate}>📅 {formatDate(crisis.date)}</Text>
-                  {crisis.severity && (
-                    <Text style={{
-                      ...severityTag,
-                      color: getSeverityColor(crisis.severity)
-                    }}>
-                      {crisis.severity.toUpperCase()}
-                    </Text>
-                  )}
                 </Section>
               ))}
               {crises.length > 5 && (
-                <Text style={moreText}>
-                  ... and {crises.length - 5} more incidents
-                </Text>
+                <Section style={moreBox}>
+                  <Text style={moreText}>
+                    + {crises.length - 5} more incidents this week
+                  </Text>
+                </Section>
               )}
             </Section>
           )}
@@ -143,175 +168,205 @@ export const WeeklyDigestTemplate = ({
   );
 };
 
-// Styles
 const main = {
-  backgroundColor: '#f6f9fc',
-  fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+  backgroundColor: '#f8fafc',
+  fontFamily: 'Lato, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
 };
 
 const container = {
   backgroundColor: '#ffffff',
   margin: '0 auto',
-  padding: '20px 0 48px',
-  marginBottom: '64px',
+  padding: '40px 20px',
+  maxWidth: '600px',
   borderRadius: '8px',
-  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
 };
 
 const logoContainer = {
-  padding: '32px 20px 20px',
+  padding: '0 0 24px',
   textAlign: 'center' as const,
-};
-
-const logo = {
-  margin: '0 auto',
 };
 
 const headerSection = {
   textAlign: 'center' as const,
-  padding: '20px',
+  padding: '0 0 24px',
 };
 
 const titleText = {
-  color: '#333',
+  color: '#020617',
   fontSize: '28px',
-  fontWeight: 'bold',
-  margin: '0 0 8px 0',
-  textAlign: 'center' as const,
+  fontWeight: '700',
+  margin: '0 0 8px',
+  lineHeight: '1.2',
 };
 
 const subtitleText = {
-  color: '#666',
+  color: '#475569',
   fontSize: '16px',
-  margin: '0 0 16px 0',
+  margin: '0 0 16px',
+  fontWeight: '500',
 };
 
 const greetingText = {
-  color: '#333',
-  fontSize: '18px',
-  margin: '0 0 24px 0',
+  color: '#334155',
+  fontSize: '16px',
+  margin: '0',
 };
 
 const summarySection = {
-  padding: '20px',
-  backgroundColor: '#f8f9fa',
+  padding: '0 0 32px',
+};
+
+const summaryCard = {
+  background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)',
   borderRadius: '8px',
-  margin: '0 20px 24px',
+  padding: '24px',
+  textAlign: 'center' as const,
+  border: '1px solid #c7d2fe',
+};
+
+const summaryIcon = {
+  fontSize: '32px',
+  margin: '0 0 12px',
+  lineHeight: '1',
 };
 
 const summaryTitle = {
-  color: '#333',
-  fontSize: '20px',
-  fontWeight: 'bold',
-  margin: '0 0 16px 0',
+  color: '#020617',
+  fontSize: '18px',
+  fontWeight: '600',
+  margin: '0 0 16px',
 };
 
 const crisisCountText = {
-  color: '#333',
-  fontSize: '24px',
-  margin: '0 0 8px 0',
+  color: '#334155',
+  fontSize: '20px',
+  margin: '0 0 8px',
+  lineHeight: '1.4',
+};
+
+const countNumber = {
+  color: '#196EE3',
+  fontSize: '32px',
+  fontWeight: '700',
+  display: 'inline-block',
 };
 
 const summarySubtext = {
-  color: '#666',
+  color: '#475569',
   fontSize: '14px',
   margin: '0',
 };
 
 const crisesSection = {
-  padding: '0 20px 24px',
+  padding: '0 0 24px',
 };
 
 const crisesTitle = {
-  color: '#333',
+  color: '#020617',
   fontSize: '20px',
-  fontWeight: 'bold',
-  margin: '0 0 16px 0',
+  fontWeight: '700',
+  margin: '0 0 16px',
 };
 
 const crisisItem = {
-  backgroundColor: '#ffffff',
-  border: '1px solid #e9ecef',
-  borderRadius: '6px',
+  backgroundColor: '#f8fafc',
+  border: '1px solid #e2e8f0',
+  borderRadius: '8px',
   padding: '16px',
-  margin: '0 0 12px 0',
+  margin: '0 0 12px',
+};
+
+const crisisHeader = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  margin: '0 0 12px',
 };
 
 const crisisType = {
-  color: '#333',
+  color: '#020617',
   fontSize: '16px',
-  fontWeight: 'bold',
-  margin: '0 0 8px 0',
-};
-
-const crisisLocation = {
-  color: '#666',
-  fontSize: '14px',
-  margin: '0 0 4px 0',
-};
-
-const crisisDate = {
-  color: '#666',
-  fontSize: '14px',
-  margin: '0 0 8px 0',
+  fontWeight: '600',
+  margin: '0',
+  lineHeight: '1.4',
 };
 
 const severityTag = {
   display: 'inline-block',
-  fontSize: '12px',
-  fontWeight: 'bold',
-  padding: '4px 8px',
-  borderRadius: '4px',
-  backgroundColor: '#f8f9fa',
-  border: '1px solid currentColor',
+  fontSize: '11px',
+  fontWeight: '600',
+  padding: '4px 10px',
+  borderRadius: '12px',
+  letterSpacing: '0.5px',
+  lineHeight: '1',
+};
+
+const crisisLocation = {
+  color: '#475569',
+  fontSize: '14px',
+  margin: '0 0 4px',
+  lineHeight: '1.4',
+};
+
+const crisisDate = {
+  color: '#64748b',
+  fontSize: '13px',
+  margin: '0',
+  lineHeight: '1.4',
+};
+
+const moreBox = {
+  backgroundColor: '#f8fafc',
+  border: '1px dashed #cbd5e1',
+  borderRadius: '8px',
+  padding: '16px',
+  textAlign: 'center' as const,
 };
 
 const moreText = {
-  color: '#666',
+  color: '#64748b',
   fontSize: '14px',
-  fontStyle: 'italic' as const,
-  textAlign: 'center' as const,
-  margin: '16px 0 0',
+  fontWeight: '500',
+  margin: '0',
 };
 
 const actionSection = {
   textAlign: 'center' as const,
   margin: '32px 0',
-  padding: '0 20px',
 };
 
 const dashboardButton = {
-  backgroundColor: '#007ee6',
-  borderRadius: '6px',
-  color: '#fff',
+  backgroundColor: '#196EE3',
+  borderRadius: '8px',
+  color: '#ffffff',
   fontSize: '16px',
-  fontWeight: 'bold',
+  fontWeight: '600',
   textDecoration: 'none',
   textAlign: 'center' as const,
   display: 'inline-block',
-  padding: '14px 28px',
-  boxShadow: '0 2px 4px rgba(0, 126, 230, 0.3)',
+  padding: '14px 32px',
+  boxShadow: '0 2px 4px rgba(25, 110, 227, 0.25)',
 };
 
 const divider = {
-  borderColor: '#e9ecef',
-  margin: '32px 0 24px',
+  borderColor: '#e2e8f0',
+  margin: '32px 0',
 };
 
 const footerSection = {
-  padding: '0 20px',
   textAlign: 'center' as const,
 };
 
 const footerText = {
-  color: '#6c757d',
+  color: '#64748b',
   fontSize: '12px',
-  lineHeight: '16px',
-  margin: '8px 0',
+  lineHeight: '1.5',
+  margin: '0 0 8px',
 };
 
 const linkText = {
-  color: '#007ee6',
+  color: '#196EE3',
   textDecoration: 'none',
 };
 

@@ -12,6 +12,7 @@ env:
   REGISTRY: registry.rsft.co
   BACKEND_IMAGE: bluerelief/backend
   FRONTEND_IMAGE: bluerelief/frontend
+  EMAIL_SERVICE_IMAGE: bluerelief/email-service
 
 jobs:
   deploy-production:
@@ -91,6 +92,18 @@ jobs:
           docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
           docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
 
+      - name: Build and push email-service
+        run: |
+          cd email-service
+          docker build \
+            -f Dockerfile \
+            --build-arg VERSION=${{ steps.vars.outputs.version }} \
+            -t ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:${{ steps.vars.outputs.image_tag }} \
+            -t ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:latest \
+            .
+          docker push ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:${{ steps.vars.outputs.image_tag }}
+          docker push ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:latest
+
       - name: Deploy to production
         run: |
           helm upgrade --install bluerelief \
@@ -100,6 +113,7 @@ jobs:
             --create-namespace \
             --set app.image.tag=${{ steps.vars.outputs.image_tag }} \
             --set frontend.image.tag=${{ steps.vars.outputs.image_tag }} \
+            --set emailService.image.tag=${{ steps.vars.outputs.image_tag }} \
             --wait
 
       - name: Create Git Tag and Release

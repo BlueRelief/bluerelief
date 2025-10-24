@@ -13,6 +13,7 @@ env:
   REGISTRY: registry.rsft.co
   BACKEND_IMAGE: bluerelief/backend
   FRONTEND_IMAGE: bluerelief/frontend
+  EMAIL_SERVICE_IMAGE: bluerelief/email-service
 
 jobs:
   deploy-preview:
@@ -109,6 +110,15 @@ jobs:
             -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} .
           docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
 
+      - name: Build and push email-service
+        run: |
+          cd email-service
+          docker build \
+            -f Dockerfile \
+            --build-arg VERSION=${{ steps.version_prediction.outputs.new_version }} \
+            -t ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:${{ steps.vars.outputs.image_tag }} .
+          docker push ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:${{ steps.vars.outputs.image_tag }}
+
       - name: Deploy to Kubernetes
         run: |
           helm upgrade --install bluerelief-${{ steps.vars.outputs.sanitized_branch }} \
@@ -118,6 +128,7 @@ jobs:
             --create-namespace \
             --set app.image.tag=${{ steps.vars.outputs.image_tag }} \
             --set frontend.image.tag=${{ steps.vars.outputs.image_tag }} \
+            --set emailService.image.tag=${{ steps.vars.outputs.image_tag }} \
             --set ingress.host="api-${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app" \
             --set frontend.ingress.host="${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app" \
             --set frontend.env.NEXT_PUBLIC_API_URL="${{ steps.vars.outputs.backend_url }}" \

@@ -160,6 +160,22 @@ services:
       retries: 3
       start_period: 40s
 
+  # Email Preview (React Email Dev Server)
+  email-preview:
+    build:
+      context: ./email-service
+      dockerfile: Dockerfile.dev
+    container_name: bluerelief-email-preview
+    restart: unless-stopped
+    ports:
+      - "3003:3003"
+    volumes:
+      - ./email-service:/app
+      - /app/node_modules
+    command: pnpm email:dev
+    profiles:
+      - dev
+
   # Next.js Frontend
   frontend:
     build:
