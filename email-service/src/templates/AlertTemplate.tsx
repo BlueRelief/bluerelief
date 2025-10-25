@@ -4,7 +4,6 @@ import {
   Head,
   Heading,
   Html,
-  Img,
   Link,
   Preview,
   Section,
@@ -21,9 +20,34 @@ interface AlertTemplateProps {
   actionText?: string;
   actionUrl?: string;
   timestamp?: string;
-  logoUrl?: string;
   [key: string]: any;
 }
+
+const Logo = () => (
+  <svg
+    width="48"
+    height="48"
+    viewBox="0 0 100 100"
+    style={{ margin: '0 auto', display: 'block' }}
+  >
+    <defs>
+      <mask id="logo-mask">
+        <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
+        <rect x="25" y="25" width="50" height="50" rx="8" ry="8" fill="black" />
+      </mask>
+    </defs>
+    <rect
+      x="0"
+      y="0"
+      width="100"
+      height="100"
+      rx="20"
+      ry="20"
+      fill="#196EE3"
+      mask="url(#logo-mask)"
+    />
+  </svg>
+);
 
 export const AlertTemplate = ({
   alertType = 'Emergency Alert',
@@ -33,15 +57,16 @@ export const AlertTemplate = ({
   actionText = 'View Details',
   actionUrl = '#',
   timestamp = new Date().toISOString(),
-  logoUrl = 'https://bluerelief.com/logo.png',
   ...props
 }: AlertTemplateProps) => {
-  const severityColor = {
-    'Low': '#28a745',
-    'Medium': '#ffc107',
-    'High': '#fd7e14',
-    'Critical': '#dc3545'
-  }[severity] || '#dc3545';
+  const severityColors = {
+    'Low': { bg: '#22c55e', text: '#ffffff' },
+    'Medium': { bg: '#f59e0b', text: '#ffffff' },
+    'High': { bg: '#f97316', text: '#ffffff' },
+    'Critical': { bg: '#ef4444', text: '#ffffff' }
+  };
+
+  const severityColor = severityColors[severity as keyof typeof severityColors] || severityColors.Critical;
 
   return (
     <Html>
@@ -50,26 +75,35 @@ export const AlertTemplate = ({
       <Body style={main}>
         <Container style={container}>
           <Section style={logoContainer}>
-            <Img
-              src={logoUrl}
-              width="120"
-              height="40"
-              alt="BlueRelief"
-              style={logo}
-            />
+            <Logo />
           </Section>
           
           <Section style={alertHeader}>
+            <Text style={alertIcon}>⚠️</Text>
             <Heading style={alertTitle}>{alertType}</Heading>
-            <Text style={{...severityBadge, backgroundColor: severityColor}}>
+            <Text style={{
+              ...severityBadge,
+              backgroundColor: severityColor.bg,
+              color: severityColor.text
+            }}>
               {severity} Priority
             </Text>
           </Section>
           
           <Section style={contentSection}>
-            <Text style={locationText}>📍 {location}</Text>
-            <Text style={timestampText}>🕐 {new Date(timestamp).toLocaleString()}</Text>
+            <Section style={metaContainer}>
+              <Text style={metaItem}>
+                <span style={metaIcon}>📍</span>
+                <span style={metaText}>{location}</span>
+              </Text>
+              <Text style={metaItem}>
+                <span style={metaIcon}>🕐</span>
+                <span style={metaText}>{new Date(timestamp).toLocaleString()}</span>
+              </Text>
+            </Section>
+            
             <Hr style={divider} />
+            
             <Text style={descriptionText}>{description}</Text>
           </Section>
           
@@ -95,50 +129,51 @@ export const AlertTemplate = ({
   );
 };
 
-// Styles
 const main = {
-  backgroundColor: '#f6f9fc',
-  fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+  backgroundColor: '#f8fafc',
+  fontFamily: 'Lato, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
 };
 
 const container = {
   backgroundColor: '#ffffff',
   margin: '0 auto',
-  padding: '20px 0 48px',
-  marginBottom: '64px',
+  padding: '40px 20px',
+  maxWidth: '600px',
   borderRadius: '8px',
-  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
 };
 
 const logoContainer = {
-  padding: '32px 20px',
+  padding: '0 0 24px',
   textAlign: 'center' as const,
-};
-
-const logo = {
-  margin: '0 auto',
 };
 
 const alertHeader = {
   textAlign: 'center' as const,
-  padding: '20px',
-  backgroundColor: '#f8f9fa',
-  borderRadius: '8px 8px 0 0',
+  padding: '24px 20px',
+  backgroundColor: '#fef3f2',
+  borderRadius: '8px',
+  border: '1px solid #fecaca',
+};
+
+const alertIcon = {
+  fontSize: '40px',
+  margin: '0 0 12px',
+  lineHeight: '1',
 };
 
 const alertTitle = {
-  color: '#dc3545',
+  color: '#991b1b',
   fontSize: '28px',
-  fontWeight: 'bold',
-  margin: '0 0 16px 0',
-  textAlign: 'center' as const,
+  fontWeight: '700',
+  margin: '0 0 16px',
+  lineHeight: '1.2',
 };
 
 const severityBadge = {
   display: 'inline-block',
-  color: '#ffffff',
   fontSize: '14px',
-  fontWeight: 'bold',
+  fontWeight: '600',
   padding: '8px 16px',
   borderRadius: '20px',
   textTransform: 'uppercase' as const,
@@ -146,65 +181,74 @@ const severityBadge = {
 };
 
 const contentSection = {
-  padding: '32px 20px',
+  padding: '32px 0',
 };
 
-const locationText = {
-  color: '#333',
-  fontSize: '18px',
-  fontWeight: 'bold',
-  margin: '0 0 8px 0',
+const metaContainer = {
+  backgroundColor: '#f8fafc',
+  borderRadius: '8px',
+  padding: '16px',
+  margin: '0 0 20px',
 };
 
-const timestampText = {
-  color: '#666',
-  fontSize: '14px',
-  margin: '0 0 24px 0',
+const metaItem = {
+  color: '#334155',
+  fontSize: '15px',
+  margin: '0 0 8px',
+  lineHeight: '1.5',
+};
+
+const metaIcon = {
+  display: 'inline-block',
+  marginRight: '8px',
+  fontSize: '16px',
+};
+
+const metaText = {
+  color: '#334155',
 };
 
 const divider = {
-  borderColor: '#e9ecef',
-  margin: '24px 0',
+  borderColor: '#e2e8f0',
+  margin: '20px 0',
 };
 
 const descriptionText = {
-  color: '#333',
+  color: '#020617',
   fontSize: '16px',
-  lineHeight: '24px',
-  margin: '16px 0',
+  lineHeight: '1.6',
+  margin: '0',
 };
 
 const buttonContainer = {
   textAlign: 'center' as const,
   margin: '32px 0',
-  padding: '0 20px',
 };
 
 const actionButton = {
-  backgroundColor: '#dc3545',
-  borderRadius: '6px',
-  color: '#fff',
+  backgroundColor: '#ef4444',
+  borderRadius: '8px',
+  color: '#ffffff',
   fontSize: '16px',
-  fontWeight: 'bold',
+  fontWeight: '600',
   textDecoration: 'none',
   textAlign: 'center' as const,
   display: 'inline-block',
-  padding: '14px 28px',
-  boxShadow: '0 2px 4px rgba(220, 53, 69, 0.3)',
+  padding: '14px 32px',
+  boxShadow: '0 2px 4px rgba(239, 68, 68, 0.25)',
 };
 
 const footerSection = {
-  padding: '20px',
-  backgroundColor: '#f8f9fa',
-  borderRadius: '0 0 8px 8px',
+  padding: '24px 0 0',
+  borderTop: '1px solid #e2e8f0',
   textAlign: 'center' as const,
 };
 
 const footerText = {
-  color: '#6c757d',
+  color: '#64748b',
   fontSize: '12px',
-  lineHeight: '16px',
-  margin: '8px 0',
+  lineHeight: '1.5',
+  margin: '0 0 8px',
 };
 
 export default AlertTemplate;

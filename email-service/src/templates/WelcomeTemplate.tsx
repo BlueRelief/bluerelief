@@ -4,7 +4,6 @@ import {
   Head,
   Heading,
   Html,
-  Img,
   Link,
   Preview,
   Section,
@@ -19,8 +18,33 @@ interface WelcomeTemplateProps {
   dashboardUrl?: string;
   settingsUrl?: string;
   helpUrl?: string;
-  logoUrl?: string;
 }
+
+const Logo = () => (
+  <svg
+    width="56"
+    height="56"
+    viewBox="0 0 100 100"
+    style={{ margin: '0 auto', display: 'block' }}
+  >
+    <defs>
+      <mask id="logo-mask">
+        <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
+        <rect x="25" y="25" width="50" height="50" rx="8" ry="8" fill="black" />
+      </mask>
+    </defs>
+    <rect
+      x="0"
+      y="0"
+      width="100"
+      height="100"
+      rx="20"
+      ry="20"
+      fill="#196EE3"
+      mask="url(#logo-mask)"
+    />
+  </svg>
+);
 
 export const WelcomeTemplate = ({
   userName = 'User',
@@ -28,7 +52,6 @@ export const WelcomeTemplate = ({
   dashboardUrl = 'https://bluerelief.com/dashboard',
   settingsUrl = 'https://bluerelief.com/settings',
   helpUrl = 'https://bluerelief.com/help',
-  logoUrl = 'https://bluerelief.com/logo.png',
 }: WelcomeTemplateProps) => {
   return (
     <Html>
@@ -37,13 +60,7 @@ export const WelcomeTemplate = ({
       <Body style={main}>
         <Container style={container}>
           <Section style={logoContainer}>
-            <Img
-              src={logoUrl}
-              width="120"
-              height="40"
-              alt="BlueRelief"
-              style={logo}
-            />
+            <Logo />
           </Section>
           
           <Section style={headerSection}>
@@ -56,19 +73,46 @@ export const WelcomeTemplate = ({
           
           <Section style={contentSection}>
             <Text style={greetingText}>Hello {userName},</Text>
-            <Text style={welcomeText}>
+            <Text style={bodyText}>
               Thank you for joining BlueRelief! We're excited to have you as part of our 
               emergency response community. You're now connected to real-time crisis 
               information and can help make a difference in emergency situations.
             </Text>
             
             <Section style={featuresSection}>
-              <Text style={featuresTitle}>🚀 What you can do with BlueRelief:</Text>
-              <Text style={featureItem}>📊 Monitor real-time crisis data and alerts</Text>
-              <Text style={featureItem}>🌍 Track disasters and emergencies worldwide</Text>
-              <Text style={featureItem}>📱 Receive instant notifications for your area</Text>
-              <Text style={featureItem}>🤝 Connect with emergency response teams</Text>
-              <Text style={featureItem}>📈 Access detailed analytics and reports</Text>
+              <Text style={featuresTitle}>What you can do with BlueRelief</Text>
+              
+              <Section style={featureItem}>
+                <Text style={featureIcon}>📊</Text>
+                <Section style={featureContent}>
+                  <Text style={featureLabel}>Monitor Real-Time Data</Text>
+                  <Text style={featureDescription}>Track crisis data and alerts as they happen</Text>
+                </Section>
+              </Section>
+              
+              <Section style={featureItem}>
+                <Text style={featureIcon}>🌍</Text>
+                <Section style={featureContent}>
+                  <Text style={featureLabel}>Global Coverage</Text>
+                  <Text style={featureDescription}>Track disasters and emergencies worldwide</Text>
+                </Section>
+              </Section>
+              
+              <Section style={featureItem}>
+                <Text style={featureIcon}>📱</Text>
+                <Section style={featureContent}>
+                  <Text style={featureLabel}>Instant Notifications</Text>
+                  <Text style={featureDescription}>Get alerts for emergencies in your area</Text>
+                </Section>
+              </Section>
+              
+              <Section style={featureItem}>
+                <Text style={featureIcon}>📈</Text>
+                <Section style={featureContent}>
+                  <Text style={featureLabel}>Detailed Analytics</Text>
+                  <Text style={featureDescription}>Access comprehensive reports and insights</Text>
+                </Section>
+              </Section>
             </Section>
             
             <Section style={actionSection}>
@@ -81,10 +125,10 @@ export const WelcomeTemplate = ({
             </Section>
             
             <Section style={helpSection}>
-              <Text style={helpTitle}>Need help getting started?</Text>
               <Text style={helpText}>
-                Check out our <Link href={helpUrl} style={helpLink}>help center</Link> for 
-                guides, tutorials, and best practices.
+                Need help getting started? Check out our{' '}
+                <Link href={helpUrl} style={helpLink}>help center</Link>{' '}
+                for guides and tutorials.
               </Text>
             </Section>
           </Section>
@@ -98,7 +142,7 @@ export const WelcomeTemplate = ({
             <Text style={footerText}>
               <Link href="https://bluerelief.com/support" style={linkText}>
                 Contact Support
-              </Link> • 
+              </Link> •{' '}
               <Link href="https://bluerelief.com/privacy" style={linkText}>
                 Privacy Policy
               </Link>
@@ -110,92 +154,119 @@ export const WelcomeTemplate = ({
   );
 };
 
-// Styles
 const main = {
-  backgroundColor: '#f6f9fc',
-  fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+  backgroundColor: '#f8fafc',
+  fontFamily: 'Lato, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
 };
 
 const container = {
   backgroundColor: '#ffffff',
   margin: '0 auto',
-  padding: '20px 0 48px',
-  marginBottom: '64px',
+  padding: '40px 20px',
+  maxWidth: '600px',
   borderRadius: '8px',
-  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
 };
 
 const logoContainer = {
-  padding: '32px 20px 20px',
+  padding: '0 0 32px',
   textAlign: 'center' as const,
-};
-
-const logo = {
-  margin: '0 auto',
 };
 
 const headerSection = {
   textAlign: 'center' as const,
-  padding: '20px',
-  backgroundColor: '#e8f5e8',
-  borderRadius: '8px 8px 0 0',
+  padding: '24px 20px',
+  background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)',
+  borderRadius: '8px',
+  marginBottom: '32px',
 };
 
 const welcomeIcon = {
   fontSize: '48px',
-  margin: '0 0 16px 0',
+  margin: '0 0 16px',
+  lineHeight: '1',
 };
 
 const titleText = {
-  color: '#28a745',
+  color: '#020617',
   fontSize: '32px',
-  fontWeight: 'bold',
-  margin: '0 0 8px 0',
-  textAlign: 'center' as const,
+  fontWeight: '700',
+  margin: '0 0 8px',
+  lineHeight: '1.2',
 };
 
 const subtitleText = {
-  color: '#666',
+  color: '#475569',
   fontSize: '16px',
-  margin: '0 0 24px 0',
+  margin: '0',
+  lineHeight: '1.5',
 };
 
 const contentSection = {
-  padding: '32px 20px',
+  padding: '0',
 };
 
 const greetingText = {
-  color: '#333',
+  color: '#020617',
   fontSize: '18px',
-  margin: '0 0 16px 0',
+  fontWeight: '600',
+  margin: '0 0 16px',
 };
 
-const welcomeText = {
-  color: '#333',
-  fontSize: '16px',
-  lineHeight: '24px',
-  margin: '0 0 24px 0',
+const bodyText = {
+  color: '#334155',
+  fontSize: '15px',
+  lineHeight: '1.6',
+  margin: '0 0 24px',
 };
 
 const featuresSection = {
-  backgroundColor: '#f8f9fa',
-  borderRadius: '6px',
-  padding: '20px',
+  backgroundColor: '#f8fafc',
+  borderRadius: '8px',
+  padding: '24px',
   margin: '24px 0',
+  border: '1px solid #e2e8f0',
 };
 
 const featuresTitle = {
-  color: '#333',
+  color: '#020617',
   fontSize: '18px',
-  fontWeight: 'bold',
-  margin: '0 0 16px 0',
+  fontWeight: '600',
+  margin: '0 0 20px',
 };
 
 const featureItem = {
-  color: '#333',
+  display: 'flex',
+  alignItems: 'flex-start',
+  margin: '0 0 16px',
+};
+
+const featureIcon = {
+  fontSize: '24px',
+  margin: '0 12px 0 0',
+  lineHeight: '1',
+  display: 'inline-block',
+  verticalAlign: 'top',
+};
+
+const featureContent = {
+  flex: '1',
+  display: 'inline-block',
+};
+
+const featureLabel = {
+  color: '#020617',
+  fontSize: '15px',
+  fontWeight: '600',
+  margin: '0 0 4px',
+  lineHeight: '1.4',
+};
+
+const featureDescription = {
+  color: '#64748b',
   fontSize: '14px',
-  margin: '0 0 8px 0',
-  paddingLeft: '8px',
+  margin: '0',
+  lineHeight: '1.4',
 };
 
 const actionSection = {
@@ -204,78 +275,72 @@ const actionSection = {
 };
 
 const primaryButton = {
-  backgroundColor: '#28a745',
-  borderRadius: '6px',
-  color: '#fff',
+  backgroundColor: '#196EE3',
+  borderRadius: '8px',
+  color: '#ffffff',
   fontSize: '16px',
-  fontWeight: 'bold',
+  fontWeight: '600',
   textDecoration: 'none',
   textAlign: 'center' as const,
   display: 'inline-block',
-  padding: '14px 28px',
-  margin: '0 8px 8px 0',
-  boxShadow: '0 2px 4px rgba(40, 167, 69, 0.3)',
+  padding: '14px 32px',
+  margin: '0 8px 12px',
+  boxShadow: '0 2px 4px rgba(25, 110, 227, 0.25)',
 };
 
 const secondaryButton = {
-  backgroundColor: '#6c757d',
-  borderRadius: '6px',
-  color: '#fff',
+  backgroundColor: '#f8fafc',
+  border: '1px solid #cbd5e1',
+  borderRadius: '8px',
+  color: '#475569',
   fontSize: '16px',
-  fontWeight: 'bold',
+  fontWeight: '600',
   textDecoration: 'none',
   textAlign: 'center' as const,
   display: 'inline-block',
-  padding: '14px 28px',
-  margin: '0 8px 8px 0',
-  boxShadow: '0 2px 4px rgba(108, 117, 125, 0.3)',
+  padding: '14px 32px',
+  margin: '0 8px 12px',
 };
 
 const helpSection = {
-  backgroundColor: '#fff3cd',
-  border: '1px solid #ffeaa7',
-  borderRadius: '6px',
+  backgroundColor: '#eff6ff',
+  border: '1px solid #bfdbfe',
+  borderRadius: '8px',
   padding: '16px',
   margin: '24px 0',
 };
 
-const helpTitle = {
-  color: '#333',
-  fontSize: '16px',
-  fontWeight: 'bold',
-  margin: '0 0 8px 0',
-};
-
 const helpText = {
-  color: '#333',
+  color: '#1e40af',
   fontSize: '14px',
   margin: '0',
+  lineHeight: '1.5',
 };
 
 const helpLink = {
-  color: '#007ee6',
-  textDecoration: 'none',
+  color: '#2563eb',
+  textDecoration: 'underline',
+  fontWeight: '500',
 };
 
 const divider = {
-  borderColor: '#e9ecef',
-  margin: '32px 0 24px',
+  borderColor: '#e2e8f0',
+  margin: '32px 0',
 };
 
 const footerSection = {
-  padding: '0 20px',
   textAlign: 'center' as const,
 };
 
 const footerText = {
-  color: '#6c757d',
+  color: '#64748b',
   fontSize: '12px',
-  lineHeight: '16px',
-  margin: '8px 0',
+  lineHeight: '1.5',
+  margin: '0 0 8px',
 };
 
 const linkText = {
-  color: '#007ee6',
+  color: '#196EE3',
   textDecoration: 'none',
 };
 

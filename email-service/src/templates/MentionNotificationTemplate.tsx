@@ -4,7 +4,6 @@ import {
   Head,
   Heading,
   Html,
-  Img,
   Link,
   Preview,
   Section,
@@ -22,8 +21,33 @@ interface MentionNotificationProps {
   actionText?: string;
   actionUrl?: string;
   timestamp?: string;
-  logoUrl?: string;
 }
+
+const Logo = () => (
+  <svg
+    width="48"
+    height="48"
+    viewBox="0 0 100 100"
+    style={{ margin: '0 auto', display: 'block' }}
+  >
+    <defs>
+      <mask id="logo-mask">
+        <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
+        <rect x="25" y="25" width="50" height="50" rx="8" ry="8" fill="black" />
+      </mask>
+    </defs>
+    <rect
+      x="0"
+      y="0"
+      width="100"
+      height="100"
+      rx="20"
+      ry="20"
+      fill="#196EE3"
+      mask="url(#logo-mask)"
+    />
+  </svg>
+);
 
 export const MentionNotificationTemplate = ({
   userName = 'User',
@@ -34,7 +58,6 @@ export const MentionNotificationTemplate = ({
   actionText = 'View Post',
   actionUrl = '#',
   timestamp = new Date().toISOString(),
-  logoUrl = 'https://bluerelief.com/logo.png',
 }: MentionNotificationProps) => {
   return (
     <Html>
@@ -43,31 +66,33 @@ export const MentionNotificationTemplate = ({
       <Body style={main}>
         <Container style={container}>
           <Section style={logoContainer}>
-            <Img
-              src={logoUrl}
-              width="120"
-              height="40"
-              alt="BlueRelief"
-              style={logo}
-            />
+            <Logo />
           </Section>
           
           <Section style={headerSection}>
-            <Text style={mentionIcon}>💬</Text>
+            <Section style={iconCircle}>
+              <Text style={mentionIcon}>💬</Text>
+            </Section>
             <Heading style={titleText}>You've been mentioned!</Heading>
-            <Text style={timestampText}>
-              {new Date(timestamp).toLocaleString()}
-            </Text>
           </Section>
           
           <Section style={contentSection}>
             <Text style={greetingText}>Hello {userName},</Text>
-            <Text style={mentionText}>
-              <strong>{mentionedBy}</strong> {context}
-            </Text>
+            
+            <Section style={mentionBox}>
+              <Text style={mentionText}>
+                <span style={mentionedByText}>{mentionedBy}</span> {context}
+              </Text>
+              <Text style={timestampText}>
+                🕐 {new Date(timestamp).toLocaleString()}
+              </Text>
+            </Section>
             
             {postTitle && (
               <Section style={postSection}>
+                <Section style={postHeader}>
+                  <Text style={postLabel}>Related Post</Text>
+                </Section>
                 <Text style={postTitleText}>"{postTitle}"</Text>
                 {postContent && (
                   <Text style={postContentText}>{postContent}</Text>
@@ -102,132 +127,173 @@ export const MentionNotificationTemplate = ({
   );
 };
 
-// Styles
 const main = {
-  backgroundColor: '#f6f9fc',
-  fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+  backgroundColor: '#f8fafc',
+  fontFamily: 'Lato, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
 };
 
 const container = {
   backgroundColor: '#ffffff',
   margin: '0 auto',
-  padding: '20px 0 48px',
-  marginBottom: '64px',
+  padding: '40px 20px',
+  maxWidth: '600px',
   borderRadius: '8px',
-  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
 };
 
 const logoContainer = {
-  padding: '32px 20px 20px',
+  padding: '0 0 24px',
   textAlign: 'center' as const,
-};
-
-const logo = {
-  margin: '0 auto',
 };
 
 const headerSection = {
   textAlign: 'center' as const,
-  padding: '20px',
+  padding: '24px 20px',
+  backgroundColor: '#f0f9ff',
+  borderRadius: '8px',
+  border: '1px solid #bae6fd',
+  marginBottom: '24px',
+};
+
+const iconCircle = {
+  width: '56px',
+  height: '56px',
+  borderRadius: '50%',
+  backgroundColor: '#0ea5e9',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  margin: '0 auto 16px',
 };
 
 const mentionIcon = {
-  fontSize: '32px',
-  margin: '0 0 16px 0',
+  fontSize: '28px',
+  margin: '0',
+  lineHeight: '1',
 };
 
 const titleText = {
-  color: '#333',
+  color: '#020617',
   fontSize: '24px',
-  fontWeight: 'bold',
-  margin: '0 0 8px 0',
-  textAlign: 'center' as const,
-};
-
-const timestampText = {
-  color: '#666',
-  fontSize: '14px',
-  margin: '0 0 24px 0',
+  fontWeight: '700',
+  margin: '0',
+  lineHeight: '1.3',
 };
 
 const contentSection = {
-  padding: '0 20px 32px',
+  padding: '0',
 };
 
 const greetingText = {
-  color: '#333',
+  color: '#020617',
   fontSize: '16px',
-  margin: '0 0 16px 0',
+  fontWeight: '600',
+  margin: '0 0 16px',
+};
+
+const mentionBox = {
+  backgroundColor: '#f8fafc',
+  border: '1px solid #cbd5e1',
+  borderLeft: '4px solid #6366f1',
+  borderRadius: '8px',
+  padding: '16px',
+  margin: '0 0 20px',
 };
 
 const mentionText = {
-  color: '#333',
-  fontSize: '18px',
-  lineHeight: '24px',
-  margin: '0 0 24px 0',
+  color: '#334155',
+  fontSize: '16px',
+  lineHeight: '1.5',
+  margin: '0 0 8px',
+};
+
+const mentionedByText = {
+  color: '#196EE3',
+  fontWeight: '600',
+};
+
+const timestampText = {
+  color: '#64748b',
+  fontSize: '13px',
+  margin: '0',
 };
 
 const postSection = {
-  backgroundColor: '#f8f9fa',
-  border: '1px solid #e9ecef',
-  borderRadius: '6px',
-  padding: '16px',
-  margin: '16px 0',
+  backgroundColor: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: '8px',
+  padding: '0',
+  margin: '0 0 24px',
+  overflow: 'hidden',
+};
+
+const postHeader = {
+  backgroundColor: '#f8fafc',
+  padding: '12px 16px',
+  borderBottom: '1px solid #e2e8f0',
+};
+
+const postLabel = {
+  color: '#64748b',
+  fontSize: '12px',
+  fontWeight: '600',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.5px',
+  margin: '0',
 };
 
 const postTitleText = {
-  color: '#333',
+  color: '#020617',
   fontSize: '16px',
-  fontWeight: 'bold',
-  margin: '0 0 8px 0',
+  fontWeight: '600',
+  margin: '16px 16px 12px',
   fontStyle: 'italic' as const,
+  lineHeight: '1.4',
 };
 
 const postContentText = {
-  color: '#666',
+  color: '#475569',
   fontSize: '14px',
-  lineHeight: '20px',
-  margin: '0',
+  lineHeight: '1.6',
+  margin: '0 16px 16px',
 };
 
 const buttonContainer = {
   textAlign: 'center' as const,
   margin: '32px 0',
-  padding: '0 20px',
 };
 
 const actionButton = {
-  backgroundColor: '#007ee6',
-  borderRadius: '6px',
-  color: '#fff',
+  backgroundColor: '#196EE3',
+  borderRadius: '8px',
+  color: '#ffffff',
   fontSize: '16px',
-  fontWeight: 'bold',
+  fontWeight: '600',
   textDecoration: 'none',
   textAlign: 'center' as const,
   display: 'inline-block',
-  padding: '12px 24px',
-  boxShadow: '0 2px 4px rgba(0, 126, 230, 0.3)',
+  padding: '12px 32px',
+  boxShadow: '0 2px 4px rgba(25, 110, 227, 0.25)',
 };
 
 const divider = {
-  borderColor: '#e9ecef',
-  margin: '32px 0 24px',
+  borderColor: '#e2e8f0',
+  margin: '32px 0',
 };
 
 const footerSection = {
-  padding: '0 20px',
   textAlign: 'center' as const,
 };
 
 const footerText = {
-  color: '#6c757d',
+  color: '#64748b',
   fontSize: '12px',
-  lineHeight: '16px',
-  margin: '8px 0',
+  lineHeight: '1.5',
+  margin: '0 0 8px',
 };
 
 const linkText = {
-  color: '#007ee6',
+  color: '#196EE3',
   textDecoration: 'none',
 };
 

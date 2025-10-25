@@ -12,6 +12,7 @@ env:
   REGISTRY: registry.rsft.co
   BACKEND_IMAGE: bluerelief/backend
   FRONTEND_IMAGE: bluerelief/frontend
+  EMAIL_SERVICE_IMAGE: bluerelief/email-service
 
 jobs:
   deploy-production:
@@ -91,6 +92,18 @@ jobs:
           docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
           docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
 
+      - name: Build and push email-service
+        run: |
+          cd email-service
+          docker build \
+            -f Dockerfile \
+            --build-arg VERSION=${{ steps.vars.outputs.version }} \
+            -t ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:${{ steps.vars.outputs.image_tag }} \
+            -t ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:latest \
+            .
+          docker push ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:${{ steps.vars.outputs.image_tag }}
+          docker push ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:latest
+
       - name: Deploy to production
         run: |
           helm upgrade --install bluerelief \
@@ -100,6 +113,9 @@ jobs:
             --create-namespace \
             --set app.image.tag=${{ steps.vars.outputs.image_tag }} \
             --set frontend.image.tag=${{ steps.vars.outputs.image_tag }} \
+            --set emailService.image.tag=${{ steps.vars.outputs.image_tag }} \
+            --set emailService.ingress.enabled=true \
+            --set emailService.ingress.host="email-api.private.bluerelief.app" \
             --wait
 
       - name: Create Git Tag and Release
@@ -152,10 +168,11 @@ jobs:
           echo "✅ Production deployment complete!"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo ""
-          echo "Version:  v${{ steps.version.outputs.current_version }} → v${{ steps.vars.outputs.version }}"
-          echo "Type:     ${{ steps.version.outputs.bump_type }} release"
-          echo "Commit:   ${{ steps.vars.outputs.commit_sha }}"
-          echo "Backend:  https://api.private.bluerelief.app"
-          echo "Frontend: https://platform.private.bluerelief.app"
+          echo "Version:       v${{ steps.version.outputs.current_version }} → v${{ steps.vars.outputs.version }}"
+          echo "Type:          ${{ steps.version.outputs.bump_type }} release"
+          echo "Commit:        ${{ steps.vars.outputs.commit_sha }}"
+          echo "Backend:       https://api.private.bluerelief.app"
+          echo "Frontend:      https://platform.private.bluerelief.app"
+          echo "Email Service: https://email-api.private.bluerelief.app"
           echo ""
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -4,7 +4,6 @@ import {
   Head,
   Heading,
   Html,
-  Img,
   Link,
   Preview,
   Section,
@@ -22,8 +21,33 @@ interface CrisisAlertProps {
   timestamp?: string;
   actionText?: string;
   actionUrl?: string;
-  logoUrl?: string;
 }
+
+const Logo = () => (
+  <svg
+    width="48"
+    height="48"
+    viewBox="0 0 100 100"
+    style={{ margin: '0 auto', display: 'block' }}
+  >
+    <defs>
+      <mask id="logo-mask">
+        <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
+        <rect x="25" y="25" width="50" height="50" rx="8" ry="8" fill="black" />
+      </mask>
+    </defs>
+    <rect
+      x="0"
+      y="0"
+      width="100"
+      height="100"
+      rx="20"
+      ry="20"
+      fill="#196EE3"
+      mask="url(#logo-mask)"
+    />
+  </svg>
+);
 
 export const CrisisAlertTemplate = ({
   disasterType = 'Emergency Alert',
@@ -34,21 +58,15 @@ export const CrisisAlertTemplate = ({
   timestamp = new Date().toISOString(),
   actionText = 'View Details',
   actionUrl = '#',
-  logoUrl = 'https://bluerelief.com/logo.png',
 }: CrisisAlertProps) => {
-  const severityColor = {
-    'Low': '#28a745',
-    'Medium': '#ffc107',
-    'High': '#fd7e14',
-    'Critical': '#dc3545'
-  }[severity] || '#dc3545';
+  const severityConfig = {
+    'Low': { bg: '#22c55e', icon: '🟢' },
+    'Medium': { bg: '#f59e0b', icon: '🟡' },
+    'High': { bg: '#f97316', icon: '🟠' },
+    'Critical': { bg: '#ef4444', icon: '🔴' }
+  };
 
-  const severityIcon = {
-    'Low': '🟢',
-    'Medium': '🟡',
-    'High': '🟠',
-    'Critical': '🔴'
-  }[severity] || '🔴';
+  const config = severityConfig[severity as keyof typeof severityConfig] || severityConfig.Critical;
 
   return (
     <Html>
@@ -57,29 +75,46 @@ export const CrisisAlertTemplate = ({
       <Body style={main}>
         <Container style={container}>
           <Section style={logoContainer}>
-            <Img
-              src={logoUrl}
-              width="120"
-              height="40"
-              alt="BlueRelief"
-              style={logo}
-            />
+            <Logo />
+          </Section>
+          
+          <Section style={alertBanner}>
+            <Text style={bannerIcon}>🚨</Text>
+            <Heading style={bannerTitle}>CRISIS ALERT</Heading>
           </Section>
           
           <Section style={alertHeader}>
-            <Heading style={alertTitle}>🚨 CRISIS ALERT</Heading>
-            <Text style={disasterTypeText}>{disasterType}</Text>
-            <Text style={{...severityBadge, backgroundColor: severityColor}}>
-              {severityIcon} {severity} Priority
+            <Heading style={disasterTypeText}>{disasterType}</Heading>
+            <Text style={{
+              ...severityBadge,
+              backgroundColor: config.bg,
+            }}>
+              {config.icon} {severity} Priority
             </Text>
           </Section>
           
           <Section style={contentSection}>
-            <Text style={locationText}>📍 Location: {location}</Text>
-            <Text style={affectedAreaText}>🌍 Affected Area: {affectedArea}</Text>
-            <Text style={timestampText}>🕐 {new Date(timestamp).toLocaleString()}</Text>
+            <Section style={infoGrid}>
+              <Section style={infoCard}>
+                <Text style={infoLabel}>Location</Text>
+                <Text style={infoValue}>📍 {location}</Text>
+              </Section>
+              <Section style={infoCard}>
+                <Text style={infoLabel}>Affected Area</Text>
+                <Text style={infoValue}>🌍 {affectedArea}</Text>
+              </Section>
+              <Section style={infoCard}>
+                <Text style={infoLabel}>Time</Text>
+                <Text style={infoValue}>🕐 {new Date(timestamp).toLocaleString()}</Text>
+              </Section>
+            </Section>
+            
             <Hr style={divider} />
-            <Text style={descriptionText}>{description}</Text>
+            
+            <Section style={descriptionSection}>
+              <Text style={descriptionLabel}>Situation Details</Text>
+              <Text style={descriptionText}>{description}</Text>
+            </Section>
           </Section>
           
           {actionText && actionUrl && (
@@ -90,14 +125,15 @@ export const CrisisAlertTemplate = ({
             </Section>
           )}
           
-          <Section style={footerSection}>
-            <Text style={footerText}>
+          <Section style={warningBox}>
+            <Text style={warningTitle}>⚠️ Safety Notice</Text>
+            <Text style={warningText}>
               This is an automated crisis alert from BlueRelief Emergency Response System.
             </Text>
-            <Text style={footerText}>
+            <Text style={warningText}>
               <strong>Stay safe and follow local emergency guidelines.</strong>
             </Text>
-            <Text style={footerText}>
+            <Text style={warningText}>
               For immediate assistance, contact local emergency services.
             </Text>
           </Section>
@@ -107,131 +143,172 @@ export const CrisisAlertTemplate = ({
   );
 };
 
-// Styles
 const main = {
-  backgroundColor: '#f6f9fc',
-  fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+  backgroundColor: '#f8fafc',
+  fontFamily: 'Lato, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
 };
 
 const container = {
   backgroundColor: '#ffffff',
   margin: '0 auto',
-  padding: '20px 0 48px',
-  marginBottom: '64px',
+  padding: '40px 20px',
+  maxWidth: '600px',
   borderRadius: '8px',
-  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
 };
 
 const logoContainer = {
-  padding: '32px 20px',
+  padding: '0 0 24px',
   textAlign: 'center' as const,
 };
 
-const logo = {
-  margin: '0 auto',
+const alertBanner = {
+  backgroundColor: '#7f1d1d',
+  textAlign: 'center' as const,
+  padding: '16px',
+  borderRadius: '8px 8px 0 0',
+};
+
+const bannerIcon = {
+  fontSize: '32px',
+  margin: '0 0 8px',
+  lineHeight: '1',
+};
+
+const bannerTitle = {
+  color: '#ffffff',
+  fontSize: '20px',
+  fontWeight: '700',
+  margin: '0',
+  letterSpacing: '2px',
+  lineHeight: '1',
 };
 
 const alertHeader = {
   textAlign: 'center' as const,
-  padding: '20px',
-  backgroundColor: '#fff3cd',
-  borderRadius: '8px 8px 0 0',
-  border: '2px solid #ffc107',
-};
-
-const alertTitle = {
-  color: '#dc3545',
-  fontSize: '32px',
-  fontWeight: 'bold',
-  margin: '0 0 16px 0',
-  textAlign: 'center' as const,
+  padding: '24px 20px',
+  backgroundColor: '#fef3f2',
+  borderRadius: '0 0 8px 8px',
+  border: '1px solid #fecaca',
+  borderTop: 'none',
+  marginBottom: '24px',
 };
 
 const disasterTypeText = {
-  color: '#333',
+  color: '#020617',
   fontSize: '24px',
-  fontWeight: 'bold',
-  margin: '0 0 16px 0',
-  textAlign: 'center' as const,
+  fontWeight: '700',
+  margin: '0 0 16px',
+  lineHeight: '1.2',
 };
 
 const severityBadge = {
   display: 'inline-block',
   color: '#ffffff',
-  fontSize: '16px',
-  fontWeight: 'bold',
-  padding: '12px 20px',
-  borderRadius: '25px',
+  fontSize: '14px',
+  fontWeight: '600',
+  padding: '10px 20px',
+  borderRadius: '24px',
   textTransform: 'uppercase' as const,
   letterSpacing: '0.5px',
 };
 
 const contentSection = {
-  padding: '32px 20px',
+  padding: '0',
 };
 
-const locationText = {
-  color: '#333',
-  fontSize: '18px',
-  fontWeight: 'bold',
-  margin: '0 0 8px 0',
+const infoGrid = {
+  margin: '0 0 20px',
 };
 
-const affectedAreaText = {
-  color: '#666',
-  fontSize: '16px',
-  margin: '0 0 8px 0',
+const infoCard = {
+  backgroundColor: '#f8fafc',
+  padding: '16px',
+  borderRadius: '8px',
+  marginBottom: '12px',
+  border: '1px solid #e2e8f0',
 };
 
-const timestampText = {
-  color: '#666',
-  fontSize: '14px',
-  margin: '0 0 24px 0',
+const infoLabel = {
+  color: '#64748b',
+  fontSize: '12px',
+  fontWeight: '600',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.5px',
+  margin: '0 0 6px',
+};
+
+const infoValue = {
+  color: '#020617',
+  fontSize: '15px',
+  fontWeight: '500',
+  margin: '0',
+  lineHeight: '1.4',
 };
 
 const divider = {
-  borderColor: '#e9ecef',
+  borderColor: '#e2e8f0',
   margin: '24px 0',
 };
 
-const descriptionText = {
-  color: '#333',
+const descriptionSection = {
+  padding: '0',
+};
+
+const descriptionLabel = {
+  color: '#020617',
   fontSize: '16px',
-  lineHeight: '24px',
-  margin: '16px 0',
+  fontWeight: '600',
+  margin: '0 0 12px',
+};
+
+const descriptionText = {
+  color: '#334155',
+  fontSize: '15px',
+  lineHeight: '1.6',
+  margin: '0',
 };
 
 const buttonContainer = {
   textAlign: 'center' as const,
   margin: '32px 0',
-  padding: '0 20px',
 };
 
 const actionButton = {
-  backgroundColor: '#dc3545',
-  borderRadius: '6px',
-  color: '#fff',
-  fontSize: '18px',
-  fontWeight: 'bold',
+  backgroundColor: '#ef4444',
+  borderRadius: '8px',
+  color: '#ffffff',
+  fontSize: '16px',
+  fontWeight: '600',
   textDecoration: 'none',
   textAlign: 'center' as const,
   display: 'inline-block',
-  padding: '16px 32px',
-  boxShadow: '0 2px 4px rgba(220, 53, 69, 0.3)',
+  padding: '16px 40px',
+  boxShadow: '0 4px 6px rgba(239, 68, 68, 0.25)',
 };
 
-const footerSection = {
+const warningBox = {
+  backgroundColor: '#fffbeb',
+  border: '2px solid #fbbf24',
+  borderRadius: '8px',
   padding: '20px',
-  backgroundColor: '#f8f9fa',
-  borderRadius: '0 0 8px 8px',
-  textAlign: 'center' as const,
+  margin: '24px 0 0',
 };
 
-const footerText = {
-  color: '#6c757d',
-  fontSize: '12px',
-  lineHeight: '16px',
-  margin: '8px 0',
+const warningTitle = {
+  color: '#92400e',
+  fontSize: '14px',
+  fontWeight: '700',
+  margin: '0 0 12px',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.5px',
+};
+
+const warningText = {
+  color: '#78350f',
+  fontSize: '13px',
+  lineHeight: '1.5',
+  margin: '0 0 8px',
 };
 
 export default CrisisAlertTemplate;
