@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { emailService } from '../services/email-service';
 import { validateEmailRequest } from '../middleware/validate-email';
 
-const router = Router();
+const router: Router = Router();
 
 router.post('/send', validateEmailRequest, async (req, res) => {
   try {
