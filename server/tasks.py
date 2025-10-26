@@ -180,7 +180,7 @@ def send_alert_emails():
     try:
         logger.info("Starting alert email processing job")
 
-        # Get pending or processing alerts for users with email enabled
+        # Claim a batch of pending alerts with row-level locking to prevent duplicate sends
         pending_entries = (
             db.query(AlertQueue)
             .join(Alert, AlertQueue.alert_id == Alert.id)
@@ -188,13 +188,24 @@ def send_alert_emails():
                 UserAlertPreferences, AlertQueue.user_id == UserAlertPreferences.user_id
             )
             .filter(
-                AlertQueue.status.in_(["pending", "processing"]),
+                AlertQueue.status == "pending",
                 UserAlertPreferences.email_enabled == True,
+                AlertQueue.retry_count < AlertQueue.max_retries,
             )
             .order_by(AlertQueue.priority, AlertQueue.scheduled_at)
-            .limit(50)  # Process in batches
+            .limit(50)
+            .with_for_update(skip_locked=True)
             .all()
         )
+        
+        # Mark claimed entries as processing before sending
+        for entry in pending_entries:
+            entry.status = "processing"
+            entry.updated_at = datetime.utcnow()
+            db.add(entry)
+        
+        if pending_entries:
+            db.flush()
 
         logger.info(f"Found {len(pending_entries)} pending alerts with email enabled")
 
@@ -251,33 +262,42 @@ def send_alert_emails():
                     entry.status = "sent"
                     entry.sent_at = datetime.utcnow()
                     sent_count += 1
-                    logger.info(f"✅ Sent alert email to {entry.recipient_email}")
+                    logger.info(f"✅ Sent alert email user_id={entry.user_id} alert_id={alert.id}")
                 else:
                     entry.status = "failed"
                     entry.retry_count += 1
                     entry.error_message = result.get("error", "Unknown error")
+                    
+                    # Mark as dead if max retries exceeded
+                    if entry.retry_count >= entry.max_retries:
+                        entry.status = "dead"
+                    
                     failed_count += 1
                     logger.error(
-                        f"❌ Failed to send alert email to {entry.recipient_email}: {result.get('error')}"
+                        "❌ Failed to send alert email user_id=%s alert_id=%s error=%s",
+                        entry.user_id, alert.id, result.get("error")
                     )
 
                 entry.updated_at = datetime.utcnow()
                 db.add(entry)
 
             except Exception as e:
-                logger.error(f"Error processing alert {entry.id}: {str(e)}")
+                logger.exception("Error processing alert entry_id=%s", entry.id)
                 entry.status = "failed"
                 entry.retry_count += 1
                 entry.error_message = str(e)
+                
+                # Mark as dead if max retries exceeded
+                if entry.retry_count >= entry.max_retries:
+                    entry.status = "dead"
+                
                 entry.updated_at = datetime.utcnow()
                 db.add(entry)
                 failed_count += 1
                 continue
 
         db.commit()
-        logger.info(
-            f"Alert email processing completed: {sent_count} sent, {failed_count} failed"
-        )
+        logger.info("Alert email processing completed: sent=%d failed=%d", sent_count, failed_count)
 
         return {
             "status": "success",

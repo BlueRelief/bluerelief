@@ -62,7 +62,7 @@ export default function SettingsPage() {
     }
   }, [user?.user_id, loadPreferences])
 
-  const savePreferences = async () => {
+  const savePreferences = async (overrides?: { email_enabled?: boolean }) => {
     if (!user?.user_id) return
 
     setSaving(true)
@@ -74,7 +74,7 @@ export default function SettingsPage() {
           email_min_severity: emailMinSeverity,
           alert_types: alertTypes,
           regions: regions ? regions.split(',').map(r => r.trim()).filter(r => r) : null,
-          email_enabled: emailNotifications,
+          email_enabled: overrides?.email_enabled ?? emailNotifications,
         }),
       })
 
@@ -232,7 +232,7 @@ export default function SettingsPage() {
 
             <div className="pt-2">
               <Button
-                onClick={savePreferences}
+                onClick={() => savePreferences()}
                 disabled={saving}
                 className="w-full"
               >
@@ -274,7 +274,7 @@ export default function SettingsPage() {
                 checked={emailNotifications}
                 onCheckedChange={(checked) => {
                   setEmailNotifications(checked)
-                  savePreferences()
+                  void savePreferences({ email_enabled: checked })
                 }}
               />
             </div>
