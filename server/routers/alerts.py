@@ -27,6 +27,7 @@ class UserAlertPreferencesRequest(BaseModel):
     alert_types: List[str] = ["new_crisis", "severity_change", "update"]
     min_severity: int = 3
     email_enabled: bool = True
+    email_min_severity: int = 3
     regions: Optional[List[str]] = None
     disaster_types: Optional[List[str]] = None
 
@@ -37,6 +38,7 @@ class UserAlertPreferencesResponse(BaseModel):
     alert_types: List[str]
     min_severity: int
     email_enabled: bool
+    email_min_severity: int
     regions: Optional[List[str]]
     disaster_types: Optional[List[str]]
     created_at: datetime
@@ -94,8 +96,12 @@ def get_unread_count(
             raise HTTPException(status_code=404, detail="User not found")
 
         count = (
-            db.query(AlertQueue)
-            .filter(AlertQueue.user_id == user_id, AlertQueue.status == "pending")
+            db.query(Alert)
+            .join(AlertQueue, Alert.id == AlertQueue.alert_id)
+            .filter(
+                AlertQueue.user_id == user_id,
+                Alert.is_read == False
+            )
             .count()
         )
 
@@ -212,6 +218,7 @@ def update_alert_preferences(
             prefs.alert_types = prefs_data.alert_types
             prefs.min_severity = prefs_data.min_severity
             prefs.email_enabled = prefs_data.email_enabled
+            prefs.email_min_severity = prefs_data.email_min_severity
             prefs.regions = prefs_data.regions
             prefs.disaster_types = prefs_data.disaster_types
             prefs.updated_at = datetime.utcnow()
