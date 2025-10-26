@@ -246,6 +246,7 @@ class UserAlertPreferences(Base):
     )
     min_severity = Column(Integer, default=3, nullable=False)
     email_enabled = Column(Boolean, default=True, nullable=False)
+    email_min_severity = Column(Integer, default=3, nullable=False)
     regions = Column(JSON, nullable=True)
     disaster_types = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

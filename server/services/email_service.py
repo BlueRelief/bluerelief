@@ -240,6 +240,52 @@ def send_welcome_email(
     return send_email_via_microservice(to_email, subject, template, data, metadata)
 
 
+def send_alert_email(
+    to_email: str,
+    recipient_name: str,
+    alert_title: str,
+    alert_message: str,
+    alert_type: str,
+    severity: int,
+    location: str = None,
+    latitude: float = None,
+    longitude: float = None,
+    user_id: Optional[str] = None,
+    alert_id: Optional[int] = None
+) -> Dict[str, Any]:
+    """Send an alert notification email."""
+    severity_map = {
+        1: "Low",
+        2: "Medium", 
+        3: "High",
+        4: "High",
+        5: "Critical"
+    }
+    
+    severity_label = severity_map.get(severity, "Medium")
+    template = 'alert'
+    
+    data = {
+        'alertType': alert_title,
+        'severity': severity_label,
+        'location': location or 'Unknown Location',
+        'description': alert_message,
+        'actionText': 'View Alert Details',
+        'actionUrl': f'https://bluerelief.com/dashboard/alerts',
+        'timestamp': datetime.utcnow().isoformat()
+    }
+    
+    subject = f"🚨 {alert_title}"
+    
+    metadata = {
+        'user_id': user_id,
+        'alert_id': alert_id,
+        'type': 'alert_notification'
+    }
+    
+    return send_email_via_microservice(to_email, subject, template, data, metadata)
+
+
 def log_email_event(user_id: Optional[str], crisis_id: Optional[int], status: str, provider_message_id: Optional[str], payload: Dict[str, Any]):
     db = SessionLocal()
     try:

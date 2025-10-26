@@ -50,23 +50,25 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
 
 def should_alert_user_for_disaster(user_prefs: UserAlertPreferences, user: User, disaster: Disaster) -> bool:
     """Check if user should receive alert for this disaster based on preferences and location
-    
+
     Checks (in order):
-    1. Email enabled
+    1. User has preferences set up
     2. Severity meets minimum threshold
     3. GEO-RADIUS: Distance from user to disaster (PRIMARY)
     4. REGION FILTER: User's custom region preferences (SECONDARY)
-    
+
+    Note: email_enabled controls EMAIL sending, not alert creation
+
     Returns:
         True if user should receive the alert
     """
-    if not user_prefs or not user_prefs.email_enabled:
+    if not user_prefs:
         return False
-    
+
     disaster_severity = disaster.severity or 0
     if disaster_severity < user_prefs.min_severity:
         return False
-    
+
     # PRIMARY FILTER: Geo-radius based on user coordinates
     if user.latitude is not None and user.longitude is not None and \
        disaster.latitude is not None and disaster.longitude is not None:
@@ -74,7 +76,7 @@ def should_alert_user_for_disaster(user_prefs: UserAlertPreferences, user: User,
             user.latitude, user.longitude,
             disaster.latitude, disaster.longitude
         )
-        
+
         # If distance is calculated and exceeds radius, check regions as fallback
         if distance is not None and distance > ALERT_RADIUS_KM:
             # SECONDARY FILTER: Check if user has specific regions (override for distant areas)
@@ -99,7 +101,7 @@ def should_alert_user_for_disaster(user_prefs: UserAlertPreferences, user: User,
             )
             if not matches_region:
                 return False
-    
+
     return True
 
 
