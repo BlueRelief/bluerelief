@@ -66,6 +66,9 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY}
       SENDING_DOMAIN: ${SENDING_DOMAIN}
       EMAIL_FROM: ${EMAIL_FROM}
+      ADMIN_ALLOWED_DOMAINS: ${ADMIN_ALLOWED_DOMAINS:-bluerelief.com}
+      ADMIN_EXCEPTION_EMAILS: ${ADMIN_EXCEPTION_EMAILS:-}
+      ADMIN_DOMAIN_CHECK_ENABLED: ${ADMIN_DOMAIN_CHECK_ENABLED:-true}
     depends_on:
       postgres:
         condition: service_healthy
