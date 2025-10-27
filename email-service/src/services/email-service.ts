@@ -35,7 +35,7 @@ class EmailService {
     }
 
     this.resend = new Resend(apiKey);
-    this.fromEmail = process.env.EMAIL_FROM || 'noreply@bluerelief.com';
+    this.fromEmail = process.env.EMAIL_FROM || 'alerts@bluerelief.com';
   }
 
   async sendEmail({ to, subject, template, data, metadata }: EmailData): Promise<EmailResult> {
@@ -43,9 +43,12 @@ class EmailService {
       // Render the email template
       const html = await this.renderTemplate(template, data);
 
+      // Format sender with name and email
+      const fromAddress = `BlueRelief Alerts <${this.fromEmail}>`;
+
       // Send email via Resend
       const result = await this.resend.emails.send({
-        from: this.fromEmail,
+        from: fromAddress,
         to: [to],
         subject,
         html,

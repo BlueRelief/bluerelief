@@ -33,6 +33,7 @@ export default function SettingsPage() {
 
   // Alert preferences
   const [minSeverity, setMinSeverity] = useState(3)
+  const [emailMinSeverity, setEmailMinSeverity] = useState(3)
   const [alertTypes, setAlertTypes] = useState(['new_crisis', 'severity_change', 'update'])
   const [regions, setRegions] = useState('')
   const [saving, setSaving] = useState(false)
@@ -44,8 +45,10 @@ export default function SettingsPage() {
       if (response.ok) {
         const data = await response.json()
         setMinSeverity(data.min_severity || 3)
+        setEmailMinSeverity(data.email_min_severity || 3)
         setAlertTypes(data.alert_types || ['new_crisis', 'severity_change', 'update'])
         setRegions(data.regions?.join(', ') || '')
+        setEmailNotifications(data.email_enabled || false)
       }
     } catch (err) {
       console.error('Failed to load preferences:', err)
@@ -59,7 +62,7 @@ export default function SettingsPage() {
     }
   }, [user?.user_id, loadPreferences])
 
-  const savePreferences = async () => {
+  const savePreferences = async (overrides?: { email_enabled?: boolean }) => {
     if (!user?.user_id) return
 
     setSaving(true)
@@ -68,9 +71,10 @@ export default function SettingsPage() {
         method: 'PUT',
         body: JSON.stringify({
           min_severity: minSeverity,
+          email_min_severity: emailMinSeverity,
           alert_types: alertTypes,
           regions: regions ? regions.split(',').map(r => r.trim()).filter(r => r) : null,
-          email_enabled: emailNotifications,
+          email_enabled: overrides?.email_enabled ?? emailNotifications,
         }),
       })
 
@@ -161,7 +165,7 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label className="text-base font-semibold mb-3 block">Minimum Severity</Label>
+              <Label className="text-base font-semibold mb-3 block">Dashboard Alert Severity</Label>
               <Select value={String(minSeverity)} onValueChange={(value) => setMinSeverity(Number(value))}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -174,7 +178,24 @@ export default function SettingsPage() {
                   <SelectItem value="5">Critical (5)</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground mt-2">Only get alerts for crises at this severity level or higher</p>
+              <p className="text-xs text-muted-foreground mt-2">Show alerts in dashboard at this severity level or higher</p>
+            </div>
+
+            <div>
+              <Label className="text-base font-semibold mb-3 block">Email Alert Severity</Label>
+              <Select value={String(emailMinSeverity)} onValueChange={(value) => setEmailMinSeverity(Number(value))}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Low (1)</SelectItem>
+                  <SelectItem value="2">Medium (2)</SelectItem>
+                  <SelectItem value="3">High (3)</SelectItem>
+                  <SelectItem value="4">Very High (4)</SelectItem>
+                  <SelectItem value="5">Critical (5)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-2">Only send emails for alerts at this severity level or higher</p>
             </div>
 
             <div>
@@ -211,7 +232,7 @@ export default function SettingsPage() {
 
             <div className="pt-2">
               <Button
-                onClick={savePreferences}
+                onClick={() => savePreferences()}
                 disabled={saving}
                 className="w-full"
               >
@@ -240,13 +261,21 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label htmlFor="email-notifications" className="text-base font-normal">
-                Email Notifications
-              </Label>
+              <div className="flex-1">
+                <Label htmlFor="email-notifications" className="text-base font-normal">
+                  Email Notifications
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Receive email alerts for crises in your area
+                </p>
+              </div>
               <Switch
                 id="email-notifications"
                 checked={emailNotifications}
-                onCheckedChange={setEmailNotifications}
+                onCheckedChange={(checked) => {
+                  setEmailNotifications(checked)
+                  void savePreferences({ email_enabled: checked })
+                }}
               />
             </div>
             <div className="flex items-center justify-between">

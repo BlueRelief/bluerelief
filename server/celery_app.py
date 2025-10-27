@@ -65,6 +65,13 @@ celery_app.conf.beat_schedule = {
             "expires": 60 * 2,  # Tasks expire after 2 minutes
         },
     },
+    "send-alert-emails": {
+        "task": "tasks.send_alert_emails",
+        "schedule": 120.0,  # every 2 minutes
+        "options": {
+            "expires": 60 * 2,  # Tasks expire after 2 minutes
+        },
+    },
     "cleanup-alerts": {
         "task": "tasks.cleanup_old_alerts",
         "schedule": crontab(hour=2, minute=0),  # 2 AM daily

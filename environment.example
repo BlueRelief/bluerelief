@@ -42,10 +42,15 @@ SCHEDULE_HOURS=24
 # Email Service (Resend)
 RESEND_API_KEY=your-resend-api-key-here
 SENDING_DOMAIN=your-domain.com
-EMAIL_FROM=no-reply@your-domain.com
+EMAIL_FROM=alerts@your-domain.com
 
 # Email Microservice Configuration
 EMAIL_MICROSERVICE_URL=http://email-service:3002
 EMAIL_SERVICE_PORT=3002
 SERVICE_NAME=BlueRelief Email Service
 SERVICE_VERSION=1.0.0
+
+# Admin Domain Configuration
+ADMIN_ALLOWED_DOMAINS=bluerelief.com
+ADMIN_EXCEPTION_EMAILS=
+ADMIN_DOMAIN_CHECK_ENABLED=true

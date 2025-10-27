@@ -161,6 +161,159 @@ def manage_alert_queue():
     return manage_alert_queue_service()
 
 
+@celery_app.task(name="tasks.send_alert_emails")
+def send_alert_emails():
+    """Process alert queue and send emails for pending alerts
+
+    Runs every 2 minutes to:
+    - Find pending alerts with email_enabled users
+    - Send email notifications
+    - Update queue status (sent/failed)
+    """
+    from db_utils.db import AlertQueue, Alert, UserAlertPreferences, SessionLocal
+    from services.email_service import send_alert_email
+    import logging
+
+    logger = logging.getLogger(__name__)
+    db = SessionLocal()
+
+    try:
+        logger.info("Starting alert email processing job")
+
+        # Claim a batch of pending alerts with row-level locking to prevent duplicate sends
+        pending_entries = (
+            db.query(AlertQueue)
+            .join(Alert, AlertQueue.alert_id == Alert.id)
+            .join(
+                UserAlertPreferences, AlertQueue.user_id == UserAlertPreferences.user_id
+            )
+            .filter(
+                AlertQueue.status == "pending",
+                UserAlertPreferences.email_enabled == True,
+                AlertQueue.retry_count < AlertQueue.max_retries,
+            )
+            .order_by(AlertQueue.priority, AlertQueue.scheduled_at)
+            .limit(50)
+            .with_for_update(skip_locked=True)
+            .all()
+        )
+        
+        # Mark claimed entries as processing before sending
+        for entry in pending_entries:
+            entry.status = "processing"
+            entry.updated_at = datetime.utcnow()
+            db.add(entry)
+        
+        if pending_entries:
+            db.flush()
+
+        logger.info(f"Found {len(pending_entries)} pending alerts with email enabled")
+
+        sent_count = 0
+        failed_count = 0
+
+        for entry in pending_entries:
+            try:
+                # Get alert details
+                alert = db.query(Alert).filter(Alert.id == entry.alert_id).first()
+                if not alert:
+                    logger.warning(f"Alert {entry.alert_id} not found, skipping")
+                    continue
+
+                # Get user preferences to check email_min_severity
+                user_prefs = (
+                    db.query(UserAlertPreferences)
+                    .filter(UserAlertPreferences.user_id == entry.user_id)
+                    .first()
+                )
+
+                # Check if alert severity meets email threshold
+                if user_prefs and alert.severity < user_prefs.email_min_severity:
+                    logger.info(
+                        f"Skipping email for alert {alert.id}: severity {alert.severity} < email_min_severity {user_prefs.email_min_severity}"
+                    )
+                    entry.status = "skipped"
+                    entry.updated_at = datetime.utcnow()
+                    db.add(entry)
+                    continue
+
+                # Extract metadata
+                metadata = alert.alert_metadata or {}
+                location = metadata.get("location", "Unknown Location")
+                latitude = metadata.get("latitude")
+                longitude = metadata.get("longitude")
+
+                # Send email
+                result = send_alert_email(
+                    to_email=entry.recipient_email,
+                    recipient_name=entry.recipient_name or "User",
+                    alert_title=alert.title,
+                    alert_message=alert.message,
+                    alert_type=alert.alert_type,
+                    severity=alert.severity,
+                    location=location,
+                    latitude=latitude,
+                    longitude=longitude,
+                    user_id=entry.user_id,
+                    alert_id=alert.id,
+                )
+
+                if result.get("success"):
+                    entry.status = "sent"
+                    entry.sent_at = datetime.utcnow()
+                    sent_count += 1
+                    logger.info(f"✅ Sent alert email user_id={entry.user_id} alert_id={alert.id}")
+                else:
+                    entry.status = "failed"
+                    entry.retry_count += 1
+                    entry.error_message = result.get("error", "Unknown error")
+                    
+                    # Mark as dead if max retries exceeded
+                    if entry.retry_count >= entry.max_retries:
+                        entry.status = "dead"
+                    
+                    failed_count += 1
+                    logger.error(
+                        "❌ Failed to send alert email user_id=%s alert_id=%s error=%s",
+                        entry.user_id, alert.id, result.get("error")
+                    )
+
+                entry.updated_at = datetime.utcnow()
+                db.add(entry)
+
+            except Exception as e:
+                logger.exception("Error processing alert entry_id=%s", entry.id)
+                entry.status = "failed"
+                entry.retry_count += 1
+                entry.error_message = str(e)
+                
+                # Mark as dead if max retries exceeded
+                if entry.retry_count >= entry.max_retries:
+                    entry.status = "dead"
+                
+                entry.updated_at = datetime.utcnow()
+                db.add(entry)
+                failed_count += 1
+                continue
+
+        db.commit()
+        logger.info("Alert email processing completed: sent=%d failed=%d", sent_count, failed_count)
+
+        return {
+            "status": "success",
+            "sent": sent_count,
+            "failed": failed_count,
+            "total_processed": len(pending_entries),
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error in alert email processing: {str(e)}")
+        raise
+    finally:
+        db.close()
+
+
 @celery_app.task(name="tasks.cleanup_old_alerts")
 def cleanup_old_alerts():
     """Celery task wrapper for alert cleanup"""
