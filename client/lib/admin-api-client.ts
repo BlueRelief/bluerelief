@@ -72,6 +72,8 @@ export async function adminApiClient(
 
     return response;
   } catch (error) {
+    // Silently handle errors - callers will handle the display
+    // Re-throw error so callers can handle it gracefully
     throw error;
   } finally {
     // Reset redirect flag after a delay to allow navigation
@@ -119,5 +121,52 @@ export async function adminApiDelete<T>(endpoint: string): Promise<T> {
     throw new Error(`API Error: ${response.statusText}`);
   }
   return response.json();
+}
+
+interface AdminStats {
+  users: {
+    total: number;
+    active: number;
+    inactive: number;
+    admins: number;
+  };
+  system: {
+    total_crises: number;
+    urgent_alerts: number;
+    recent_activities: number;
+    status: string;
+    issues: string[];
+  };
+}
+
+export async function getAdminStats(): Promise<AdminStats> {
+  return adminApiGet<AdminStats>('/api/admin/stats');
+}
+
+interface AdminActivity {
+  admin_id: string | null;
+  action: string;
+  target_user_id: string | null;
+  details: any;
+  created_at: string | null;
+  admin_email: string | null;
+}
+
+export async function getRecentAdminActivities(limit: number = 10): Promise<{ activities: AdminActivity[] }> {
+  return adminApiGet<{ activities: AdminActivity[] }>(`/api/admin/recent-activities?limit=${limit}`);
+}
+
+interface RecentUser {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  is_admin: boolean;
+  created_at: string | null;
+  last_login: string | null;
+}
+
+export async function getRecentUsers(limit: number = 5): Promise<{ users: RecentUser[] }> {
+  return adminApiGet<{ users: RecentUser[] }>(`/api/admin/recent-users?limit=${limit}`);
 }
 

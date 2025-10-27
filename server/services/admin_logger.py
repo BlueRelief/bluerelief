@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any
 from db_utils.db import SessionLocal
+from sqlalchemy import text
 from datetime import datetime
 import json
 import logging
@@ -12,10 +13,10 @@ def log_admin_activity(admin_id: Optional[str], action: str, target_user_id: Opt
     db = SessionLocal()
     try:
         details_json = json.dumps(details or {})
-        sql = """
+        sql = text("""
         INSERT INTO admin_activity_log (admin_id, action, target_user_id, details, ip_address, user_agent, created_at)
         VALUES (:admin_id, :action, :target_user_id, :details, :ip_address, :user_agent, :created_at)
-        """
+        """)
         params = {
             'admin_id': admin_id,
             'action': action,
@@ -29,6 +30,12 @@ def log_admin_activity(admin_id: Optional[str], action: str, target_user_id: Opt
         db.commit()
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to log admin activity: {e}")
+        # Only log as error if it's a real database issue, not a missing table
+        error_msg = str(e)
+        if "relation" in error_msg.lower() and "does not exist" in error_msg.lower():
+            # Table doesn't exist yet - log debug level instead of error
+            logger.debug(f"admin_activity_log table not found, skipping log entry")
+        else:
+            logger.error(f"Failed to log admin activity: {e}")
     finally:
         db.close()
