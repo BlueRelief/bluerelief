@@ -108,16 +108,16 @@ def get_recent_events(limit: int = 10, db: Session = Depends(get_db)):
         .all()
     )
 
-    severity_labels = {5: ("Critical", "bg-red-100 text-red-800"),
-                       4: ("High", "bg-orange-100 text-orange-800"),
-                       3: ("Medium", "bg-yellow-100 text-yellow-800"),
-                       2: ("Low", "bg-green-100 text-green-800"),
-                       1: ("Info", "bg-blue-100 text-blue-800")}
+    severity_labels = {5: ("Critical", "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"),
+                       4: ("High", "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100"),
+                       3: ("Medium", "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"),
+                       2: ("Low", "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"),
+                       1: ("Info", "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100")}
 
     events = []
     for d in disasters:
         sev = int(d.severity) if d.severity is not None else 1
-        label, color = severity_labels.get(sev, ("Info", "bg-blue-100 text-blue-800"))
+        label, color = severity_labels.get(sev, ("Info", "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"))
 
         # Use post's created_at if disaster is linked to a post, otherwise use extracted_at
         try:

@@ -429,7 +429,19 @@ export default function DashboardPage() {
                   className="flex flex-col gap-2 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex items-start gap-3">
-                    <Badge className={`${event.severityColor} text-xs px-2 py-0.5 mt-0.5`}>
+                    <Badge 
+                      className={`text-xs px-2 py-0.5 mt-0.5 border ${
+                        event.severity.toLowerCase() === "critical" 
+                          ? "!bg-red-500/10 !text-red-700 dark:!bg-red-950/50 dark:!text-red-300"
+                          : event.severity.toLowerCase() === "high"
+                          ? "!bg-orange-500/10 !text-orange-700 dark:!bg-orange-950/50 dark:!text-orange-300"
+                          : event.severity.toLowerCase() === "medium"
+                          ? "!bg-yellow-500/10 !text-yellow-700 dark:!bg-yellow-950/50 dark:!text-yellow-300"
+                          : event.severity.toLowerCase() === "low"
+                          ? "!bg-green-500/10 !text-green-700 dark:!bg-green-950/50 dark:!text-green-300"
+                          : "!bg-blue-500/10 !text-blue-700 dark:!bg-blue-950/50 dark:!text-blue-300"
+                      }`}
+                    >
                       {event.severity}
                     </Badge>
                     <div className="flex-1 min-w-0">
