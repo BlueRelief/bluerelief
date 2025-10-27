@@ -78,16 +78,6 @@ def trigger_archive(days_threshold: int = 2, current_admin: User = Depends(get_c
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to start archive: {e}")
 
-
-@router.get("/{task_id}")
-def get_task_status(task_id: str, current_admin: User = Depends(get_current_admin)):
-    try:
-        task = celery_app.AsyncResult(task_id)
-        return {"task_id": task_id, "status": task.status, "result": task.result if task.ready() else None}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve task status: {e}")
-
-
 @router.get("/metrics")
 def get_system_metrics(current_admin: User = Depends(get_current_admin)):
     """Return simple system metrics useful for the admin UI"""
@@ -105,7 +95,6 @@ def get_system_metrics(current_admin: User = Depends(get_current_admin)):
                 conn.execute(sqlalchemy.text("SELECT 1"))
         except Exception:
             db_health = False
-
         return {
             "total_users": total_users,
             "active_disasters": active_disasters,
@@ -117,3 +106,11 @@ def get_system_metrics(current_admin: User = Depends(get_current_admin)):
         raise HTTPException(status_code=500, detail=f"Failed to compute metrics: {e}")
     finally:
         db.close()
+
+@router.get("/{task_id}")
+def get_task_status(task_id: str, current_admin: User = Depends(get_current_admin)):
+    try:
+        task = celery_app.AsyncResult(task_id)
+        return {"task_id": task_id, "status": task.status, "result": task.result if task.ready() else None}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve task status: {e}")
