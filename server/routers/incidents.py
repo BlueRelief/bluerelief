@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from db_utils.db import SessionLocal, Disaster
+from datetime import datetime, timedelta
 import re
 
 router = APIRouter()
@@ -15,6 +16,24 @@ def get_db():
         db.close()
 
 
+def parse_time_range(time_range: str) -> int:
+    """Parse time range string to hours
+
+    Args:
+        time_range: String like "6h", "12h", "24h", "48h"
+
+    Returns:
+        Hours as integer
+    """
+    time_map = {
+        "6h": 6,
+        "12h": 12,
+        "24h": 24,
+        "48h": 48,
+    }
+    return time_map.get(time_range, 24)  # Default to 24 hours
+
+
 def get_severity_label(severity: int) -> str:
     """Convert severity number to label"""
     severity_map = {5: "Critical", 4: "High", 3: "Medium", 2: "Low", 1: "Info"}
@@ -22,9 +41,20 @@ def get_severity_label(severity: int) -> str:
 
 
 @router.get("/api/incidents")
-async def list_incidents(db: Session = Depends(get_db)):
+async def list_incidents(time_range: str = "24h", db: Session = Depends(get_db)):
     """Return recent disasters for the map"""
-    disasters = db.query(Disaster).order_by(Disaster.extracted_at.desc()).limit(100).all()
+    # Parse time range and calculate cutoff time
+    hours = parse_time_range(time_range)
+    cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+
+    disasters = (
+        db.query(Disaster)
+        .filter(Disaster.archived == False)
+        .filter(Disaster.extracted_at >= cutoff_time)
+        .order_by(Disaster.extracted_at.desc())
+        .limit(100)
+        .all()
+    )
     
     result = []
     for d in disasters:

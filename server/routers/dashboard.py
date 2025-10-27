@@ -8,6 +8,24 @@ from services import database_service
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
+def parse_time_range(time_range: str) -> int:
+    """Parse time range string to hours
+
+    Args:
+        time_range: String like "6h", "12h", "24h", "48h"
+
+    Returns:
+        Hours as integer
+    """
+    time_map = {
+        "6h": 6,
+        "12h": 12,
+        "24h": 24,
+        "48h": 48,
+    }
+    return time_map.get(time_range, 24)  # Default to 24 hours
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -17,14 +35,24 @@ def get_db():
 
 
 @router.get("/stats")
-def get_dashboard_stats(db: Session = Depends(get_db)):
-    """Return aggregated dashboard stat cards"""
+def get_dashboard_stats(time_range: str = "24h", db: Session = Depends(get_db)):
+    """Return aggregated dashboard stat cards with time filtering"""
     from sqlalchemy import func
 
-    total_crises = db.query(Disaster).filter(Disaster.archived == False).count()
+    # Parse time range and calculate cutoff time
+    hours = parse_time_range(time_range)
+    cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+
+    total_crises = (
+        db.query(Disaster)
+        .filter(Disaster.archived == False)
+        .filter(Disaster.extracted_at >= cutoff_time)
+        .count()
+    )
     active_regions = (
         db.query(func.count(func.distinct(Disaster.location_name)))
         .filter(Disaster.archived == False)
+        .filter(Disaster.extracted_at >= cutoff_time)
         .scalar() or 0
     )
 
@@ -34,6 +62,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         .join(Disaster)
         .filter(Post.sentiment == "urgent")
         .filter(Disaster.archived == False)
+        .filter(Disaster.extracted_at >= cutoff_time)
         .count()
     )
 
@@ -41,7 +70,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     from services.population_estimator import PopulationEstimator
 
     affected_people = 0
-    for disaster in db.query(Disaster).filter(Disaster.archived == False).all():
+    for disaster in db.query(Disaster).filter(Disaster.archived == False).filter(Disaster.extracted_at >= cutoff_time).all():
         try:
             affected_people += disaster.affected_population or 0
         except Exception:
@@ -57,14 +86,18 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
 
 
 @router.get("/sentiment-trends")
-def get_sentiment_trends(hours: int = 48, bucket_hours: int = 4, db: Session = Depends(get_db)):
-    """Return sentiment trends over time in bucketed intervals (default last 48 hours, 4h buckets)"""
+def get_sentiment_trends(time_range: str = "24h", db: Session = Depends(get_db)):
+    """Return sentiment trends over time in bucketed intervals"""
     from sqlalchemy import func
+
+    # Parse time range and calculate bucket size
+    hours = parse_time_range(time_range)
+    bucket_hours = max(1, hours // 8)  # Divide into ~8 buckets
 
     now = datetime.utcnow()
     start_time = now - timedelta(hours=hours)
 
-    # Build 4-hour buckets between start_time and now
+    # Build buckets between start_time and now
     bucket_size = timedelta(hours=bucket_hours)
     buckets = []
     current = start_time
@@ -95,14 +128,18 @@ def get_sentiment_trends(hours: int = 48, bucket_hours: int = 4, db: Session = D
 
 
 @router.get("/recent-events")
-def get_recent_events(limit: int = 10, db: Session = Depends(get_db)):
+def get_recent_events(time_range: str = "24h", limit: int = 10, db: Session = Depends(get_db)):
     """Return recent disasters formatted for UI events list"""
-    
-    
+
+    # Parse time range and calculate cutoff time
+    hours = parse_time_range(time_range)
+    cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+
     disasters = (
         db.query(Disaster)
         .options(joinedload(Disaster.post))
         .filter(Disaster.archived == False)
+        .filter(Disaster.extracted_at >= cutoff_time)
         .order_by(Disaster.extracted_at.desc())
         .limit(limit)
         .all()

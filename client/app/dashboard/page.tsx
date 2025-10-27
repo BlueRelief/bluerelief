@@ -4,28 +4,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
+import {
   Search,
 } from "lucide-react";
 import CrisisMap from "@/components/crisis-map";
 import { useState, useEffect, useMemo } from "react";
-import { 
+import {
   ChartContainer,
-  type ChartConfig 
+  type ChartConfig
 } from "@/components/ui/chart";
 import { AreaChart, Area } from "recharts";
 import { apiGet } from "@/lib/api-client";
 import { useAlertNotifications } from "@/hooks/use-alert-notifications";
 import { useAuth } from "@/hooks/use-auth";
-import { showCrisisAlert, showSuccessToast, showErrorToast, showWarningToast, showInfoToast, CrisisAlert, ALERT_SEVERITY } from "@/lib/toast-utils";
-import { useRouter } from "next/navigation";
 
 const chartConfig = {
   sentiment: {
@@ -59,7 +57,6 @@ interface RecentEvent {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const router = useRouter();
   const [timeRange, setTimeRange] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
   const [severityFilter, setSeverityFilter] = useState("all");
@@ -81,74 +78,28 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   // Enable real-time alert notifications
-  useAlertNotifications({ 
-    userId: user?.user_id ? parseInt(user.user_id, 10) : undefined, 
-    enabled: !!user?.user_id 
+  useAlertNotifications({
+    userId: user?.user_id ? parseInt(user.user_id, 10) : undefined,
+    enabled: !!user?.user_id
   });
-
-  // Test functions for toast notifications
-  const testCrisisAlert = () => {
-    const mockAlert: CrisisAlert = {
-      id: 999,
-      title: "Test Crisis Alert",
-      message: "This is a test crisis alert to demonstrate the toast notification system. Flooding detected in Dallas area with severe weather conditions.",
-      alert_type: "flood",
-      severity: ALERT_SEVERITY.CRITICAL,
-      created_at: new Date().toISOString(),
-      alert_metadata: {
-        location: "Dallas, TX",
-        latitude: 32.7767,
-        longitude: -96.7970,
-        disaster_type: "flood"
-      }
-    };
-    showCrisisAlert(mockAlert, () => router.push("/dashboard/alerts"));
-  };
-
-  const testSuccessToast = () => {
-    showSuccessToast("Preferences saved successfully!", {
-      label: "View Settings",
-      onClick: () => console.log("Navigate to settings")
-    });
-  };
-
-  const testErrorToast = () => {
-    showErrorToast("Failed to load crisis data", {
-      label: "Retry",
-      onClick: () => console.log("Retry loading")
-    });
-  };
-
-  const testWarningToast = () => {
-    showWarningToast("Severity change detected", {
-      label: "View Details",
-      onClick: () => console.log("View alert details")
-    });
-  };
-
-  const testInfoToast = () => {
-    showInfoToast("New crisis update available", {
-      label: "Refresh",
-      onClick: () => console.log("Refresh data")
-    });
-  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         
+        const timeParam = timeRange || '24h';
         const [statsData, sentimentResponse, eventsResponse, incidentsData] = await Promise.all([
-          apiGet<DashboardStats>('/api/dashboard/stats'),
-          apiGet<{ trends: SentimentTrend[] }>('/api/dashboard/sentiment-trends'),
-          apiGet<{ events: RecentEvent[] }>('/api/dashboard/recent-events'),
+          apiGet<DashboardStats>(`/api/dashboard/stats?time_range=${timeParam}`),
+          apiGet<{ trends: SentimentTrend[] }>(`/api/dashboard/sentiment-trends?time_range=${timeParam}`),
+          apiGet<{ events: RecentEvent[] }>(`/api/dashboard/recent-events?time_range=${timeParam}`),
           apiGet<Array<{
             region: string;
             incidents: number;
             severity: string;
             coordinates: [number, number];
             crisis_description?: string;
-          }>>('/api/incidents'),
+          }>>(`/api/incidents?time_range=${timeParam}`),
         ]);
 
         setStats(statsData);
@@ -163,7 +114,7 @@ export default function DashboardPage() {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [timeRange]);
 
   const getRegionFromCoordinates = (lng: number, lat: number): string => {
     // North America: roughly -170 to -50 longitude, 15 to 72 latitude
@@ -252,35 +203,17 @@ export default function DashboardPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <div className="flex items-center gap-4">
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={testCrisisAlert}>
-              Test Crisis Alert
-            </Button>
-            <Button variant="outline" size="sm" onClick={testSuccessToast}>
-              Test Success
-            </Button>
-            <Button variant="outline" size="sm" onClick={testErrorToast}>
-              Test Error
-            </Button>
-            <Button variant="outline" size="sm" onClick={testWarningToast}>
-              Test Warning
-            </Button>
-            <Button variant="outline" size="sm" onClick={testInfoToast}>
-              Test Info
-            </Button>
-          </div>
-          <Select value={timeRange || "24h"} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Last 24 hours" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="24h">Last 24 hours</SelectItem>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={timeRange || "24h"} onValueChange={setTimeRange}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Last 24 hours" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="6h">Last 6 hours</SelectItem>
+            <SelectItem value="12h">Last 12 hours</SelectItem>
+            <SelectItem value="24h">Last 24 hours</SelectItem>
+            <SelectItem value="48h">Last 48 hours</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
