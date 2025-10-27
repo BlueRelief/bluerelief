@@ -10,6 +10,7 @@ from sqlalchemy import (
     Float,
     JSON,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
 from datetime import datetime
@@ -100,6 +101,12 @@ class Post(Base):
     sentiment = Column(String(50), nullable=True)
     sentiment_score = Column(Float, nullable=True)
     disaster_type = Column(String(50), nullable=True, index=True)
+    
+    # Relevancy scoring
+    relevancy_score = Column(Integer, nullable=False, default=0, index=True)
+    relevancy_breakdown = Column(JSON, nullable=True)
+    relevancy_flags = Column(JSONB, nullable=True)
+    is_relevant = Column(Boolean, nullable=False, default=True, index=True)
 
     # Post engagement metrics
     like_count = Column(Integer, default=0)
