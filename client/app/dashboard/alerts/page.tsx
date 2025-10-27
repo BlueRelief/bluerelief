@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, Calendar, Loader2, Settings } from "lucide-react";
+import { Search, Calendar, Loader2, Settings, CheckCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
+import { showSuccessToast, showErrorToast, CrisisAlert, ALERT_SEVERITY } from "@/lib/toast-utils";
 import Link from "next/link";
 
 interface Alert {
@@ -48,6 +49,69 @@ export default function AlertsPage() {
       setLoading(false);
     }
   }, [user?.user_id]);
+
+  const markAlertAsRead = useCallback(async (alertId: number) => {
+    try {
+      const response = await apiClient(`/api/alerts/${alertId}/mark-read`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        // Update local state
+        setAlerts(prevAlerts => 
+          prevAlerts.map(alert => 
+            alert.id === alertId ? { ...alert, is_read: true } : alert
+          )
+        );
+        
+        // Show success toast
+        showSuccessToast("Alert marked as read", {
+          label: "View All Alerts",
+          onClick: () => window.location.reload()
+        });
+      } else {
+        throw new Error('Failed to mark alert as read');
+      }
+    } catch (err) {
+      console.error('Failed to mark alert as read:', err);
+      showErrorToast("Failed to mark alert as read");
+    }
+  }, []);
+
+  const markAllAsRead = useCallback(async () => {
+    try {
+      const unreadAlerts = alerts.filter(alert => !alert.is_read);
+      if (unreadAlerts.length === 0) {
+        showSuccessToast("All alerts are already read");
+        return;
+      }
+
+      const response = await apiClient('/api/alerts/mark-all-read', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: user?.user_id }),
+      });
+      
+      if (response.ok) {
+        // Update local state
+        setAlerts(prevAlerts => 
+          prevAlerts.map(alert => ({ ...alert, is_read: true }))
+        );
+        
+        showSuccessToast(`Marked ${unreadAlerts.length} alerts as read`);
+      } else {
+        throw new Error('Failed to mark all alerts as read');
+      }
+    } catch (err) {
+      console.error('Failed to mark all alerts as read:', err);
+      showErrorToast("Failed to mark all alerts as read");
+    }
+  }, [alerts, user?.user_id]);
 
   useEffect(() => {
     if (!authLoading && user?.user_id) {
@@ -162,6 +226,16 @@ export default function AlertsPage() {
               className="pl-10 w-80 bg-card border-border"
             />
           </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={markAllAsRead}
+            className="gap-2"
+            disabled={alerts.filter(alert => !alert.is_read).length === 0}
+          >
+            <CheckCircle className="w-4 h-4" />
+            Mark All Read
+          </Button>
           <Link href="/dashboard/settings">
             <Button variant="outline" size="sm" className="gap-2">
               <Settings className="w-4 h-4" />
@@ -219,9 +293,22 @@ export default function AlertsPage() {
                     <div className="flex items-center space-x-2">
                       <span className="text-sm font-semibold text-foreground">Status</span>
                     </div>
-                    <Badge variant={alert.is_read ? "secondary" : "destructive"} className="text-xs">
-                      {alert.is_read ? "Read" : "Unread"}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={alert.is_read ? "secondary" : "destructive"} className="text-xs">
+                        {alert.is_read ? "Read" : "Unread"}
+                      </Badge>
+                      {!alert.is_read && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => markAlertAsRead(alert.id)}
+                          className="h-6 px-2 text-xs gap-1"
+                        >
+                          <CheckCircle className="h-3 w-3" />
+                          Mark Read
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
