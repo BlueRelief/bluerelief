@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from db_utils.db import SessionLocal, Disaster
 from datetime import datetime, timedelta
@@ -69,6 +69,54 @@ async def list_incidents(time_range: str = "24h", db: Session = Depends(get_db))
     
     return result
 
+
+
+@router.get("/api/incidents/{disaster_id}")
+async def get_disaster_details(disaster_id: int, db: Session = Depends(get_db)):
+    """Get detailed information about a specific disaster"""
+
+    disaster = (
+        db.query(Disaster)
+        .options(joinedload(Disaster.post))
+        .filter(Disaster.id == disaster_id)
+        .filter(Disaster.archived == False)
+        .first()
+    )
+
+    if not disaster:
+        raise HTTPException(status_code=404, detail="Disaster not found")
+
+    # Build Bluesky URL if post exists
+    bluesky_url = None
+    if disaster.post and disaster.post.bluesky_id:
+        bluesky_id = disaster.post.bluesky_id
+        if bluesky_id.startswith("at://"):
+            post_parts = bluesky_id.split("/")
+            if len(post_parts) >= 4:
+                post_id = post_parts[4] if len(post_parts) > 4 else ""
+                handle = disaster.post.author_handle
+                if post_id and handle:
+                    bluesky_url = f"https://bsky.app/profile/{handle}/post/{post_id}"
+
+    return {
+        "id": disaster.id,
+        "location_name": disaster.location_name,
+        "latitude": disaster.latitude,
+        "longitude": disaster.longitude,
+        "disaster_type": disaster.disaster_type,
+        "severity": disaster.severity,
+        "magnitude": disaster.magnitude,
+        "description": disaster.description,
+        "affected_population": disaster.affected_population,
+        "event_time": disaster.event_time.isoformat() if disaster.event_time else None,
+        "extracted_at": disaster.extracted_at.isoformat(),
+        "bluesky_url": bluesky_url,
+        "post": {
+            "text": disaster.post.text if disaster.post else None,
+            "author_handle": disaster.post.author_handle if disaster.post else None,
+            "sentiment": disaster.post.sentiment if disaster.post else None,
+        } if disaster.post else None
+    }
 
 
 @router.get("/api/incidents/nearby")
