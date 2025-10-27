@@ -147,7 +147,7 @@ interface AdminActivity {
   admin_id: string | null;
   action: string;
   target_user_id: string | null;
-  details: any;
+  details: Record<string, unknown>;
   created_at: string | null;
   admin_email: string | null;
 }

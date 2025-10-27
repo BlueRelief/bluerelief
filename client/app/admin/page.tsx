@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Shield, LogOut, Users, Settings, Activity, Clock, AlertTriangle, TrendingUp, CheckCircle2, XCircle, Search } from "lucide-react";
+import { Shield, LogOut, Users, Settings, Activity, Clock, AlertTriangle, TrendingUp, CheckCircle2, XCircle, Search, Wrench } from "lucide-react";
 import { getAdminStats, getRecentAdminActivities, getRecentUsers } from "@/lib/admin-api-client";
 
 interface AdminUser {
@@ -36,7 +36,7 @@ interface AdminActivity {
   admin_id: string | null;
   action: string;
   target_user_id: string | null;
-  details: any;
+  details: Record<string, unknown>;
   created_at: string | null;
   admin_email: string | null;
 }
@@ -87,7 +87,7 @@ export default function AdminDashboard() {
         try {
           const statsData = await getAdminStats();
           setStats(statsData);
-        } catch (error) {
+        } catch {
           // Silently use default stats
           setStats({
             users: { total: 0, active: 0, inactive: 0, admins: 0 },
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
         try {
           const activitiesData = await getRecentAdminActivities(10);
           setActivities(activitiesData.activities);
-        } catch (error) {
+        } catch {
           // Silently use empty activities
           setActivities([]);
         }
@@ -106,12 +106,12 @@ export default function AdminDashboard() {
         try {
           const usersData = await getRecentUsers(5);
           setRecentUsers(usersData.users);
-        } catch (error) {
+        } catch {
           // Silently use empty users
           setRecentUsers([]);
         }
         
-      } catch (error) {
+      } catch {
         // Final fallback - shouldn't reach here with individual try-catch above
         setStats({
           users: { total: 0, active: 0, inactive: 0, admins: 0 },
@@ -155,21 +155,21 @@ export default function AdminDashboard() {
   const getStatusBadge = (status: string) => {
     if (status === "operational") {
       return (
-        <Badge className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-100 dark:border-green-700">
+        <Badge className="bg-[var(--success-100)] text-[var(--success-800)] border-[var(--success-300)] dark:bg-[var(--success-900)] dark:text-[var(--success-100)] dark:border-[var(--success-700)]">
           <CheckCircle2 className="w-3 h-3 mr-1" />
           Operational
         </Badge>
       );
     } else if (status === "degraded") {
       return (
-        <Badge className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900 dark:text-amber-100 dark:border-amber-700">
+        <Badge className="bg-[var(--warning-100)] text-[var(--warning-800)] border-[var(--warning-300)] dark:bg-[var(--warning-900)] dark:text-[var(--warning-100)] dark:border-[var(--warning-700)]">
           <AlertTriangle className="w-3 h-3 mr-1" />
           Degraded
         </Badge>
       );
     } else {
       return (
-        <Badge className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900 dark:text-blue-100 dark:border-blue-700">
+        <Badge className="bg-[var(--info-100)] text-[var(--info-800)] border-[var(--info-300)] dark:bg-[var(--info-900)] dark:text-[var(--info-100)] dark:border-[var(--info-700)]">
           <Clock className="w-3 h-3 mr-1" />
           {status.charAt(0).toUpperCase() + status.slice(1)}
         </Badge>
@@ -255,7 +255,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-amber-500">
+          <Card className="border-l-4 border-l-[var(--warning-500)]">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -264,8 +264,8 @@ export default function AdminDashboard() {
                   </div>
                   <div className="text-xs text-muted-foreground">Urgent Alerts</div>
                 </div>
-                <div className="h-12 w-12 rounded-full bg-amber-500/10 flex items-center justify-center">
-                  <AlertTriangle className="text-amber-500 h-5 w-5" />
+                <div className="h-12 w-12 rounded-full bg-[var(--warning-500)]/10 flex items-center justify-center">
+                  <AlertTriangle className="text-[var(--warning-500)] h-5 w-5" />
                 </div>
               </div>
             </CardContent>
@@ -377,7 +377,7 @@ export default function AdminDashboard() {
                     <div className="text-xs font-medium text-muted-foreground mb-2">Issues:</div>
                     <div className="space-y-1">
                       {stats.system.issues.map((issue, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+                        <div key={idx} className="flex items-center gap-2 text-xs text-[var(--warning-600)] dark:text-[var(--warning-400)]">
                           <AlertTriangle className="h-3 w-3" />
                           {issue}
                         </div>
@@ -509,6 +509,17 @@ export default function AdminDashboard() {
                   <div className="text-left">
                     <div className="font-medium">Domain Config</div>
                     <div className="text-xs text-muted-foreground">Manage allowed domains</div>
+                  </div>
+                </Button>
+                <Button 
+                  className="justify-start h-auto py-3" 
+                  variant="outline"
+                  onClick={() => router.push('/admin/dev-tools')}
+                >
+                  <Wrench className="mr-2 h-4 w-4" />
+                  <div className="text-left">
+                    <div className="font-medium">Dev Tools</div>
+                    <div className="text-xs text-muted-foreground">Developer tools and utilities</div>
                   </div>
                 </Button>
               </div>
