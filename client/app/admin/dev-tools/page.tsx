@@ -1,23 +1,50 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Shield, LogOut, Wrench } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { adminApiGet, adminApiPost } from "@/lib/admin-api-client";
 
-interface AdminUser {
+
+type TaskRecord = {
   id: string;
-  email: string;
-  role: string;
-}
+  status: string;
+  last_checked?: string;
+  result?: unknown;
+};
+
+type Metrics = {
+  total_users: number;
+  active_disasters: number;
+  pending_alerts: number;
+  last_collection_run?: string | null;
+  db_health: boolean;
+};
+
+type TaskStatusResponse = {
+  status: string;
+  result?: unknown;
+};
+
+type StartTaskResponse = {
+  task_id?: string;
+};
 
 export default function DevToolsPage() {
-  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  const [includeEnhanced, setIncludeEnhanced] = useState(true);
+  // disaster types is not currently used on backend but kept for future extensibility
+  const [disasterTypes, setDisasterTypes] = useState<string[]>([]);
+  const [daysThreshold, setDaysThreshold] = useState<number>(2);
+  const [tasks, setTasks] = useState<Record<string, TaskRecord>>({});
+  const pollingRef = useRef<number | null>(null);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -26,12 +53,6 @@ export default function DevToolsPage() {
         router.push('/admin/login');
         return;
       }
-
-      const userStr = localStorage.getItem('admin_user') || sessionStorage.getItem('admin_user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        setAdminUser(user);
-      }
       
       setLoading(false);
     };
@@ -39,12 +60,73 @@ export default function DevToolsPage() {
     checkAuth();
   }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    sessionStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
-    sessionStorage.removeItem('admin_user');
-    router.push('/admin/login');
+  useEffect(() => {
+    fetchMetrics();
+    // start polling running tasks
+    pollingRef.current = window.setInterval(() => {
+      Object.keys(tasks).forEach((tid) => pollTaskStatus(tid));
+    }, 3000);
+
+    return () => {
+      if (pollingRef.current) window.clearInterval(pollingRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // stop polling if no tasks
+    if (Object.keys(tasks).length === 0 && pollingRef.current) {
+      window.clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, [tasks]);
+
+  const showMsg = (text: string) => {
+    setMessage(text);
+    setTimeout(() => setMessage(null), 5000);
+  };
+
+  const fetchMetrics = async () => {
+    try {
+      const data = await adminApiGet<Metrics>("/api/admin/tasks/metrics");
+      setMetrics(data);
+    } catch (e) {
+      console.warn("Failed to fetch metrics", e);
+    }
+  };
+
+  const startTask = (endpoint: string, body?: Record<string, unknown>) => async () => {
+    try {
+      const data = await adminApiPost<StartTaskResponse>(endpoint, body ?? {});
+      if (data?.task_id) {
+        const id = data.task_id;
+        setTasks((prev) => ({ ...prev, [id]: { id, status: "PENDING" } }));
+        showMsg(`Started task ${id}`);
+        pollTaskStatus(id);
+      } else {
+        showMsg("Task started (no id returned)");
+      }
+    } catch (e) {
+      console.error(e);
+      showMsg("Failed to start task");
+    }
+  };
+
+  const pollTaskStatus = async (taskId: string) => {
+    try {
+      const data = await adminApiGet<TaskStatusResponse>(`/api/admin/tasks/${taskId}`);
+      setTasks((prev) => ({
+        ...prev,
+        [taskId]: {
+          id: taskId,
+          status: data.status,
+          last_checked: new Date().toISOString(),
+          result: data.result ?? prev[taskId]?.result,
+        },
+      }));
+    } catch (e) {
+      console.warn("Failed to poll task", taskId, e);
+    }
   };
 
   if (loading) {
@@ -56,54 +138,153 @@ export default function DevToolsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <Logo size="default" />
-            <span className="text-xl font-bold">BlueRelief Admin</span>
-            <Badge variant="default" className="ml-2 bg-primary border-2 border-foreground">
-              <Shield className="w-3 h-3 mr-1" />
-              Administrator
-            </Badge>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={() => router.push('/admin')}>
-              Dashboard
-            </Button>
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
-          </div>
+    <div className="space-y-6 p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => router.back()}>
+            Back
+          </Button>
+          <h1 className="text-2xl font-bold">Admin Dev Tools</h1>
         </div>
-      </header>
+        {message && (
+          <div className="px-3 py-1 rounded bg-primary/10 text-primary text-sm">{message}</div>
+        )}
+      </div>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
-            <Wrench className="h-8 w-8" />
-            Dev Tools
-          </h1>
-          {adminUser && (
-            <p className="text-muted-foreground">
-              Developer tools and utilities for {adminUser.email}
-            </p>
-          )}
-        </div>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Run Data Collection</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={includeEnhanced} onChange={(e) => setIncludeEnhanced(e.target.checked)} />
+                Include enhanced data
+              </label>
+              <div className="flex gap-2">
+                <Button onClick={startTask('/api/admin/tasks/collect', { include_enhanced: includeEnhanced, disaster_types: disasterTypes })}>Run Data Collection</Button>
+                <Button variant="outline" onClick={() => { fetchMetrics(); showMsg('Metrics refreshed'); }}>Refresh Metrics</Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Developer Tools</CardTitle>
+            <CardTitle>Generate Alerts</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">Dev tools content coming soon...</p>
+            <div className="space-y-2">
+              <Button onClick={startTask('/api/admin/tasks/generate-alerts')}>Generate Alerts</Button>
+            </div>
           </CardContent>
         </Card>
-      </main>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Process Alert Queue</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Button onClick={startTask('/api/admin/tasks/process-queue')}>Process Alert Queue</Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Archive Disasters</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Input type="number" value={daysThreshold} onChange={(e) => setDaysThreshold(Number(e.target.value))} className="w-24" />
+                <span className="text-sm text-muted-foreground">Days threshold</span>
+              </div>
+              <Button onClick={startTask('/api/admin/tasks/archive', { days_threshold: daysThreshold })}>Run Archive Process</Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Cleanup Old Alerts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Button onClick={startTask('/api/admin/tasks/cleanup-alerts')}>Cleanup Old Alerts</Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <Button onClick={startTask('/api/bluesky/trigger')}>Force sync Bluesky posts</Button>
+                <Button onClick={startTask('/api/admin/tasks/generate-alerts')}>Regenerate Alerts</Button>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={async () => { try { await adminApiPost('/api/admin/tasks/cleanup-alerts'); showMsg('Cleanup queued'); } catch { showMsg('Failed'); } }}>Cleanup Alerts</Button>
+                <Button onClick={async () => { try { await adminApiPost('/api/archive/trigger', { days_threshold: 2 }); showMsg('Archive queued'); } catch { showMsg('Failed'); } }}>Archive (2d)</Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>System Metrics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {metrics ? (
+              <div className="space-y-2 text-sm">
+                <div>Total users: <strong>{metrics.total_users}</strong></div>
+                <div>Active disasters: <strong>{metrics.active_disasters}</strong></div>
+                <div>Pending alerts: <strong>{metrics.pending_alerts}</strong></div>
+                <div>Last collection run: <strong>{metrics.last_collection_run ?? '—'}</strong></div>
+                <div>DB health: <Badge variant={metrics.db_health ? 'outline' : 'destructive'}>{metrics.db_health ? 'OK' : 'Unhealthy'}</Badge></div>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">Loading metrics...</div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Task History / Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {Object.values(tasks).length === 0 ? (
+                <div className="text-sm text-muted-foreground">No tasks started yet</div>
+              ) : (
+                <div className="space-y-2">
+                  {Object.values(tasks).map((t) => (
+                    <div key={t.id} className="flex items-center justify-between p-2 border rounded">
+                      <div>
+                        <div className="text-sm font-medium">{t.id}</div>
+                        <div className="text-xs text-muted-foreground">Last checked: {t.last_checked ?? '—'}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={`text-xs`}>{t.status}</Badge>
+                        <Button size="sm" onClick={() => pollTaskStatus(t.id)}>Refresh</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
-

@@ -94,6 +94,7 @@ export async function adminApiGet<T>(endpoint: string): Promise<T> {
 }
 
 export async function adminApiPost<T>(endpoint: string, data?: unknown): Promise<T> {
+  console.log('token', getAdminToken());
   const response = await adminApiClient(endpoint, {
     method: "POST",
     body: data ? JSON.stringify(data) : undefined,

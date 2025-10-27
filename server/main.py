@@ -12,6 +12,7 @@ from routers import admin_auth
 from routers import admin_users
 from routers import admin_settings
 from routers import admin_dashboard
+from routers import admin_tasks
 from routers import analysis
 from routers import archive
 from routers import admin_relevancy
@@ -93,6 +94,7 @@ app.include_router(admin_users.router)
 app.include_router(admin_settings.router)
 app.include_router(admin_dashboard.router)
 app.include_router(admin_relevancy.router)
+app.include_router(admin_tasks.router)
 app.include_router(analysis.router)
 app.include_router(archive.router)
 
