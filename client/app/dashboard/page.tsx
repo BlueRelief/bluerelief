@@ -82,7 +82,7 @@ export default function DashboardPage() {
 
   // Enable real-time alert notifications
   useAlertNotifications({ 
-    userId: user?.user_id, 
+    userId: user?.user_id ? parseInt(user.user_id, 10) : undefined, 
     enabled: !!user?.user_id 
   });
 

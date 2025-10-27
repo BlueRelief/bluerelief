@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
-import { showSuccessToast, showErrorToast, CrisisAlert, ALERT_SEVERITY } from "@/lib/toast-utils";
+import { showSuccessToast, showErrorToast } from "@/lib/toast-utils";
 import Link from "next/link";
 
 interface Alert {
