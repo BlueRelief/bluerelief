@@ -1,13 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Shield, LogOut, Wrench } from "lucide-react";
 import { apiPost, apiGet } from "@/lib/api-client";
 import { adminApiGet, adminApiPost } from "@/lib/admin-api-client";
-import { Badge } from "@/components/ui/badge";
+
 
 type TaskRecord = {
   id: string;
@@ -24,6 +34,23 @@ export default function DevToolsPage() {
   const pollingRef = useRef<number | null>(null);
   const [metrics, setMetrics] = useState<any>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
+      if (!token) {
+        router.push('/admin/login');
+        return;
+      }
+      
+      setLoading(false);
+    };
+
+    checkAuth();
+  }, [router]);
 
   useEffect(() => {
     fetchMetrics();
@@ -93,6 +120,22 @@ export default function DevToolsPage() {
       console.warn("Failed to poll task", taskId, e);
     }
   };
+
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
+    sessionStorage.removeItem('admin_user');
+    router.push('/admin/login');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-4">
