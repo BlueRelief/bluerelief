@@ -145,16 +145,16 @@ def get_recent_events(time_range: str = "24h", limit: int = 10, db: Session = De
         .all()
     )
 
-    severity_labels = {5: ("Critical", "bg-red-100 text-red-800"),
-                       4: ("High", "bg-orange-100 text-orange-800"),
-                       3: ("Medium", "bg-yellow-100 text-yellow-800"),
-                       2: ("Low", "bg-green-100 text-green-800"),
-                       1: ("Info", "bg-blue-100 text-blue-800")}
+    severity_labels = {5: ("Critical", "[background-color:var(--severity-critical-bg)] [color:var(--severity-critical-text)] dark:[background-color:var(--severity-critical-bg)] dark:[color:var(--severity-critical-text)]"),
+                       4: ("High", "[background-color:var(--severity-high-bg)] [color:var(--severity-high-text)] dark:[background-color:var(--severity-high-bg)] dark:[color:var(--severity-high-text)]"),
+                       3: ("Medium", "[background-color:var(--severity-medium-bg)] [color:var(--severity-medium-text)] dark:[background-color:var(--severity-medium-bg)] dark:[color:var(--severity-medium-text)]"),
+                       2: ("Low", "[background-color:var(--severity-low-bg)] [color:var(--severity-low-text)] dark:[background-color:var(--severity-low-bg)] dark:[color:var(--severity-low-text)]"),
+                       1: ("Info", "[background-color:var(--severity-info-bg)] [color:var(--severity-info-text)] dark:[background-color:var(--severity-info-bg)] dark:[color:var(--severity-info-text)]")}
 
     events = []
     for d in disasters:
         sev = int(d.severity) if d.severity is not None else 1
-        label, color = severity_labels.get(sev, ("Info", "bg-blue-100 text-blue-800"))
+        label, color = severity_labels.get(sev, ("Info", "[background-color:var(--severity-info-bg)] [color:var(--severity-info-text)] dark:[background-color:var(--severity-info-bg)] dark:[color:var(--severity-info-text)]"))
 
         # Use post's created_at if disaster is linked to a post, otherwise use extracted_at
         try:

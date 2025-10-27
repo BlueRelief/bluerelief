@@ -159,6 +159,18 @@
   --info-700: oklch(0.40 0.100 220);
   --info-800: oklch(0.35 0.080 220);
   --info-900: oklch(0.30 0.060 220);
+  
+  /* Severity badge colors */
+  --severity-critical-bg: rgb(254 242 242);
+  --severity-critical-text: rgb(153 27 27);
+  --severity-high-bg: rgb(255 247 237);
+  --severity-high-text: rgb(154 52 18);
+  --severity-medium-bg: rgb(254 252 232);
+  --severity-medium-text: rgb(161 98 7);
+  --severity-low-bg: rgb(240 253 244);
+  --severity-low-text: rgb(20 83 45);
+  --severity-info-bg: rgb(239 246 255);
+  --severity-info-text: rgb(30 58 138);
 }
 
 .dark {
@@ -241,6 +253,18 @@
   --info-700: oklch(0.65 0.120 220);
   --info-800: oklch(0.75 0.090 220);
   --info-900: oklch(0.85 0.070 220);
+  
+  /* Severity badge colors (dark mode) */
+  --severity-critical-bg: rgb(127 29 29);
+  --severity-critical-text: rgb(254 226 226);
+  --severity-high-bg: rgb(154 52 18);
+  --severity-high-text: rgb(255 237 213);
+  --severity-medium-bg: rgb(161 98 7);
+  --severity-medium-text: rgb(254 243 199);
+  --severity-low-bg: rgb(20 83 45);
+  --severity-low-text: rgb(209 250 229);
+  --severity-info-bg: rgb(30 58 138);
+  --severity-info-text: rgb(219 234 254);
 }
 
 @layer base {
