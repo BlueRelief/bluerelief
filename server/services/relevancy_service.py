@@ -30,16 +30,15 @@ class RelevancyService:
         
     def update_post_relevancy(self, post_id: int) -> bool:
         """Update relevancy score for an existing post."""
+        db = None
         try:
             db = get_db_session()
             if not db:
                 return False
-                
+
             post = db.query(Post).filter(Post.id == post_id).first()
             if not post:
-                return False
-                
-            # Reconstruct post data for scoring
+                return False            # Reconstruct post data for scoring
             post_data = {
                 "author": {
                     "handle": post.author_handle,
@@ -91,8 +90,8 @@ class RelevancyService:
             db.commit()
             return True
             
-        except Exception as e:
-            logger.error(f"Error updating post relevancy: {e}")
+        except Exception:
+            logger.exception("Error updating post relevancy for post_id=%s", post_id)
             if db:
                 db.rollback()
             return False

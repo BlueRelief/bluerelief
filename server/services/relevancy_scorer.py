@@ -1,5 +1,5 @@
 from typing import Dict, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 class RelevancyScorer:
     def __init__(self):
@@ -123,7 +123,7 @@ class RelevancyScorer:
         if indexed_at:
             try:
                 post_time = datetime.fromisoformat(indexed_at.replace('Z', '+00:00'))
-                age = (datetime.now() - post_time).total_seconds() / 3600  # Hours
+                age = (datetime.now(timezone.utc) - post_time).total_seconds() / 3600  # Hours
                 if age <= 1 and total >= 10:  # High engagement in first hour
                     score = min(score + 5, 25)
             except ValueError:

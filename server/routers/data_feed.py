@@ -298,17 +298,21 @@ def get_relevancy_stats(
         for dtype, avg, count in avg_by_type
     ]
     
-    # Get rejection reasons
-    rejection_counts = (
-        db.query(
-            func.jsonb_array_elements_text(Post.relevancy_flags).label("flag"),
-            func.count("*").label("count")
-        )
-        .filter(Post.created_at >= cutoff_date)
-        .filter(Post.relevancy_flags.isnot(None))
-        .group_by("flag")
-        .all()
-    )
+    # Get rejection reasons using LATERAL join
+    from sqlalchemy import text
+    rejection_counts = db.execute(
+        text("""
+            SELECT flag, COUNT(*) AS count 
+            FROM posts 
+            CROSS JOIN LATERAL jsonb_array_elements_text(
+                COALESCE(posts.relevancy_flags::jsonb, '[]'::jsonb)
+            ) AS flag 
+            WHERE posts.created_at >= :cutoff 
+            GROUP BY flag 
+            ORDER BY count DESC
+        """),
+        {"cutoff": cutoff_date},
+    ).fetchall()
     
     return {
         "score_distribution": score_ranges,

@@ -61,7 +61,7 @@ async def update_relevancy_config(
         raise HTTPException(status_code=500, detail="Error updating configuration")
 
 @router.post("/api/admin/relevancy/recalculate")
-async def recalculate_relevancy_scores():
+async def recalculate_relevancy_scores(current_user = Depends(get_current_admin)):
     """Recalculate relevancy scores for all existing posts."""
     try:
         result = relevancy_service.recalculate_all_posts()
