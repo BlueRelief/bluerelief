@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { CrisisAlert, showCrisisAlert, ALERT_SEVERITY } from '@/lib/toast-utils';
+import { apiGet } from '@/lib/api-client';
 
 interface UseAlertNotificationsProps {
   userId?: number;
@@ -14,8 +15,7 @@ export const useAlertNotifications = ({ userId, enabled = true }: UseAlertNotifi
     if (!userId || !enabled) return;
 
     try {
-      const response = await fetch(`/api/alerts?user_id=${userId}&skip=0&limit=10`);
-      const data = await response.json();
+      const data = await apiGet<CrisisAlert[]>(`/api/alerts?user_id=${userId}&skip=0&limit=10`);
       
       if (Array.isArray(data)) {
         setAlerts(data);
