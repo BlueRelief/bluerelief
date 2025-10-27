@@ -1,6 +1,11 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 /**
+ * Module-scoped flag to prevent multiple simultaneous redirects
+ */
+let isRedirecting = false;
+
+/**
  * Get admin JWT token from storage
  */
 function getAdminToken(): string | null {
@@ -39,18 +44,42 @@ export async function adminApiClient(
     const response = await fetch(url, config);
 
     if (response.status === 401) {
-      // Token expired or invalid
-      if (typeof window !== "undefined") {
+      // Token expired or invalid - only redirect if not already on login page
+      if (typeof window !== "undefined" && !isRedirecting) {
+        const currentPath = window.location.pathname;
+        
+        // Skip redirect if already on login page
+        if (currentPath === '/admin/login') {
+          return response;
+        }
+
+        // Prevent multiple simultaneous redirects
+        isRedirecting = true;
+
+        // Clear tokens and user info
         localStorage.removeItem('admin_token');
         sessionStorage.removeItem('admin_token');
         localStorage.removeItem('admin_user');
+        sessionStorage.removeItem('admin_user');
+        
+        // Perform redirect
         window.location.href = '/admin/login';
       }
     }
 
+    // 403 is different - authorization error, not authentication failure
+    // Don't redirect on 403, let the caller handle it
+
     return response;
   } catch (error) {
     throw error;
+  } finally {
+    // Reset redirect flag after a delay to allow navigation
+    if (isRedirecting && typeof window !== "undefined") {
+      setTimeout(() => {
+        isRedirecting = false;
+      }, 1000);
+    }
   }
 }
 

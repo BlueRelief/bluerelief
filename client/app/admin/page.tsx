@@ -27,8 +27,8 @@ export default function AdminDashboard() {
       return;
     }
 
-    // Get admin user info
-    const userStr = localStorage.getItem('admin_user');
+    // Get admin user info from either storage location
+    const userStr = localStorage.getItem('admin_user') || sessionStorage.getItem('admin_user');
     if (userStr) {
       const user = JSON.parse(userStr);
       setAdminUser(user);
@@ -41,6 +41,7 @@ export default function AdminDashboard() {
     localStorage.removeItem('admin_token');
     sessionStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
+    sessionStorage.removeItem('admin_user');
     router.push('/admin/login');
   };
 

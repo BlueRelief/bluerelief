@@ -26,8 +26,8 @@ export default function AdminLoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if admin token already exists
-    const token = localStorage.getItem('admin_token');
+    // Check if admin token already exists in either storage
+    const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
     if (token) {
       router.push('/admin');
     }
@@ -64,9 +64,13 @@ export default function AdminLoginPage() {
           sessionStorage.setItem('admin_token', token);
         }
 
-        // Store user info
+        // Store user info in same storage as token
         const userInfo = data.user;
-        localStorage.setItem('admin_user', JSON.stringify(userInfo));
+        if (rememberMe) {
+          localStorage.setItem('admin_user', JSON.stringify(userInfo));
+        } else {
+          sessionStorage.setItem('admin_user', JSON.stringify(userInfo));
+        }
 
         // Redirect to admin dashboard
         router.push('/admin');
