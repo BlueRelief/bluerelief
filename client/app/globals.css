@@ -2,6 +2,17 @@
 @import "tw-animate-css";
 @import "mapbox-gl/dist/mapbox-gl.css";
 
+/* Toast styling for Sonner */
+.toaster {
+  --toast-bg: hsl(var(--background));
+  --toast-border: hsl(var(--border));
+  --toast-text: hsl(var(--foreground));
+  --toast-success: hsl(var(--primary));
+  --toast-error: hsl(var(--destructive));
+  --toast-warning: hsl(38 92% 50%);
+  --toast-info: hsl(var(--primary));
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
