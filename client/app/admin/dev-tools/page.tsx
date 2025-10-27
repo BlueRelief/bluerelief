@@ -26,13 +26,30 @@ type TaskRecord = {
   result?: any;
 };
 
+type Metrics = {
+  total_users: number;
+  active_disasters: number;
+  pending_alerts: number;
+  last_collection_run?: string | null;
+  db_health: boolean;
+};
+
+type TaskStatusResponse = {
+  status: string;
+  result?: unknown;
+};
+
+type StartTaskResponse = {
+  task_id?: string;
+};
+
 export default function DevToolsPage() {
   const [includeEnhanced, setIncludeEnhanced] = useState(true);
   const [disasterTypes, setDisasterTypes] = useState<string[]>([]);
   const [daysThreshold, setDaysThreshold] = useState<number>(2);
   const [tasks, setTasks] = useState<Record<string, TaskRecord>>({});
   const pollingRef = useRef<number | null>(null);
-  const [metrics, setMetrics] = useState<any>(null);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -80,7 +97,7 @@ export default function DevToolsPage() {
 
   const fetchMetrics = async () => {
     try {
-      const data = await adminApiGet<any>("/api/admin/tasks/metrics");
+      const data = await adminApiGet<Metrics>("/api/admin/tasks/metrics");
       setMetrics(data);
     } catch (e) {
       console.warn("Failed to fetch metrics", e);
@@ -89,7 +106,7 @@ export default function DevToolsPage() {
 
   const startTask = (endpoint: string, body?: any) => async () => {
     try {
-      const data = await adminApiPost<any>(endpoint, body ?? {});
+      const data = await adminApiPost<StartTaskResponse>(endpoint, body ?? {});
       if (data?.task_id) {
         const id = data.task_id;
         setTasks((prev) => ({ ...prev, [id]: { id, status: "PENDING" } }));
@@ -106,7 +123,7 @@ export default function DevToolsPage() {
 
   const pollTaskStatus = async (taskId: string) => {
     try {
-      const data = await adminApiGet<any>(`/api/admin/tasks/${taskId}`);
+      const data = await adminApiGet<TaskStatusResponse>(`/api/admin/tasks/${taskId}`);
       setTasks((prev) => ({
         ...prev,
         [taskId]: {
