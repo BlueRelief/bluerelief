@@ -10,6 +10,7 @@ For production deployment, implement proper password hashing.
 
 import os
 import sys
+import time
 import secrets
 import string
 import logging
@@ -39,7 +40,8 @@ def create_admin_user():
     if not database_url:
         print("Error: DATABASE_URL environment variable is not set")
         print("Please set DATABASE_URL before running this script")
-        return
+        logger.error("DATABASE_URL environment variable is not set")
+        sys.exit(1)
     
     db = SessionLocal()
     try:
@@ -58,9 +60,8 @@ def create_admin_user():
                 print(f"✓ Admin user '{DEFAULT_ADMIN_EMAIL}' already exists")
         else:
             # Create new admin user
-            import time
             user = User(
-                id=f'user-{int(time.time())}',
+                id=f'admin-{int(time.time())}',
                 email=DEFAULT_ADMIN_EMAIL,
                 name=DEFAULT_ADMIN_NAME,
                 role='admin',

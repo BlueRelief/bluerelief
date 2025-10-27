@@ -56,20 +56,40 @@ export default function AdminLoginPage() {
       const data = await response.json();
 
       if (response.ok) {
-        // Store JWT token
-        const token = data.token;
-        if (rememberMe) {
-          localStorage.setItem('admin_token', token);
-        } else {
-          sessionStorage.setItem('admin_token', token);
+        // Validate response data before storing
+        if (!data || typeof data.token !== 'string' || !data.user) {
+          console.error('Invalid response data:', data);
+          setError({
+            message: 'Invalid authentication response. Please try again or contact support.',
+            type: 'unknown',
+          });
+          return;
         }
 
-        // Store user info in same storage as token
+        const token = data.token;
         const userInfo = data.user;
-        if (rememberMe) {
-          localStorage.setItem('admin_user', JSON.stringify(userInfo));
-        } else {
-          sessionStorage.setItem('admin_user', JSON.stringify(userInfo));
+
+        // Store JWT token only if valid
+        try {
+          if (rememberMe) {
+            localStorage.setItem('admin_token', token);
+          } else {
+            sessionStorage.setItem('admin_token', token);
+          }
+
+          // Store user info in same storage as token
+          if (rememberMe) {
+            localStorage.setItem('admin_user', JSON.stringify(userInfo));
+          } else {
+            sessionStorage.setItem('admin_user', JSON.stringify(userInfo));
+          }
+        } catch (storageError) {
+          console.error('Failed to store authentication data:', storageError);
+          setError({
+            message: 'Failed to save authentication data. Please try again.',
+            type: 'unknown',
+          });
+          return;
         }
 
         // Redirect to admin dashboard
