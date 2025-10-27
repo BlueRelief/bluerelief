@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiPost, apiGet } from "@/lib/api-client";
+import { adminApiGet, adminApiPost } from "@/lib/admin-api-client";
 import { Badge } from "@/components/ui/badge";
 
 type TaskRecord = {
@@ -52,7 +53,7 @@ export default function DevToolsPage() {
 
   const fetchMetrics = async () => {
     try {
-      const data = await apiGet<any>("/api/admin/tasks/metrics");
+      const data = await adminApiGet<any>("/api/admin/tasks/metrics");
       setMetrics(data);
     } catch (e) {
       console.warn("Failed to fetch metrics", e);
@@ -61,7 +62,7 @@ export default function DevToolsPage() {
 
   const startTask = (endpoint: string, body?: any) => async () => {
     try {
-      const data = await apiPost<any>(endpoint, body ?? {});
+      const data = await adminApiPost<any>(endpoint, body ?? {});
       if (data?.task_id) {
         const id = data.task_id;
         setTasks((prev) => ({ ...prev, [id]: { id, status: "PENDING" } }));
@@ -78,7 +79,7 @@ export default function DevToolsPage() {
 
   const pollTaskStatus = async (taskId: string) => {
     try {
-      const data = await apiGet<any>(`/api/admin/tasks/${taskId}`);
+      const data = await adminApiGet<any>(`/api/admin/tasks/${taskId}`);
       setTasks((prev) => ({
         ...prev,
         [taskId]: {
@@ -180,8 +181,8 @@ export default function DevToolsPage() {
                 <Button onClick={startTask('/api/admin/tasks/generate-alerts')}>Regenerate Alerts</Button>
               </div>
               <div className="flex gap-2">
-                <Button onClick={async () => { try { await apiPost('/api/admin/tasks/cleanup-alerts'); showMsg('Cleanup queued'); } catch { showMsg('Failed'); } }}>Cleanup Alerts</Button>
-                <Button onClick={async () => { try { await apiPost('/api/archive/trigger', { days_threshold: 2 }); showMsg('Archive queued'); } catch { showMsg('Failed'); } }}>Archive (2d)</Button>
+                <Button onClick={async () => { try { await adminApiPost('/api/admin/tasks/cleanup-alerts'); showMsg('Cleanup queued'); } catch { showMsg('Failed'); } }}>Cleanup Alerts</Button>
+                <Button onClick={async () => { try { await adminApiPost('/api/archive/trigger', { days_threshold: 2 }); showMsg('Archive queued'); } catch { showMsg('Failed'); } }}>Archive (2d)</Button>
               </div>
             </div>
           </CardContent>

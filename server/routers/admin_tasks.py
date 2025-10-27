@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
 from db_utils.db import SessionLocal, User, Disaster, AlertQueue, CollectionRun, engine
 from middleware.admin_auth import get_current_admin
 from celery_app import celery_app
@@ -22,11 +24,20 @@ def get_db():
         db.close()
 
 
+class CollectRequest(BaseModel):
+    include_enhanced: bool = True
+    disaster_types: Optional[List[str]] = None
+
+
 @router.post("/collect")
-def trigger_collection(include_enhanced: bool = True, disaster_types: list[str] | None = None, current_admin: User = Depends(get_current_admin)):
-    """Trigger the BlueSky collection task (wrapper around Celery task)"""
+def trigger_collection(req: CollectRequest, current_admin: User = Depends(get_current_admin)):
+    """Trigger the BlueSky collection task (wrapper around Celery task).
+
+    Accepts JSON body: { "include_enhanced": bool, "disaster_types": ["earthquake","flood"] }
+    Note: disaster_types is currently accepted for future use but not passed to the Celery task.
+    """
     try:
-        task = collect_and_analyze.delay(include_enhanced=include_enhanced)
+        task = collect_and_analyze.delay(include_enhanced=req.include_enhanced)
         return {"task_id": task.id, "status": "started"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to start collection: {e}")

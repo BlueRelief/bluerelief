@@ -24,6 +24,8 @@ async def get_current_admin(request: Request) -> User:
         # Fallback to cookie-based token (e.g. OAuth flows set HttpOnly cookie 'token')
         token = request.cookies.get("token")
 
+    print(token)
+
     if not token:
         raise HTTPException(status_code=401, detail="Missing token")
 
