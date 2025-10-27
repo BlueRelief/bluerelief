@@ -21,9 +21,21 @@ def get_db():
 def is_table_not_found_error(error: Exception) -> bool:
     """Check if error is due to missing table"""
     error_str = str(error).lower()
-    # PostgreSQL error code for "relation does not exist"
-    pgcodes = ['42p01', '42601']  # relation does not exist, syntax error
-    return any(code in error_str for code in pgcodes) or 'does not exist' in error_str or 'relation' in error_str
+    pgcode = getattr(getattr(error, "orig", None), "pgcode", None)
+    
+    # PostgreSQL specific: error code 42P01 (relation does not exist)
+    if pgcode == "42P01" or pgcode == "42p01":
+        return True
+    
+    # PostgreSQL specific: "does not exist" message pattern
+    if "does not exist" in error_str:
+        return True
+    
+    # SQLite specific: "no such table" message pattern
+    if "no such table" in error_str:
+        return True
+    
+    return False
 
 
 @router.get('/api/admin/stats')

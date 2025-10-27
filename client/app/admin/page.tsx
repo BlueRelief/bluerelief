@@ -8,7 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Shield, LogOut, Users, Settings, Activity, Clock, AlertTriangle, TrendingUp, CheckCircle2, XCircle, Search, Wrench } from "lucide-react";
-import { getAdminStats, getRecentAdminActivities, getRecentUsers } from "@/lib/admin-api-client";
+import { 
+  getAdminStats, 
+  getRecentAdminActivities, 
+  getRecentUsers,
+  type AdminStats,
+  type AdminActivity,
+  type RecentUser
+} from "@/lib/admin-api-client";
 
 interface AdminUser {
   id: string;
@@ -16,45 +23,10 @@ interface AdminUser {
   role: string;
 }
 
-interface AdminDashboardStats {
-  users: {
-    total: number;
-    active: number;
-    inactive: number;
-    admins: number;
-  };
-  system: {
-    total_crises: number;
-    urgent_alerts: number;
-    recent_activities: number;
-    status: string;
-    issues: string[];
-  };
-}
-
-interface AdminActivity {
-  admin_id: string | null;
-  action: string;
-  target_user_id: string | null;
-  details: Record<string, unknown>;
-  created_at: string | null;
-  admin_email: string | null;
-}
-
-interface RecentUser {
-  id: string;
-  email: string;
-  name: string | null;
-  role: string;
-  is_admin: boolean;
-  created_at: string | null;
-  last_login: string | null;
-}
-
 export default function AdminDashboard() {
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<AdminDashboardStats | null>(null);
+  const [stats, setStats] = useState<AdminStats | null>(null);
   const [activities, setActivities] = useState<AdminActivity[]>([]);
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -376,7 +348,7 @@ export default function AdminDashboard() {
                   <div className="pt-3 border-t">
                     <div className="text-xs font-medium text-muted-foreground mb-2">Issues:</div>
                     <div className="space-y-1">
-                      {stats.system.issues.map((issue, idx) => (
+                      {stats.system.issues.map((issue: string, idx: number) => (
                         <div key={idx} className="flex items-center gap-2 text-xs text-[var(--warning-600)] dark:text-[var(--warning-400)]">
                           <AlertTriangle className="h-3 w-3" />
                           {issue}

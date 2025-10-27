@@ -123,7 +123,7 @@ export async function adminApiDelete<T>(endpoint: string): Promise<T> {
   return response.json();
 }
 
-interface AdminStats {
+export interface AdminStats {
   users: {
     total: number;
     active: number;
@@ -143,7 +143,7 @@ export async function getAdminStats(): Promise<AdminStats> {
   return adminApiGet<AdminStats>('/api/admin/stats');
 }
 
-interface AdminActivity {
+export interface AdminActivity {
   admin_id: string | null;
   action: string;
   target_user_id: string | null;
@@ -156,7 +156,7 @@ export async function getRecentAdminActivities(limit: number = 10): Promise<{ ac
   return adminApiGet<{ activities: AdminActivity[] }>(`/api/admin/recent-activities?limit=${limit}`);
 }
 
-interface RecentUser {
+export interface RecentUser {
   id: string;
   email: string;
   name: string | null;
