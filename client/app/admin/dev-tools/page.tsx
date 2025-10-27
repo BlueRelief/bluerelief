@@ -2,20 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Shield, LogOut, Wrench } from "lucide-react";
-import { apiPost, apiGet } from "@/lib/api-client";
 import { adminApiGet, adminApiPost } from "@/lib/admin-api-client";
 
 
@@ -23,7 +13,7 @@ type TaskRecord = {
   id: string;
   status: string;
   last_checked?: string;
-  result?: any;
+  result?: unknown;
 };
 
 type Metrics = {
@@ -45,6 +35,7 @@ type StartTaskResponse = {
 
 export default function DevToolsPage() {
   const [includeEnhanced, setIncludeEnhanced] = useState(true);
+  // disaster types is not currently used on backend but kept for future extensibility
   const [disasterTypes, setDisasterTypes] = useState<string[]>([]);
   const [daysThreshold, setDaysThreshold] = useState<number>(2);
   const [tasks, setTasks] = useState<Record<string, TaskRecord>>({});
@@ -104,7 +95,7 @@ export default function DevToolsPage() {
     }
   };
 
-  const startTask = (endpoint: string, body?: any) => async () => {
+  const startTask = (endpoint: string, body?: Record<string, unknown>) => async () => {
     try {
       const data = await adminApiPost<StartTaskResponse>(endpoint, body ?? {});
       if (data?.task_id) {
@@ -138,14 +129,6 @@ export default function DevToolsPage() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    sessionStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
-    sessionStorage.removeItem('admin_user');
-    router.push('/admin/login');
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -157,7 +140,12 @@ export default function DevToolsPage() {
   return (
     <div className="space-y-6 p-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Admin Dev Tools</h1>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => router.back()}>
+            Back
+          </Button>
+          <h1 className="text-2xl font-bold">Admin Dev Tools</h1>
+        </div>
         {message && (
           <div className="px-3 py-1 rounded bg-primary/10 text-primary text-sm">{message}</div>
         )}
