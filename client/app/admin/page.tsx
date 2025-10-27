@@ -7,10 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Shield, LogOut, Users, Settings, Activity } from "lucide-react";
-import { adminApiGet } from "@/lib/admin-api-client";
+
+interface AdminUser {
+  id: string;
+  email: string;
+  role: string;
+}
 
 export default function AdminDashboard() {
-  const [adminUser, setAdminUser] = useState<any>(null);
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
