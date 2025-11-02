@@ -151,7 +151,7 @@ export default function AdminLoginPage() {
             <Logo size="xl" />
             <Badge 
               variant="default" 
-              className="absolute -top-2 -right-2 bg-primary shadow-lg border-2 border-foreground"
+              className="absolute -top-4 -right-2 bg-primary text-primary-foreground shadow-lg border border-primary/20"
             >
               <Shield className="w-3 h-3 mr-1" />
               Admin

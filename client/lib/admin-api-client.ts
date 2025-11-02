@@ -88,7 +88,17 @@ export async function adminApiClient(
 export async function adminApiGet<T>(endpoint: string): Promise<T> {
   const response = await adminApiClient(endpoint, { method: "GET" });
   if (!response.ok) {
-    throw new Error(`API Error: ${response.statusText}`);
+    const errorText = await response.text();
+    let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+    try {
+      const errorData = JSON.parse(errorText);
+      errorMessage = errorData.detail || errorData.message || errorMessage;
+    } catch {
+      if (errorText) {
+        errorMessage = errorText;
+      }
+    }
+    throw new Error(errorMessage);
   }
   return response.json();
 }
@@ -134,7 +144,7 @@ export interface AdminStats {
   system: {
     total_crises: number;
     urgent_alerts: number;
-    recent_activities: number;
+    recent_crises: number;
     status: string;
     issues: string[];
   };
@@ -144,17 +154,20 @@ export async function getAdminStats(): Promise<AdminStats> {
   return adminApiGet<AdminStats>('/api/admin/stats');
 }
 
-export interface AdminActivity {
-  admin_id: string | null;
-  action: string;
-  target_user_id: string | null;
-  details: Record<string, unknown>;
-  created_at: string | null;
-  admin_email: string | null;
+export interface RecentCrisis {
+  id: number;
+  description: string;
+  location_name: string | null;
+  severity: string;
+  severity_level: number;
+  extracted_at: string | null;
+  event_time: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
-export async function getRecentAdminActivities(limit: number = 10): Promise<{ activities: AdminActivity[] }> {
-  return adminApiGet<{ activities: AdminActivity[] }>(`/api/admin/recent-activities?limit=${limit}`);
+export async function getRecentCrises(limit: number = 10): Promise<{ crises: RecentCrisis[] }> {
+  return adminApiGet<{ crises: RecentCrisis[] }>(`/api/admin/recent-crises?limit=${limit}`);
 }
 
 export interface RecentUser {
