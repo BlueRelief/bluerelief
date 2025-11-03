@@ -628,17 +628,17 @@ export default function AdminDashboard() {
                     <div className="text-xs text-muted-foreground">Configure system settings</div>
                   </div>
                 </Button>
-                <Button 
-                  className="justify-start h-auto py-3" 
-                  variant="outline"
-                  onClick={() => router.push('/admin')}
-                >
-                  <Activity className="mr-2 h-4 w-4" />
-                  <div className="text-left">
-                    <div className="font-medium">Activity Logs</div>
-                    <div className="text-xs text-muted-foreground">View detailed activity logs</div>
-                  </div>
-                </Button>
+                 <Button 
+                   className="justify-start h-auto py-3" 
+                   variant="outline"
+                   onClick={() => router.push('/admin/logs')}
+                 >
+                   <Activity className="mr-2 h-4 w-4" />
+                   <div className="text-left">
+                     <div className="font-medium">Admin Log Viewer</div>
+                     <div className="text-xs text-muted-foreground">View detailed admin logs</div>
+                   </div>
+                 </Button>
                 <Button 
                   className="justify-start h-auto py-3" 
                   variant="outline"

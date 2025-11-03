@@ -64,11 +64,6 @@ const navigation = [
     href: "/dashboard/analysis",
   },
   {
-    title: "Visualizations",
-    icon: TrendingUp,
-    href: "/dashboard/visualizations",
-  },
-  {
     title: "Alerts",
     icon: Bell,
     href: "/dashboard/alerts",
