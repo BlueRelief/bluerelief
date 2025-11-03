@@ -76,6 +76,15 @@ export function LogStatsCards({ stats, loading, onCardClick }: LogStatsProps) {
     },
   ];
 
+  const handleKeyDown = (event: React.KeyboardEvent, onClick: (() => void) | undefined) => {
+    if (!onClick) return;
+    
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {cards.map((card) => {
@@ -86,11 +95,17 @@ export function LogStatsCards({ stats, loading, onCardClick }: LogStatsProps) {
           card.color === 'success' ? 'border-l-[var(--success-600)]' :
           'border-l-primary';
 
+        const isClickable = !!onCardClick && !!card.onClick;
+
         return (
           <Card 
             key={card.title} 
-            className={`border-l-4 ${borderColor} ${onCardClick ? 'cursor-pointer hover:bg-accent/50 transition-colors' : ''}`}
+            className={`border-l-4 ${borderColor} ${isClickable ? 'cursor-pointer hover:bg-accent/50 focus:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-colors' : ''}`}
             onClick={card.onClick}
+            role={isClickable ? 'button' : undefined}
+            tabIndex={isClickable ? 0 : undefined}
+            onKeyDown={(e) => handleKeyDown(e, card.onClick)}
+            aria-label={isClickable ? `Filter logs by ${card.title.toLowerCase()}` : undefined}
           >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
