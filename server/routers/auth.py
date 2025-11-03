@@ -16,6 +16,7 @@ import google.auth.transport.requests
 from google.oauth2.id_token import verify_oauth2_token
 from db_utils.db import upsert_user, get_user_by_email
 import logging as logger
+from services.logging_service import logging_service
 
 load_dotenv(override=True)
 
@@ -130,6 +131,19 @@ async def login(request: Request):
     request.session["login_redirect"] = REDIRECT_URL
     callback_url = f"{BACKEND_URL}/auth/google/callback"
 
+    # Log OAuth initiation
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("User-Agent")
+    
+    await logging_service.log_auth_event(
+        user_id=None,
+        action="OAUTH_LOGIN_INITIATED",
+        status="pending",
+        details={"provider": "google", "callback_url": callback_url},
+        ip_address=client_ip,
+        user_agent=user_agent,
+    )
+
     return await oauth.auth_demo.authorize_redirect(
         request, callback_url, prompt="consent"
     )
@@ -159,6 +173,19 @@ async def demo_login(request: Request):
         data={"email": demo_user["email"]}, expires_delta=access_token_expires
     )
 
+    # Log demo login
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("User-Agent")
+    
+    await logging_service.log_auth_event(
+        user_id=demo_user["id"],
+        action="DEMO_LOGIN_SUCCESS",
+        status="success",
+        details={"environment": "preview", "email": demo_user["email"]},
+        ip_address=client_ip,
+        user_agent=user_agent,
+    )
+
     response = RedirectResponse(REDIRECT_URL)
     response.set_cookie(
         key="token",
@@ -175,10 +202,25 @@ async def demo_login(request: Request):
 
 @router.get("/google/callback")
 async def auth(request: Request):
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("User-Agent")
+    
     try:
         token = await oauth.auth_demo.authorize_access_token(request)
     except Exception as e:
         logger.error(f"OAuth token error: {str(e)}")
+        
+        # Log failed OAuth token exchange
+        await logging_service.log_auth_event(
+            user_id=None,
+            action="OAUTH_TOKEN_FAILED",
+            status="failure",
+            details={"provider": "google", "error": str(e)},
+            ip_address=client_ip,
+            user_agent=user_agent,
+            error_message=str(e),
+        )
+        
         raise HTTPException(status_code=401, detail="Google authentication failed")
 
     try:
@@ -220,6 +262,21 @@ async def auth(request: Request):
         expires_delta=access_token_expires
     )
 
+    # Log successful login
+    await logging_service.log_auth_event(
+        user_id=user_id,
+        action="LOGIN_SUCCESS",
+        status="success",
+        details={
+            "provider": "google",
+            "email": user_email,
+            "name": user_name,
+            "token_expires_days": 7,
+        },
+        ip_address=client_ip,
+        user_agent=user_agent,
+    )
+
     redirect_url = request.session.pop("login_redirect", REDIRECT_URL)
     response = RedirectResponse(redirect_url)
 
@@ -238,8 +295,31 @@ async def auth(request: Request):
 
 
 @router.get("/logout")
-async def logout(request: Request):
+async def logout(request: Request, token: str = Cookie(None)):
+    # Get user info before clearing session
+    user_id = None
+    if token:
+        try:
+            user = get_current_user(token)
+            user_id = user.get("user_id")
+        except:
+            pass
+    
     request.session.clear()
+    
+    # Log logout
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("User-Agent")
+    
+    await logging_service.log_auth_event(
+        user_id=user_id,
+        action="LOGOUT",
+        status="success",
+        details={},
+        ip_address=client_ip,
+        user_agent=user_agent,
+    )
+    
     response = JSONResponse(content={"message": "Logged out successfully."})
     response.delete_cookie("token")
     return response
@@ -283,6 +363,22 @@ async def setup_location(request: Request, token: str = Cookie(None)):
             db.commit()
 
             logger.info(f"✅ Set location for user {user_id}: {location}")
+
+            # Log location setup
+            client_ip = request.client.host if request.client else None
+            user_agent = request.headers.get("User-Agent")
+            
+            await logging_service.log_audit(
+                user_id=user_id,
+                action="LOCATION_SETUP",
+                resource_type="user",
+                resource_id=user_id,
+                new_value={"location": location, "latitude": latitude, "longitude": longitude},
+                change_summary=f"User set location to {location}",
+                ip_address=client_ip,
+                user_agent=user_agent,
+                is_admin_action=False,
+            )
 
             return {
                 "status": "success",
