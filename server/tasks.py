@@ -1,4 +1,5 @@
 from datetime import datetime
+import time
 from celery_app import celery_app
 from services.bluesky import fetch_posts
 from services.analysis import analyze_posts, analyze_sentiment
@@ -15,9 +16,11 @@ from services.alert_queue_manager import (
     manage_alert_queue as manage_alert_queue_service,
 )
 from services.alert_cleanup import cleanup_old_alerts as cleanup_old_alerts_service
+from services.logging_service import logging_service
 import json
 import re
 import os
+import asyncio
 from typing import Dict, List
 
 # Disaster type configuration with hashtags
@@ -29,6 +32,16 @@ DISASTER_CONFIG: Dict[str, List[str]] = {
     "tornado": ["#tornado", "#twister"]
 }
 
+
+def _log_task_async(coro):
+    """Helper to run async logging in sync context"""
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(coro)
+    except Exception as e:
+        print(f"Failed to log task: {e}")
+
 @celery_app.task(name="tasks.collect_and_analyze")
 def collect_and_analyze(include_enhanced: bool = True):
     """Main task to collect and analyze BlueSky data for multiple disaster types
@@ -36,11 +49,26 @@ def collect_and_analyze(include_enhanced: bool = True):
     Args:
         include_enhanced: Whether to collect enhanced post data (profile info, engagement, etc.)
     """
+    start_time = time.time()
+    task_name = "collect_and_analyze"
+    
     print(f"\n{'='*50}")
     print(f"Starting Multi-Disaster BlueSky collection - {datetime.now()}")
     if include_enhanced:
         print("Enhanced data collection enabled")
     print(f"{'='*50}\n")
+
+    # Log task start
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(
+        logging_service.log_task_execution(
+            task_name=task_name,
+            status="started",
+            duration_ms=0,
+            result={"include_enhanced": include_enhanced},
+        )
+    )
 
     run = create_collection_run()
     total_posts = []
@@ -141,24 +169,83 @@ def collect_and_analyze(include_enhanced: bool = True):
             ),
         }
 
+        # Log successful completion
+        duration_ms = int((time.time() - start_time) * 1000)
+        loop.run_until_complete(
+            logging_service.log_task_execution(
+                task_name=task_name,
+                status="completed",
+                duration_ms=duration_ms,
+                result=results,
+            )
+        )
+        
+        # Log data collection metrics
+        loop.run_until_complete(
+            logging_service.log_data_collection(
+                collection_type="bluesky_multi_disaster",
+                status="completed",
+                items_collected=total_saved,
+                duration_ms=duration_ms,
+                details={
+                    "total_fetched": len(total_posts),
+                    "posts_by_disaster": results["posts_by_disaster"],
+                },
+            )
+        )
+
         return results
     except Exception as e:
         error_msg = f"Error in multi-disaster collection: {str(e)}"
         complete_collection_run(run.id, 0, "failed", error_msg)
         print(f"\n[{datetime.now()}] {error_msg}")
+        
+        # Log task failure
+        duration_ms = int((time.time() - start_time) * 1000)
+        loop.run_until_complete(
+            logging_service.log_task_execution(
+                task_name=task_name,
+                status="failed",
+                duration_ms=duration_ms,
+                error=str(e),
+            )
+        )
+        
         raise
 
 
 @celery_app.task(name="tasks.generate_alerts")
 def generate_alerts():
     """Celery task wrapper for alert generation"""
-    return generate_alerts_service()
+    start_time = time.time()
+    _log_task_async(logging_service.log_task_execution("generate_alerts", "started", 0))
+    
+    try:
+        result = generate_alerts_service()
+        duration_ms = int((time.time() - start_time) * 1000)
+        _log_task_async(logging_service.log_task_execution("generate_alerts", "completed", duration_ms, result=result))
+        return result
+    except Exception as e:
+        duration_ms = int((time.time() - start_time) * 1000)
+        _log_task_async(logging_service.log_task_execution("generate_alerts", "failed", duration_ms, error=str(e)))
+        raise
 
 
 @celery_app.task(name="tasks.manage_alert_queue")
 def manage_alert_queue():
     """Celery task wrapper for alert queue management"""
-    return manage_alert_queue_service()
+    start_time = time.time()
+    _log_task_async(logging_service.log_task_execution("manage_alert_queue", "started", 0))
+    
+    try:
+        result = manage_alert_queue_service()
+        duration_ms = int((time.time() - start_time) * 1000)
+        _log_task_async(logging_service.log_task_execution("manage_alert_queue", "completed", duration_ms, result=result))
+        return result
+    except Exception as e:
+        duration_ms = int((time.time() - start_time) * 1000)
+        _log_task_async(logging_service.log_task_execution("manage_alert_queue", "failed", duration_ms, error=str(e)))
+        raise
 
 
 @celery_app.task(name="tasks.send_alert_emails")
