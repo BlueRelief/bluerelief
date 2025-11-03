@@ -1,7 +1,6 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, AlertTriangle, Clock, Database, Zap } from "lucide-react";
 import type { LogStats } from "@/types/logs";

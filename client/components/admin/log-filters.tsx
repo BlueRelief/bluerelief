@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { X, ChevronDown, ChevronUp, Filter } from "lucide-react";
+import { ChevronDown, ChevronUp, Filter } from "lucide-react";
 import type { LogFilters, LogCategory, LogLevel, LogStatus } from "@/types/logs";
 
 interface LogFiltersProps {
@@ -18,7 +18,7 @@ interface LogFiltersProps {
 
 const CATEGORIES: LogCategory[] = ['auth', 'api', 'error', 'audit', 'data', 'alert', 'email', 'performance', 'task'];
 const LEVELS: LogLevel[] = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'];
-const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
+const STATUS_OPTIONS: Array<{ value: LogStatus; label: string }> = [
   { value: 'success', label: 'Success' },
   { value: 'failure', label: 'Failure' },
   { value: 'pending', label: 'Pending' },
@@ -215,7 +215,7 @@ export function LogFiltersPanel({
                   id={`status-${option.value}`}
                   name="status"
                   checked={filters.status === option.value}
-                  onChange={() => onFilterChange({ ...filters, status: option.value as LogStatus })}
+                  onChange={() => onFilterChange({ ...filters, status: option.value })}
                   className="w-4 h-4"
                 />
                 <Label
