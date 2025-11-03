@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Dict, Any, Optional
 from sqlalchemy import func, text, and_, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
 from db_utils.db import SessionLocal, User, Disaster, Alert, Post, engine
@@ -24,148 +24,225 @@ def is_table_not_found_error(error: Exception) -> bool:
     """Check if error is due to missing table"""
     error_str = str(error).lower()
     pgcode = getattr(getattr(error, "orig", None), "pgcode", None)
-
+    
     # PostgreSQL specific: error code 42P01 (relation does not exist)
     if pgcode == "42P01" or pgcode == "42p01":
         return True
-
+    
     # PostgreSQL specific: "does not exist" message pattern
     if "does not exist" in error_str:
         return True
-
+    
     # SQLite specific: "no such table" message pattern
     if "no such table" in error_str:
         return True
-
+    
     return False
 
 
-@router.get("/stats")
+@router.get('/stats')
 async def get_admin_stats(
-    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin)
 ) -> Dict[str, Any]:
-    """Return dashboard statistics: user metrics, system metrics and health status."""
-    db = SessionLocal()
+    """Get admin dashboard statistics"""
     try:
-        users_total = db.query(User).count()
-        users_active = db.query(User).filter(User.is_active == True).count()
-        users_inactive = users_total - users_active
-        users_admins = db.query(User).filter(User.is_admin == True).count()
-
-        total_crises = db.query(Disaster).count()
-        # urgent alerts: severity >= 4 and not read
+        # Total users count
+        total_users = db.query(func.count(User.id)).scalar() or 0
+        
+        # Active admins count
+        active_admins = db.query(func.count(User.id)).filter(User.is_admin.is_(True)).scalar() or 0
+        
+        # System health checks
+        total_crises = 0
         try:
-            urgent_alerts = db.query(Alert).filter(Alert.severity >= 4, Alert.is_read == False).count()
+            total_crises = db.query(func.count(Disaster.id)).filter(Disaster.archived.is_(False)).scalar() or 0
         except Exception:
-            # If alerts table missing or schema different, degrade gracefully
-            urgent_alerts = 0
-
-        # recent activities - try to get a quick count from admin_activity_log if exists
-        recent_activities = 0
+            db.rollback()
+        
+        urgent_alerts = 0
         try:
-            with engine.connect() as conn:
-                res = conn.execute(sqlalchemy.text("SELECT COUNT(1) AS cnt FROM admin_activity_log WHERE created_at >= now() - interval '7 days'"))
-                row = res.fetchone()
-                recent_activities = int(row['cnt']) if row and 'cnt' in row else 0
+            urgent_alerts = (
+                db.query(func.count(func.distinct(Post.id)))
+                .join(Disaster, Post.id == Disaster.post_id)
+                .filter(Post.sentiment == "urgent")
+                .filter(Disaster.archived.is_(False))
+                .scalar() or 0
+            )
         except Exception:
-            recent_activities = 0
-
-        # DB health check
-        db_health = True
-        issues: List[str] = []
+            db.rollback()
+        
+        # Recent crises count (last 24 hours)
+        recent_crises = 0
         try:
-            with engine.connect() as conn:
-                conn.execute(sqlalchemy.text("SELECT 1"))
-        except Exception as e:
-            db_health = False
-            issues.append(f"db_error: {str(e)[:200]}")
-
-        status = "operational" if db_health else "degraded"
-
+            twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
+            recent_crises = db.query(func.count(Disaster.id)).filter(
+                Disaster.archived.is_(False)
+            ).filter(
+                Disaster.extracted_at >= twenty_four_hours_ago
+            ).scalar() or 0
+        except Exception:
+            db.rollback()
+        
+        # Active/inactive users
+        active_users = 0
+        try:
+            active_users = db.query(func.count(User.id)).filter(User.last_login.isnot(None)).scalar() or 0
+        except Exception:
+            db.rollback()
+        
+        inactive_users = total_users - active_users
+        
+        # System health status
+        health_status = "operational"
+        health_issues = []
+        
+        if urgent_alerts > 10:
+            health_issues.append("High urgent alert count")
+        
+        if total_users == 0:
+            health_status = "initialization"
+            health_issues.append("No users registered")
+        
         return {
             "users": {
-                "total": users_total,
-                "active": users_active,
-                "inactive": users_inactive,
-                "admins": users_admins,
+                "total": total_users,
+                "active": active_users,
+                "inactive": inactive_users,
+                "admins": active_admins,
             },
             "system": {
                 "total_crises": total_crises,
                 "urgent_alerts": urgent_alerts,
-                "recent_activities": recent_activities,
-                "status": status,
-                "issues": issues,
+                "recent_crises": recent_crises,
+                "status": health_status,
+                "issues": health_issues,
             },
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to compute stats: {e}")
-    finally:
-        db.close()
+        db.rollback()
+        raise
 
 
-@router.get("/recent-activities")
+@router.get('/recent-activities')
 async def get_recent_activities(
     limit: int = Query(10, ge=1, le=100),
-    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin)
 ):
-    """Fetch recent admin activities from admin_activity_log (graceful if table missing)."""
+    """Get recent admin activities"""
     try:
-        with engine.connect() as conn:
-            stmt = sqlalchemy.text(
-                "SELECT a.id, a.admin_id, u.email as admin_email, a.action, a.target_user_id, a.details, a.ip_address, a.user_agent, a.created_at "
-                "FROM admin_activity_log a LEFT JOIN users u ON a.admin_id = u.id "
-                "ORDER BY a.created_at DESC LIMIT :limit"
-            )
-            res = conn.execute(stmt, {"limit": limit})
-            rows = [dict(r) for r in res.fetchall()]
-            # Normalize rows
-            activities = []
-            for r in rows:
-                activities.append({
-                    "id": r.get("id"),
-                    "admin_id": r.get("admin_id"),
-                    "admin_email": r.get("admin_email"),
-                    "action": r.get("action"),
-                    "target_user_id": r.get("target_user_id"),
-                    "details": r.get("details"),
-                    "ip_address": r.get("ip_address"),
-                    "user_agent": r.get("user_agent"),
-                    "created_at": r.get("created_at"),
-                })
-            return {"activities": activities}
-    except sqlalchemy.exc.ProgrammingError:
-        # Table doesn't exist or query invalid - return empty list gracefully
-        return {"activities": []}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch activities: {e}")
-
-
-@router.get("/recent-users")
-async def get_recent_users(
-    limit: int = Query(5, ge=1, le=100),
-    current_admin: User = Depends(get_current_admin),
-):
-    """Return recently created users (newest first)."""
-    db = SessionLocal()
-    try:
-        users = db.query(User).order_by(User.created_at.desc()).limit(limit).all()
-        result = []
-        for u in users:
-            result.append({
-                "id": u.id,
-                "email": u.email,
-                "name": u.name,
-                "role": u.role,
-                "is_admin": bool(u.is_admin),
-                "is_active": bool(u.is_active),
-                "last_login": u.last_login,
-                "created_at": u.created_at,
+        sql = text("""
+        SELECT 
+            aal.admin_id,
+            aal.action,
+            aal.target_user_id,
+            aal.details,
+            aal.created_at,
+            u.email as admin_email
+        FROM admin_activity_log aal
+        LEFT JOIN users u ON aal.admin_id = u.id
+        ORDER BY aal.created_at DESC
+        LIMIT :limit_param
+        """)
+        result = db.execute(sql.bindparams(limit_param=limit))
+        activities = []
+        for row in result.mappings():
+            created = row["created_at"]
+            activities.append({
+                "admin_id": row["admin_id"],
+                "action": row["action"],
+                "target_user_id": row["target_user_id"],
+                "details": row["details"],
+                "created_at": created.isoformat() if created else None,
+                "admin_email": row["admin_email"],
             })
-        return {"users": result}
+        
+        return {"activities": activities}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch recent users: {e}")
-    finally:
-        db.close()
+        msg = str(e).lower()
+        pgcode = getattr(getattr(e, "orig", None), "pgcode", None)
+        if pgcode == "42P01" or "no such table" in msg or "does not exist" in msg:
+            return {"activities": []}
+        raise
+
+
+@router.get('/recent-crises')
+async def get_recent_crises(
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin)
+):
+    """Get recent crises/disasters for admin dashboard"""
+    try:
+        cutoff_time = datetime.utcnow() - timedelta(hours=24)
+        disasters = (
+            db.query(Disaster)
+            .options(joinedload(Disaster.post))
+            .filter(Disaster.archived == False)
+            .filter(Disaster.extracted_at >= cutoff_time)
+            .order_by(Disaster.extracted_at.desc())
+            .limit(limit)
+            .all()
+        )
+        
+        crises = []
+        for d in disasters:
+            sev = int(d.severity) if d.severity is not None else 1
+            severity_map = {5: "Critical", 4: "High", 3: "Medium", 2: "Low", 1: "Low"}
+            severity_label = severity_map.get(sev, "Low")
+            
+            # Get event time
+            event_time = d.extracted_at
+            if d.post_id and d.post and d.post.created_at:
+                event_time = d.post.created_at
+            
+            # Create description
+            description = d.description or f"Crisis detected at {d.location_name or 'Unknown location'}"
+            
+            crises.append({
+                "id": d.id,
+                "description": description,
+                "location_name": d.location_name,
+                "severity": severity_label,
+                "severity_level": sev,
+                "extracted_at": d.extracted_at.isoformat() if d.extracted_at else None,
+                "event_time": event_time.isoformat() if event_time else None,
+                "latitude": d.latitude,
+                "longitude": d.longitude,
+            })
+        
+        return {"crises": crises}
+    except Exception as e:
+        db.rollback()
+        return {"crises": []}
+
+
+@router.get('/recent-users')
+async def get_recent_users(
+    limit: int = 5,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin)
+):
+    """Get recently registered users"""
+    recent_users = db.query(User)\
+        .order_by(User.created_at.desc())\
+        .limit(limit)\
+        .all()
+    
+    users = []
+    for user in recent_users:
+        users.append({
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "role": user.role,
+            "is_admin": user.is_admin,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "last_login": user.last_login.isoformat() if user.last_login else None,
+        })
+    
+    return {"users": users}
 
 
 @router.get("/logs/stats")

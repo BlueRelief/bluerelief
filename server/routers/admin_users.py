@@ -115,6 +115,60 @@ def list_users(
         db.close()
 
 
+@router.get('/api/admin/users/stats')
+def users_stats(current_admin: User = Depends(get_current_admin)):
+    db = SessionLocal()
+    try:
+        total = db.query(User).filter(User.deleted_at == None).count()
+        active = db.query(User).filter(User.deleted_at == None, User.is_active == True).count()
+        inactive = total - active
+        admins = db.query(User).filter(User.deleted_at == None, User.is_admin == True).count()
+        one_week_ago = datetime.utcnow() - timedelta(days=7)
+        new_this_week = db.query(User).filter(User.deleted_at == None, User.created_at >= one_week_ago).count()
+
+        return {
+            'total_users': total,
+            'active_users': active,
+            'inactive_users': inactive,
+            'admin_users': admins,
+            'new_this_week': new_this_week,
+        }
+    finally:
+        db.close()
+
+
+class BulkDeleteRequest(BaseModel):
+    user_ids: List[str]
+    hard_delete: Optional[bool] = False
+
+
+@router.post('/api/admin/users/bulk-delete')
+def bulk_delete(body: BulkDeleteRequest, current_admin: User = Depends(get_current_admin)):
+    db = SessionLocal()
+    try:
+        to_delete = [uid for uid in body.user_ids if uid != getattr(current_admin, 'id', None)]
+        if not to_delete:
+            raise HTTPException(status_code=400, detail='No valid users to delete')
+
+        deleted = []
+        for uid in to_delete:
+            u = db.query(User).filter(User.id == uid).first()
+            if not u:
+                continue
+            if body.hard_delete:
+                db.delete(u)
+            else:
+                u.deleted_at = datetime.utcnow()
+                db.add(u)
+            deleted.append(uid)
+
+        db.commit()
+        log_admin_activity(admin_id=current_admin.id if current_admin else None, action='USER_BULK_DELETED', details={'user_ids': deleted, 'hard_delete': bool(body.hard_delete)})
+        return {'deleted': deleted, 'requested': len(body.user_ids)}
+    finally:
+        db.close()
+
+
 @router.get('/api/admin/users/{user_id}')
 def get_user(user_id: str, current_admin: User = Depends(get_current_admin)):
     db = SessionLocal()
@@ -219,59 +273,5 @@ def delete_user(user_id: str, hard_delete: bool = Query(False), current_admin: U
             db.commit()
             log_admin_activity(admin_id=current_admin.id if current_admin else None, action='USER_DELETED', target_user_id=user_id, details={'hard_delete': False})
             return {'status': 'soft_deleted'}
-    finally:
-        db.close()
-
-
-class BulkDeleteRequest(BaseModel):
-    user_ids: List[str]
-    hard_delete: Optional[bool] = False
-
-
-@router.post('/api/admin/users/bulk-delete')
-def bulk_delete(body: BulkDeleteRequest, current_admin: User = Depends(get_current_admin)):
-    db = SessionLocal()
-    try:
-        to_delete = [uid for uid in body.user_ids if uid != getattr(current_admin, 'id', None)]
-        if not to_delete:
-            raise HTTPException(status_code=400, detail='No valid users to delete')
-
-        deleted = []
-        for uid in to_delete:
-            u = db.query(User).filter(User.id == uid).first()
-            if not u:
-                continue
-            if body.hard_delete:
-                db.delete(u)
-            else:
-                u.deleted_at = datetime.utcnow()
-                db.add(u)
-            deleted.append(uid)
-
-        db.commit()
-        log_admin_activity(admin_id=current_admin.id if current_admin else None, action='USER_BULK_DELETED', details={'user_ids': deleted, 'hard_delete': bool(body.hard_delete)})
-        return {'deleted': deleted, 'requested': len(body.user_ids)}
-    finally:
-        db.close()
-
-
-@router.get('/api/admin/users/stats')
-def users_stats(current_admin: User = Depends(get_current_admin)):
-    db = SessionLocal()
-    try:
-        total = db.query(User).filter(User.deleted_at == None).count()
-        active = db.query(User).filter(User.deleted_at == None, User.is_active == True).count()
-        inactive = total - active
-        admins = db.query(User).filter(User.deleted_at == None, User.is_admin == True).count()
-        one_week_ago = datetime.utcnow() - timedelta(days=7)
-        new_this_week = db.query(User).filter(User.deleted_at == None, User.created_at >= one_week_ago).count()
-
-        return {
-            'total_users': total,
-            'active_users': active,
-            'inactive_users': inactive,
-            'admin_users': admins,
-            'new_this_week': new_this_week,
-        }
     finally:
         db.close()
