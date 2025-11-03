@@ -88,6 +88,10 @@ export async function adminApiClient(
 export async function adminApiGet<T>(endpoint: string): Promise<T> {
   const response = await adminApiClient(endpoint, { method: "GET" });
   if (!response.ok) {
+    // Handle 404 (Not Found) errors gracefully - these are expected when endpoints don't exist yet
+    if (response.status === 404) {
+      throw new Error(`Endpoint not found: ${endpoint}. The backend endpoint may not be implemented yet.`);
+    }
     const errorText = await response.text();
     let errorMessage = `API Error: ${response.status} ${response.statusText}`;
     try {
