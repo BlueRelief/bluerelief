@@ -2,26 +2,27 @@ import pandas as pd
 import numpy as np
 from sqlalchemy.orm import Session
 from db_utils.db import SessionLocal, Post
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report, r2_score, mean_absolute_error
-import torch
-from transformers import (
-    AutoModelForSequenceClassification,
-    AutoTokenizer,
-    TrainingArguments,
-    Trainer,
-    DataCollatorWithPadding
-)
-from torch.utils.data import Dataset
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+import re
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
 import logging
 from typing import List, Dict, Tuple
 import os
 
+# Download required NLTK data
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('averaged_perceptron_tagger')
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Use 4-bit quantization to reduce memory usage
-os.environ["PYTORCH_ENABLE_CPU_ADAPTIVE_TORCH"] = "1"
 
 def get_training_data() -> pd.DataFrame:
     """Fetch posts with their current sentiment labels from the database"""
@@ -48,116 +49,141 @@ def get_training_data() -> pd.DataFrame:
     finally:
         db.close()
 
-class DisasterSentimentDataset(Dataset):
-    def __init__(self, texts, labels, tokenizer, max_length=512):
-        self.texts = texts
-        self.labels = labels
-        self.tokenizer = tokenizer
-        self.max_length = max_length
-
-    def __len__(self):
-        return len(self.texts)
-
-    def __getitem__(self, idx):
-        text = str(self.texts[idx])
-        encoding = self.tokenizer(
-            text,
-            truncation=True,
-            max_length=self.max_length,
-            padding="max_length",
-            return_tensors="pt"
-        )
-        
-        return {
-            'input_ids': encoding['input_ids'].flatten(),
-            'attention_mask': encoding['attention_mask'].flatten(),
-            'labels': torch.tensor(self.labels[idx], dtype=torch.long)
-        }
+def extract_text_features(text: str) -> Dict[str, float]:
+    """Extract advanced linguistic features from text"""
+    # Convert to lowercase and tokenize
+    tokens = word_tokenize(text.lower())
+    
+    # Get POS tags
+    pos_tags = nltk.pos_tag(tokens)
+    
+    # Initialize emergency/disaster/intensity term lists
+    emergency_terms = {'emergency', 'urgent', 'help', 'sos', 'critical', 'immediate'}
+    disaster_terms = {'fire', 'flood', 'earthquake', 'hurricane', 'tornado', 'disaster'}
+    intensity_terms = {'severe', 'extreme', 'massive', 'devastating', 'catastrophic', 'major'}
+    
+    # Additional emotion terms
+    fear_terms = {'scared', 'afraid', 'terrified', 'panic', 'fear', 'worried', 'scary'}
+    distress_terms = {'help', 'trapped', 'stranded', 'dying', 'hurt', 'injured', 'pain'}
+    urgency_terms = {'now', 'immediately', 'asap', 'urgent', 'emergency', 'quickly'}
+    
+    # Count features
+    features = {
+        'word_count': len(tokens),
+        'avg_word_length': np.mean([len(word) for word in tokens]),
+        'emergency_terms': sum(1 for word in tokens if word in emergency_terms),
+        'disaster_terms': sum(1 for word in tokens if word in disaster_terms),
+        'intensity_terms': sum(1 for word in tokens if word in intensity_terms),
+        'fear_terms': sum(1 for word in tokens if word in fear_terms),
+        'distress_terms': sum(1 for word in tokens if word in distress_terms),
+        'urgency_terms': sum(1 for word in tokens if word in urgency_terms),
+        'exclamation_count': text.count('!'),
+        'question_count': text.count('?'),
+        'uppercase_ratio': sum(1 for c in text if c.isupper()) / len(text),
+        'noun_count': sum(1 for _, pos in pos_tags if pos.startswith('NN')),
+        'verb_count': sum(1 for _, pos in pos_tags if pos.startswith('VB')),
+        'adjective_count': sum(1 for _, pos in pos_tags if pos.startswith('JJ')),
+        'adverb_count': sum(1 for _, pos in pos_tags if pos.startswith('RB'))
+    }
+    
+    # Add ratios
+    total_words = len(tokens)
+    features.update({
+        'emergency_ratio': features['emergency_terms'] / total_words if total_words > 0 else 0,
+        'disaster_ratio': features['disaster_terms'] / total_words if total_words > 0 else 0,
+        'intensity_ratio': features['intensity_terms'] / total_words if total_words > 0 else 0,
+        'fear_ratio': features['fear_terms'] / total_words if total_words > 0 else 0,
+        'distress_ratio': features['distress_terms'] / total_words if total_words > 0 else 0,
+        'urgency_ratio': features['urgency_terms'] / total_words if total_words > 0 else 0
+    })
+    
+    return features
 
 def train_model(data: pd.DataFrame) -> Tuple[float, Dict]:
-    """Train and evaluate using LLaMA for sentiment classification"""
+    """Train and evaluate an enhanced sentiment classifier"""
     # Split data
     train_df, test_df = train_test_split(data, test_size=0.2, random_state=42)
     
-    # Define sentiment labels
-    sentiment_labels = ['fearful', 'urgent', 'negative', 'neutral', 'positive']
-    id2label = {idx: label for idx, label in enumerate(sentiment_labels)}
-    label2id = {label: idx for idx, label in enumerate(sentiment_labels)}
+    # Create sentiment mapping for training
+    sentiment_map = {
+        'urgent': -0.8,    # Very negative but not as extreme as fearful
+        'fearful': -1.0,   # Most negative
+        'negative': -0.5,  # Moderately negative
+        'neutral': 0.0,    # Middle point
+        'positive': 1.0    # Most positive
+    }
     
-    # Initialize tokenizer and model
-    model_name = "NousResearch/Llama-2-7b-chat-hf"  # Using the chat version for better performance
+    # Extract advanced features
+    logger.info("Extracting text features...")
+    train_features = pd.DataFrame([
+        extract_text_features(text) for text in train_df['text']
+    ])
+    test_features = pd.DataFrame([
+        extract_text_features(text) for text in test_df['text']
+    ])
     
-    # Load tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_name,
-        use_fast=True
+    # Create TF-IDF features
+    logger.info("Creating TF-IDF features...")
+    tfidf = TfidfVectorizer(
+        max_features=1000,
+        stop_words='english',
+        ngram_range=(1, 3),  # Include phrases up to 3 words
+        min_df=2,           # Ignore terms that appear in less than 2 documents
+        max_df=0.95         # Ignore terms that appear in more than 95% of documents
     )
     
-    # Load model
-    model = AutoModelForSequenceClassification.from_pretrained(
-        model_name,
-        num_labels=len(sentiment_labels),
-        id2label=id2label,
-        label2id=label2id,
-        load_in_4bit=True,  # Use 4-bit quantization
-        torch_dtype=torch.float16
+    # Create a pipeline
+    pipeline = Pipeline([
+        ('scaler', StandardScaler()),
+        ('classifier', LogisticRegression(
+            multi_class='ovr',
+            class_weight='balanced',
+            max_iter=1000
+        ))
+    ])
+    
+    # Define hyperparameters for grid search
+    param_grid = {
+        'classifier__C': [0.1, 1.0, 10.0],
+        'classifier__solver': ['lbfgs', 'liblinear'],
+    }
+    
+    # Combine TF-IDF with engineered features
+    X_train_tfidf = tfidf.fit_transform(train_df['text']).toarray()
+    X_test_tfidf = tfidf.transform(test_df['text']).toarray()
+    
+    X_train = np.hstack([X_train_tfidf, train_features])
+    X_test = np.hstack([X_test_tfidf, test_features])
+    
+    # Train model with grid search
+    logger.info("Training model with grid search...")
+    grid_search = GridSearchCV(
+        pipeline,
+        param_grid,
+        cv=5,
+        scoring='f1_weighted',
+        n_jobs=-1
     )
+    grid_search.fit(X_train, train_df['current_sentiment'])
     
-    # Prepare datasets
-    train_dataset = DisasterSentimentDataset(
-        train_df['text'].values,
-        [label2id[label] for label in train_df['current_sentiment']],
-        tokenizer
-    )
+    # Get best model
+    model = grid_search.best_estimator_
     
-    test_dataset = DisasterSentimentDataset(
-        test_df['text'].values,
-        [label2id[label] for label in test_df['current_sentiment']],
-        tokenizer
-    )
+    # Make predictions
+    predictions = model.predict(X_test)
+    predicted_scores = model.predict_proba(X_test)  # Get probability scores
     
-    # Setup training arguments
-    training_args = TrainingArguments(
-        output_dir="./sentiment_model",
-        evaluation_strategy="epoch",
-        learning_rate=2e-5,
-        per_device_train_batch_size=4,
-        per_device_eval_batch_size=4,
-        num_train_epochs=3,
-        weight_decay=0.01,
-        push_to_hub=False,
-        logging_dir='./logs'
-    )
-    
-    # Initialize trainer
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=test_dataset,
-        tokenizer=tokenizer,
-        data_collator=DataCollatorWithPadding(tokenizer=tokenizer)
-    )
-    
-    # Train the model
-    trainer.train()
-    
-    # Get predictions
-    predictions = trainer.predict(test_dataset)
-    predicted_labels = np.argmax(predictions.predictions, axis=1)
-    predicted_labels = [id2label[idx] for idx in predicted_labels]
-    
-    # Calculate accuracy and report
-    accuracy = sum(1 for i, pred in enumerate(predicted_labels) 
-                  if pred == test_df['current_sentiment'].iloc[i]) / len(predicted_labels)
+    # Calculate metrics
+    accuracy = sum(1 for i, pred in enumerate(predictions) 
+                  if pred == test_df['current_sentiment'].iloc[i]) / len(predictions)
     
     report = classification_report(
         test_df['current_sentiment'],
-        predicted_labels,
+        predictions,
         output_dict=True
     )
     
-    # Convert predictions to sentiment scores for regression metrics
+    # Convert predictions to numerical scores for regression metrics
     sentiment_scores = {
         'fearful': -1.0,
         'urgent': -0.8,
@@ -166,7 +192,7 @@ def train_model(data: pd.DataFrame) -> Tuple[float, Dict]:
         'positive': 1.0
     }
     
-    predicted_scores = [sentiment_scores[label] for label in predicted_labels]
+    predicted_scores = [sentiment_scores[label] for label in predictions]
     true_scores = [sentiment_scores[label] for label in test_df['current_sentiment']]
     
     # Calculate regression metrics
@@ -174,15 +200,29 @@ def train_model(data: pd.DataFrame) -> Tuple[float, Dict]:
     mae = mean_absolute_error(true_scores, predicted_scores)
     score_correlation = np.corrcoef(predicted_scores, true_scores)[0, 1]
     
+    # Get feature importance for the TF-IDF features
+    feature_importance = []
+    if hasattr(model.named_steps['classifier'], 'coef_'):
+        coefficients = model.named_steps['classifier'].coef_
+        feature_names = (
+            tfidf.get_feature_names_out().tolist() + 
+            train_features.columns.tolist()
+        )
+        # For multi-class, average the absolute coefficients across classes
+        avg_coef = np.abs(coefficients).mean(axis=0)
+        feature_importance = sorted(
+            zip(feature_names, avg_coef),
+            key=lambda x: abs(x[1]),
+            reverse=True
+        )[:10]  # Top 10 features
+    
     report['score_metrics'] = {
         'r2_score': r2,
         'correlation': score_correlation,
-        'mean_absolute_error': mae
+        'mean_absolute_error': mae,
+        'grid_search_best_params': grid_search.best_params_,
+        'feature_importance': feature_importance
     }
-    
-    # Save the model and tokenizer
-    model.save_pretrained('./sentiment_model/final')
-    tokenizer.save_pretrained('./sentiment_model/final')
     
     return accuracy, report
 
@@ -253,12 +293,19 @@ def main():
     logger.info(f"  Correlation with current scores: {report['score_metrics']['correlation']:.2f}")
     logger.info(f"  Mean Absolute Error: {report['score_metrics']['mean_absolute_error']:.2f}")
     
-    logger.info("\nConclusion:")
-    logger.info("-----------")
+    logger.info("\nModel Performance:")
+    logger.info("----------------")
     r2 = report['score_metrics']['r2_score']
     correlation = report['score_metrics']['correlation']
     mae = report['score_metrics']['mean_absolute_error']
     
+    logger.info(f"Best parameters from grid search: {report['score_metrics']['grid_search_best_params']}")
+    logger.info("\nTop Features by Importance:")
+    for feature, importance in report['score_metrics']['feature_importance']:
+        logger.info(f"  • {feature}: {importance:.3f}")
+    
+    logger.info("\nConclusion:")
+    logger.info("-----------")
     if r2 > 0.7 and correlation > 0.8 and mae < 0.3:
         logger.info("✅ The ML model shows excellent agreement with the current scoring system")
         logger.info("   This suggests we could replace the Gemini API calls with this model")
@@ -268,9 +315,14 @@ def main():
     else:
         logger.info("⚠️ The model needs improvement before it can replace the Gemini API")
         logger.info("   Consider:")
-        logger.info("   1. Collecting more training data")
-        logger.info("   2. Adding more domain-specific features")
-        logger.info("   3. Fine-tuning the model parameters")
+        logger.info("   1. Collecting more balanced training data")
+        logger.info("   2. Feature engineering improvements:")
+        logger.info("      - Add more emotion-specific features")
+        logger.info("      - Consider using pre-trained word embeddings")
+        logger.info("   3. Model tuning:")
+        logger.info("      - Try different regularization parameters")
+        logger.info("      - Experiment with feature selection")
+        logger.info("      - Consider ensemble methods")
 
 if __name__ == "__main__":
     main()
