@@ -1,3 +1,130 @@
+from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import List, Dict, Any
+from db_utils.db import SessionLocal, User, Disaster, Alert, engine
+from middleware.admin_auth import get_current_admin
+import sqlalchemy
+
+router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+@router.get("/stats")
+def get_admin_stats(current_admin: User = Depends(get_current_admin)) -> Dict[str, Any]:
+    """Return dashboard statistics: user metrics, system metrics and health status."""
+    db = SessionLocal()
+    try:
+        users_total = db.query(User).count()
+        users_active = db.query(User).filter(User.is_active == True).count()
+        users_inactive = users_total - users_active
+        users_admins = db.query(User).filter(User.is_admin == True).count()
+
+        total_crises = db.query(Disaster).count()
+        # urgent alerts: severity >= 4 and not read
+        try:
+            urgent_alerts = db.query(Alert).filter(Alert.severity >= 4, Alert.is_read == False).count()
+        except Exception:
+            # If alerts table missing or schema different, degrade gracefully
+            urgent_alerts = 0
+
+        # recent activities - try to get a quick count from admin_activity_log if exists
+        recent_activities = 0
+        try:
+            with engine.connect() as conn:
+                res = conn.execute(sqlalchemy.text("SELECT COUNT(1) AS cnt FROM admin_activity_log WHERE created_at >= now() - interval '7 days'"))
+                row = res.fetchone()
+                recent_activities = int(row['cnt']) if row and 'cnt' in row else 0
+        except Exception:
+            recent_activities = 0
+
+        # DB health check
+        db_health = True
+        issues: List[str] = []
+        try:
+            with engine.connect() as conn:
+                conn.execute(sqlalchemy.text("SELECT 1"))
+        except Exception as e:
+            db_health = False
+            issues.append(f"db_error: {str(e)[:200]}")
+
+        status = "operational" if db_health else "degraded"
+
+        return {
+            "users": {
+                "total": users_total,
+                "active": users_active,
+                "inactive": users_inactive,
+                "admins": users_admins,
+            },
+            "system": {
+                "total_crises": total_crises,
+                "urgent_alerts": urgent_alerts,
+                "recent_activities": recent_activities,
+                "status": status,
+                "issues": issues,
+            },
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to compute stats: {e}")
+    finally:
+        db.close()
+
+
+@router.get("/recent-activities")
+def get_recent_activities(limit: int = Query(10, ge=1, le=100), current_admin: User = Depends(get_current_admin)):
+    """Fetch recent admin activities from admin_activity_log (graceful if table missing)."""
+    try:
+        with engine.connect() as conn:
+            stmt = sqlalchemy.text(
+                "SELECT a.id, a.admin_id, u.email as admin_email, a.action, a.target_user_id, a.details, a.ip_address, a.user_agent, a.created_at "
+                "FROM admin_activity_log a LEFT JOIN users u ON a.admin_id = u.id "
+                "ORDER BY a.created_at DESC LIMIT :limit"
+            )
+            res = conn.execute(stmt, {"limit": limit})
+            rows = [dict(r) for r in res.fetchall()]
+            # Normalize rows
+            activities = []
+            for r in rows:
+                activities.append({
+                    "id": r.get("id"),
+                    "admin_id": r.get("admin_id"),
+                    "admin_email": r.get("admin_email"),
+                    "action": r.get("action"),
+                    "target_user_id": r.get("target_user_id"),
+                    "details": r.get("details"),
+                    "ip_address": r.get("ip_address"),
+                    "user_agent": r.get("user_agent"),
+                    "created_at": r.get("created_at"),
+                })
+            return {"activities": activities}
+    except sqlalchemy.exc.ProgrammingError:
+        # Table doesn't exist or query invalid - return empty list gracefully
+        return {"activities": []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch activities: {e}")
+
+
+@router.get("/recent-users")
+def get_recent_users(limit: int = Query(5, ge=1, le=100), current_admin: User = Depends(get_current_admin)):
+    """Return recently created users (newest first)."""
+    db = SessionLocal()
+    try:
+        users = db.query(User).order_by(User.created_at.desc()).limit(limit).all()
+        result = []
+        for u in users:
+            result.append({
+                "id": u.id,
+                "email": u.email,
+                "name": u.name,
+                "role": u.role,
+                "is_admin": bool(u.is_admin),
+                "is_active": bool(u.is_active),
+                "last_login": u.last_login,
+                "created_at": u.created_at,
+            })
+        return {"users": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch recent users: {e}")
+    finally:
+        db.close()
 from fastapi import APIRouter, Depends, Query
 from typing import List, Optional
 from sqlalchemy import func, text, and_, or_
