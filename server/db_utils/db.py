@@ -414,3 +414,13 @@ def get_user_by_email(email: str) -> Optional[Dict]:
     finally:
         if db:
             db.close()
+
+
+# Import logging models to register them with SQLAlchemy
+from .logging_models import (
+    SystemLog,
+    ApiRequestLog,
+    ErrorLog,
+    AuditLog,
+    PerformanceLog,
+)
