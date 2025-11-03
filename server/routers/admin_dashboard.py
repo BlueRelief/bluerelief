@@ -1,10 +1,43 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import List, Dict, Any
-from db_utils.db import SessionLocal, User, Disaster, Alert, engine
+from typing import List, Dict, Any, Optional
+from sqlalchemy import func, text, and_, or_
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+from datetime import datetime, timedelta
+from db_utils.db import SessionLocal, User, Disaster, Alert, Post, engine
+from db_utils.logging_models import SystemLog, ApiRequestLog, ErrorLog, PerformanceLog
 from middleware.admin_auth import get_current_admin
 import sqlalchemy
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def is_table_not_found_error(error: Exception) -> bool:
+    """Check if error is due to missing table"""
+    error_str = str(error).lower()
+    pgcode = getattr(getattr(error, "orig", None), "pgcode", None)
+
+    # PostgreSQL specific: error code 42P01 (relation does not exist)
+    if pgcode == "42P01" or pgcode == "42p01":
+        return True
+
+    # PostgreSQL specific: "does not exist" message pattern
+    if "does not exist" in error_str:
+        return True
+
+    # SQLite specific: "no such table" message pattern
+    if "no such table" in error_str:
+        return True
+
+    return False
 
 
 @router.get("/stats")
@@ -355,7 +388,7 @@ async def get_recent_users(
         .order_by(User.created_at.desc())\
         .limit(limit)\
         .all()
-    
+
     users = []
     for user in recent_users:
         users.append({
@@ -367,11 +400,11 @@ async def get_recent_users(
             "created_at": user.created_at.isoformat() if user.created_at else None,
             "last_login": user.last_login.isoformat() if user.last_login else None,
         })
-    
+
     return {"users": users}
 
 
-@router.get('/api/admin/logs/stats')
+@router.get("/logs/stats")
 async def get_log_stats(
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin)
@@ -468,7 +501,7 @@ async def get_log_stats(
         raise
 
 
-@router.get('/api/admin/logs')
+@router.get("/logs")
 async def get_logs(
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin),
