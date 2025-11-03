@@ -1,4 +1,4 @@
-import { adminApiGet, adminApiPost } from './admin-api-client';
+import { adminApiGet } from './admin-api-client';
 import type { SystemLog, LogFilters, LogStats, LogsResponse } from '@/types/logs';
 
 /**

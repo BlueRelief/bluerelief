@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, TrendingDown, AlertTriangle, Clock, Database, Zap } from "lucide-react";
+import { TrendingUp, AlertTriangle, Clock, Database, Zap } from "lucide-react";
 import type { LogStats } from "@/types/logs";
 
 interface LogStatsProps {

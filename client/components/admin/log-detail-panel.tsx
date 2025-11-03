@@ -69,7 +69,7 @@ function getInitials(email?: string, name?: string): string {
   return '?';
 }
 
-function formatJSON(obj: any): string {
+function formatJSON(obj: unknown): string {
   try {
     return JSON.stringify(obj, null, 2);
   } catch {

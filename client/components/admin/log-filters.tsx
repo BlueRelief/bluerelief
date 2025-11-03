@@ -9,15 +9,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { X, ChevronDown, ChevronUp, Filter } from "lucide-react";
-import type { LogFilters, LogCategory, LogLevel } from "@/types/logs";
+import type { LogFilters, LogCategory, LogLevel, LogStatus } from "@/types/logs";
 
 interface LogFiltersProps {
   filters: LogFilters;
   onFilterChange: (filters: LogFilters) => void;
-  savedPresets?: Record<string, LogFilters>;
-  onSavePreset?: (name: string, filters: LogFilters) => void;
-  onLoadPreset?: (name: string) => void;
-  onDeletePreset?: (name: string) => void;
 }
 
 const CATEGORIES: LogCategory[] = ['auth', 'api', 'error', 'audit', 'data', 'alert', 'email', 'performance', 'task'];
@@ -38,10 +34,6 @@ const DURATION_THRESHOLDS = [
 export function LogFiltersPanel({
   filters,
   onFilterChange,
-  savedPresets = {},
-  onSavePreset,
-  onLoadPreset,
-  onDeletePreset,
 }: LogFiltersProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -223,7 +215,7 @@ export function LogFiltersPanel({
                   id={`status-${option.value}`}
                   name="status"
                   checked={filters.status === option.value}
-                  onChange={() => onFilterChange({ ...filters, status: option.value as any })}
+                  onChange={() => onFilterChange({ ...filters, status: option.value as LogStatus })}
                   className="w-4 h-4"
                 />
                 <Label
