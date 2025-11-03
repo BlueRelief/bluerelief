@@ -5,6 +5,7 @@ from sqlalchemy import (
     String,
     DateTime,
     Integer,
+    BigInteger,
     Text,
     ForeignKey,
     Float,
@@ -311,6 +312,22 @@ class ArchivedAlert(Base):
     archive_metadata = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     archived_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AdminActivityLog(Base):
+    __tablename__ = "admin_activity_log"
+
+    id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
+    admin_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    action = Column(String(100), nullable=False)
+    target_user_id = Column(String, nullable=True)
+    details = Column(JSONB, nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # relationship to admin user (optional)
+    admin = relationship("User")
 
 
 def get_db_session():

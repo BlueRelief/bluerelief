@@ -1,8 +1,8 @@
-"""add deleted_at to users and admin_activity_log table
+"""add deleted at and admin activity log
 
-Revision ID: a7b8c9d0e1f2
+Revision ID: 400cf6969e67
 Revises: 5d72963c4bf1
-Create Date: 2025-11-03 19:30:00.000000
+Create Date: 2025-11-03 21:48:06.675756
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = 'a7b8c9d0e1f2'
+revision: str = '400cf6969e67'
 down_revision: Union[str, Sequence[str], None] = '5d72963c4bf1'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -42,6 +42,8 @@ def upgrade() -> None:
         batch_op.create_index(batch_op.f('ix_admin_activity_log_admin_id'), ['admin_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_admin_activity_log_created_at'), ['created_at'], unique=False)
 
+    # ### end Alembic commands ###
+
 
 def downgrade() -> None:
     # Drop admin_activity_log table
@@ -54,3 +56,5 @@ def downgrade() -> None:
     with op.batch_alter_table('users', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_users_deleted_at'))
         batch_op.drop_column('deleted_at')
+
+    # ### end Alembic commands ###
