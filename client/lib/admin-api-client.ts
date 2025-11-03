@@ -188,3 +188,104 @@ export async function getRecentUsers(limit: number = 5): Promise<{ users: Recent
   return adminApiGet<{ users: RecentUser[] }>(`/api/admin/recent-users?limit=${limit}`);
 }
 
+// User Management API
+
+export interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  is_admin: boolean;
+  is_active: boolean;
+  created_at: string;
+  last_login: string | null;
+  failed_login_attempts: number;
+  account_locked_until: string | null;
+  location?: string | null;
+}
+
+export interface UserListResponse {
+  users: User[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total_items: number;
+    total_pages: number;
+  };
+}
+
+export interface UserListParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  role?: string;
+  is_admin?: boolean;
+  is_active?: boolean;
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+}
+
+export interface CreateUserRequest {
+  email: string;
+  name?: string;
+  role?: string;
+  is_admin?: boolean;
+}
+
+export interface UpdateUserRequest {
+  name?: string;
+  role?: string;
+  is_admin?: boolean;
+  is_active?: boolean;
+  account_locked_until?: string | null;
+}
+
+export interface UserStats {
+  total_users: number;
+  active_users: number;
+  inactive_users: number;
+  admin_users: number;
+  new_this_week: number;
+}
+
+export async function listUsers(params: UserListParams = {}): Promise<UserListResponse> {
+  const queryParams = new URLSearchParams();
+  if (params.page) queryParams.append('page', params.page.toString());
+  if (params.page_size) queryParams.append('page_size', params.page_size.toString());
+  if (params.search) queryParams.append('search', params.search);
+  if (params.role) queryParams.append('role', params.role);
+  if (params.is_admin !== undefined) queryParams.append('is_admin', params.is_admin.toString());
+  if (params.is_active !== undefined) queryParams.append('is_active', params.is_active.toString());
+  if (params.sort_by) queryParams.append('sort_by', params.sort_by);
+  if (params.sort_order) queryParams.append('sort_order', params.sort_order);
+
+  return adminApiGet<UserListResponse>(`/api/admin/users?${queryParams.toString()}`);
+}
+
+export async function getUser(userId: string): Promise<User> {
+  return adminApiGet<User>(`/api/admin/users/${userId}`);
+}
+
+export async function createUser(data: CreateUserRequest): Promise<{ id: string; email: string }> {
+  return adminApiPost<{ id: string; email: string }>('/api/admin/users', data);
+}
+
+export async function updateUser(userId: string, data: UpdateUserRequest): Promise<{ status: string; changes: Record<string, unknown> }> {
+  return adminApiPut<{ status: string; changes: Record<string, unknown> }>(`/api/admin/users/${userId}`, data);
+}
+
+export async function deleteUser(userId: string, hardDelete: boolean = false): Promise<{ status: string; hard_delete?: boolean }> {
+  return adminApiDelete<{ status: string; hard_delete?: boolean }>(`/api/admin/users/${userId}?hard_delete=${hardDelete}`);
+}
+
+export async function bulkDeleteUsers(userIds: string[], hardDelete: boolean = false): Promise<{ deleted: string[]; requested: number }> {
+  return adminApiPost<{ deleted: string[]; requested: number }>('/api/admin/users/bulk-delete', {
+    user_ids: userIds,
+    hard_delete: hardDelete,
+  });
+}
+
+export async function getUserStats(): Promise<UserStats> {
+  return adminApiGet<UserStats>('/api/admin/users/stats');
+}
+

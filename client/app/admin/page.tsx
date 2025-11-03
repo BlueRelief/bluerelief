@@ -609,7 +609,7 @@ export default function AdminDashboard() {
                 <Button 
                   className="justify-start h-auto py-3" 
                   variant="outline"
-                  onClick={() => router.push('/admin')}
+                  onClick={() => router.push('/admin/users')}
                 >
                   <Users className="mr-2 h-4 w-4" />
                   <div className="text-left">
