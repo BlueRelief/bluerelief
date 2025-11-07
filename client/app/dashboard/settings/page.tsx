@@ -29,7 +29,6 @@ export default function SettingsPage() {
   const [autoUpdates, setAutoUpdates] = useState(false)
   const [allowTracking, setAllowTracking] = useState(true)
   const [shareUsageData, setShareUsageData] = useState(true)
-  const [personalizedAds, setPersonalizedAds] = useState(true)
 
   // Alert preferences
   const [minSeverity, setMinSeverity] = useState(3)
@@ -325,16 +324,6 @@ export default function SettingsPage() {
               />
               <Label htmlFor="share-usage-data" className="text-base font-normal cursor-pointer">
                 Share Usage Data
-              </Label>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Checkbox
-                id="personalized-ads"
-                checked={personalizedAds}
-                onCheckedChange={(checked) => setPersonalizedAds(checked as boolean)}
-              />
-              <Label htmlFor="personalized-ads" className="text-base font-normal cursor-pointer">
-                Personalized Ads
               </Label>
             </div>
           </CardContent>
