@@ -346,7 +346,10 @@ async def setup_location(request: Request, token: str = Cookie(None)):
         latitude = body.get("latitude")
         longitude = body.get("longitude")
 
-        if not location or latitude is None or longitude is None:
+        # Allow null values for global alerts mode (skip location setup)
+        is_global_alerts = location is None and latitude is None and longitude is None
+
+        if not is_global_alerts and (not location or latitude is None or longitude is None):
             raise HTTPException(status_code=400, detail="Missing location data")
 
         from db_utils.db import SessionLocal, User
@@ -357,12 +360,21 @@ async def setup_location(request: Request, token: str = Cookie(None)):
             if not user_obj:
                 raise HTTPException(status_code=404, detail="User not found")
 
-            user_obj.location = location
-            user_obj.latitude = float(latitude)
-            user_obj.longitude = float(longitude)
-            db.commit()
+            if is_global_alerts:
+                # Set to null for global alerts mode
+                user_obj.location = None
+                user_obj.latitude = None
+                user_obj.longitude = None
+                logger.info(f"✅ User {user_id} opted for global alerts (no location)")
+                change_summary = "User opted for global alerts (no location)"
+            else:
+                user_obj.location = location
+                user_obj.latitude = float(latitude)
+                user_obj.longitude = float(longitude)
+                logger.info(f"✅ Set location for user {user_id}: {location}")
+                change_summary = f"User set location to {location}"
 
-            logger.info(f"✅ Set location for user {user_id}: {location}")
+            db.commit()
 
             # Log location setup
             client_ip = request.client.host if request.client else None
@@ -374,7 +386,7 @@ async def setup_location(request: Request, token: str = Cookie(None)):
                 resource_type="user",
                 resource_id=user_id,
                 new_value={"location": location, "latitude": latitude, "longitude": longitude},
-                change_summary=f"User set location to {location}",
+                change_summary=change_summary,
                 ip_address=client_ip,
                 user_agent=user_agent,
                 is_admin_action=False,
