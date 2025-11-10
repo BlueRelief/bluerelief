@@ -54,8 +54,9 @@ def should_alert_user_for_disaster(user_prefs: UserAlertPreferences, user: User,
     Checks (in order):
     1. User has preferences set up
     2. Severity meets minimum threshold
-    3. GEO-RADIUS: Distance from user to disaster (PRIMARY)
-    4. REGION FILTER: User's custom region preferences (SECONDARY)
+    3. GLOBAL ALERTS MODE: If user has no location (null), receive all alerts
+    4. GEO-RADIUS: Distance from user to disaster (PRIMARY)
+    5. REGION FILTER: User's custom region preferences (SECONDARY)
 
     Note: email_enabled controls EMAIL sending, not alert creation
 
@@ -68,6 +69,10 @@ def should_alert_user_for_disaster(user_prefs: UserAlertPreferences, user: User,
     disaster_severity = disaster.severity or 0
     if disaster_severity < user_prefs.min_severity:
         return False
+
+    # GLOBAL ALERTS MODE: If user has no location (null), receive all alerts
+    if user.latitude is None and user.longitude is None:
+        return True
 
     # PRIMARY FILTER: Geo-radius based on user coordinates
     if user.latitude is not None and user.longitude is not None and \
