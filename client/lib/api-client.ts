@@ -118,7 +118,12 @@ export async function getWeeklyCrises(days = 7, page = 1, pageSize = 10) {
 }
 
 // Analysis API functions
-export async function getAnalysisKeyMetrics() {
+export async function getAnalysisKeyMetrics(country?: string, disasterType?: string) {
+  const params = new URLSearchParams();
+  if (country) params.append('country', country);
+  if (disasterType) params.append('disaster_type', disasterType);
+  const queryString = params.toString();
+  
   return apiGet<{
     total_incidents: number;
     high_priority: number;
@@ -127,28 +132,43 @@ export async function getAnalysisKeyMetrics() {
     tweets_recognized: number;
     prediction_accuracy: number;
     anomalies_detected: number;
-  }>('/api/analysis/key-metrics');
+  }>(`/api/analysis/key-metrics${queryString ? `?${queryString}` : ''}`);
 }
 
-export async function getAnalysisTrends(days = 365) {
+export async function getAnalysisTrends(days = 365, country?: string, disasterType?: string) {
+  const params = new URLSearchParams();
+  params.append('days', days.toString());
+  if (country) params.append('country', country);
+  if (disasterType) params.append('disaster_type', disasterType);
+  
   return apiGet<Array<{
     date: string;
     high_priority: number;
     medium_priority: number;
     total_incidents: number;
-  }>>(`/api/analysis/crisis-trends?days=${days}`);
+  }>>(`/api/analysis/crisis-trends?${params.toString()}`);
 }
 
-export async function getAnalysisRegionalAnalysis() {
+export async function getAnalysisRegionalAnalysis(country?: string, disasterType?: string) {
+  const params = new URLSearchParams();
+  if (country) params.append('country', country);
+  if (disasterType) params.append('disaster_type', disasterType);
+  const queryString = params.toString();
+  
   return apiGet<Array<{
     region: string;
     incident_count: number;
     severity: string;
     coordinates: [number, number];
-  }>>('/api/analysis/regional-analysis');
+  }>>(`/api/analysis/regional-analysis${queryString ? `?${queryString}` : ''}`);
 }
 
-export async function getAnalysisStatistics() {
+export async function getAnalysisStatistics(country?: string, disasterType?: string) {
+  const params = new URLSearchParams();
+  if (country) params.append('country', country);
+  if (disasterType) params.append('disaster_type', disasterType);
+  const queryString = params.toString();
+  
   return apiGet<{
     tweets_recognized: number;
     prediction_accuracy: number;
@@ -161,10 +181,15 @@ export async function getAnalysisStatistics() {
       urgent: number;
       fearful: number;
     };
-  }>('/api/analysis/statistics');
+  }>(`/api/analysis/statistics${queryString ? `?${queryString}` : ''}`);
 }
 
-export async function getAnalysisPatterns() {
+export async function getAnalysisPatterns(country?: string, disasterType?: string) {
+  const params = new URLSearchParams();
+  if (country) params.append('country', country);
+  if (disasterType) params.append('disaster_type', disasterType);
+  const queryString = params.toString();
+  
   return apiGet<{
     recurring_patterns: {
       count: number;
@@ -172,5 +197,12 @@ export async function getAnalysisPatterns() {
     pattern_types: {
       [key: string]: number;
     };
-  }>('/api/analysis/patterns');
+  }>(`/api/analysis/patterns${queryString ? `?${queryString}` : ''}`);
+}
+
+export async function getAnalysisFilterOptions() {
+  return apiGet<{
+    countries: string[];
+    disaster_types: string[];
+  }>('/api/analysis/filter-options');
 }
