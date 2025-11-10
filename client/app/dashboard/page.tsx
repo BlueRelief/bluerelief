@@ -245,22 +245,29 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4">
-      {/* Date context banner */}
-      <div className="rounded-md bg-slate-50 p-3 flex items-center justify-between">
-        <div>
-          <div className="text-sm text-muted-foreground">Showing events from</div>
-          <div className="text-base font-semibold">{formatTimeRangeLabel(timeRange || '24h')}</div>
-        </div>
-        <div className="text-right text-sm text-muted-foreground">
-          <div className="flex items-center gap-2 justify-end">
-            <div>Last updated: <span className="font-medium text-foreground">{lastUpdatedText()}</span></div>
-            {isRefreshing ? (
-              <div className="h-4 w-4 border-2 border-primary rounded-full animate-spin border-t-transparent" aria-hidden />
-            ) : null}
+      {/* Date context banner (Card for consistent UI) */}
+      <Card className="bg-slate-50">
+        <CardContent className="p-3 flex items-center justify-between">
+          <div>
+            <div className="text-sm text-muted-foreground">Showing events from</div>
+            <div className="text-base font-semibold">{formatTimeRangeLabel(timeRange || '24h')}</div>
           </div>
-          <div className="text-xs text-muted-foreground">Auto-refresh on time range change</div>
-        </div>
-      </div>
+          <div className="text-right text-sm text-muted-foreground">
+            <div className="flex items-center gap-3 justify-end">
+              <div className="text-sm">
+                <span className="text-muted-foreground">Last updated:</span>{' '}
+                <span className="font-medium text-foreground">{lastUpdatedText()}</span>
+              </div>
+              {isRefreshing ? (
+                <div className="flex items-center">
+                  <div className="h-4 w-4 rounded-full border-2 border-primary/25 border-t-primary animate-spin" aria-hidden />
+                </div>
+              ) : null}
+            </div>
+            <div className="text-xs text-muted-foreground">Auto-refresh on time range change</div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Dashboard</h1>
