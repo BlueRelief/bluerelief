@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import {
   LineChart,
   Line,
@@ -21,13 +22,15 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { TrendingUp, AlertTriangle, Activity, Target } from "lucide-react";
+import { TrendingUp, AlertTriangle, Activity, Target, Filter, X } from "lucide-react";
+import { Combobox } from "@/components/ui/combobox";
 import { 
   getAnalysisKeyMetrics,
   getAnalysisTrends,
   getAnalysisRegionalAnalysis,
   getAnalysisStatistics,
-  getAnalysisPatterns
+  getAnalysisPatterns,
+  getAnalysisFilterOptions
 } from "@/lib/api-client";
 
 const CrisisMap = dynamic(() => import("@/components/crisis-map"), {
@@ -38,6 +41,7 @@ const CrisisMap = dynamic(() => import("@/components/crisis-map"), {
     </div>
   ),
 });
+
 
 // Utility functions for data formatting
 const formatNumber = (num: number | null | undefined): string => {
@@ -75,6 +79,12 @@ const validateApiData = (data: unknown, dataType: string): boolean => {
 };
 
 export default function AnalysisPage() {
+  // Filter state
+  const [selectedCountry, setSelectedCountry] = useState<string>("");
+  const [selectedDisasterTypes, setSelectedDisasterTypes] = useState<string[]>([]);
+  const [availableCountries, setAvailableCountries] = useState<string[]>([]);
+  const [availableDisasterTypes, setAvailableDisasterTypes] = useState<string[]>([]);
+  
   // State for API data
   const [keyMetrics, setKeyMetrics] = useState<{
     total_incidents: number;
@@ -118,6 +128,21 @@ export default function AnalysisPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const toggleDisasterType = (type: string) => {
+    setSelectedDisasterTypes(prev =>
+      prev.includes(type)
+        ? prev.filter(t => t !== type)
+        : [...prev, type]
+    );
+  };
+
+  const clearFilters = () => {
+    setSelectedCountry("");
+    setSelectedDisasterTypes([]);
+  };
+
+  const hasActiveFilters = selectedCountry !== "" || selectedDisasterTypes.length > 0;
 
   const retryFetch = () => {
     setError(null);
@@ -180,10 +205,29 @@ export default function AnalysisPage() {
   };
 
   useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        const options = await getAnalysisFilterOptions();
+        setAvailableCountries(options.countries);
+        setAvailableDisasterTypes(options.disaster_types);
+      } catch (e) {
+        console.error('Failed to fetch filter options:', e);
+      }
+    };
+
+    fetchFilterOptions();
+  }, []);
+
+  useEffect(() => {
     const fetchAnalysisData = async () => {
       try {
         setLoading(true);
         setError(null);
+
+        const country = selectedCountry || undefined;
+        const disasterType = selectedDisasterTypes.length > 0 
+          ? selectedDisasterTypes.join(',') 
+          : undefined;
 
         // Fetch all analysis data in parallel
         const [
@@ -193,11 +237,11 @@ export default function AnalysisPage() {
           statisticsData,
           patternsData
         ] = await Promise.all([
-          getAnalysisKeyMetrics(),
-          getAnalysisTrends(30),
-          getAnalysisRegionalAnalysis(),
-          getAnalysisStatistics(),
-          getAnalysisPatterns()
+          getAnalysisKeyMetrics(country, disasterType),
+          getAnalysisTrends(30, country, disasterType),
+          getAnalysisRegionalAnalysis(country, disasterType),
+          getAnalysisStatistics(country, disasterType),
+          getAnalysisPatterns(country, disasterType)
         ]);
 
         // Validate and set data
@@ -233,7 +277,7 @@ export default function AnalysisPage() {
     };
 
     fetchAnalysisData();
-  }, []);
+  }, [selectedCountry, selectedDisasterTypes]);
 
   if (error) {
     return (
@@ -273,6 +317,87 @@ export default function AnalysisPage() {
           </div>
         )}
       </div>
+
+      {/* Filters Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Filter className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Filters</CardTitle>
+            </div>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-1" />
+                Clear Filters
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Country Filter */}
+            <div className="flex-1">
+              <label className="text-sm font-medium mb-2 block">Country</label>
+              <Combobox
+                options={availableCountries.map(country => ({
+                  value: country,
+                  label: country
+                }))}
+                value={selectedCountry}
+                onValueChange={setSelectedCountry}
+                placeholder="All Countries"
+                searchPlaceholder="Search countries..."
+                emptyText="No country found."
+              />
+            </div>
+
+            {/* Disaster Type Filter */}
+            <div className="flex-1">
+              <label className="text-sm font-medium mb-2 block">Disaster Types</label>
+              <div className="flex flex-wrap gap-2">
+                {availableDisasterTypes.map((type) => (
+                  <Badge
+                    key={type}
+                    variant={selectedDisasterTypes.includes(type) ? "default" : "outline"}
+                    className="cursor-pointer hover:opacity-80 transition-opacity capitalize"
+                    onClick={() => toggleDisasterType(type)}
+                  >
+                    {type}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Active Filter Indicators */}
+          {hasActiveFilters && (
+            <div className="mt-4 pt-4 border-t">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-muted-foreground">Active filters:</span>
+                {selectedCountry && (
+                  <Badge variant="secondary" className="gap-1">
+                    {selectedCountry}
+                    <X 
+                      className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                      onClick={() => setSelectedCountry("")}
+                    />
+                  </Badge>
+                )}
+                {selectedDisasterTypes.map((type) => (
+                  <Badge key={type} variant="secondary" className="gap-1 capitalize">
+                    {type}
+                    <X 
+                      className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                      onClick={() => toggleDisasterType(type)}
+                    />
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Key Metrics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
