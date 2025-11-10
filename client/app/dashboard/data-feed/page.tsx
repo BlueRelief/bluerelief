@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { Info } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -186,7 +191,17 @@ export default function DataFeedPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Total Posts Analyzed</p>
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1.5">
+                  Total Posts Analyzed
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[300px]">
+                      <p>Total number of Bluesky social media posts processed and analyzed by the system for crisis indicators</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </p>
                 <p className="text-2xl font-bold">
                   {overview?.total_tweets_processed?.toLocaleString() || 0}
                 </p>
@@ -200,7 +215,17 @@ export default function DataFeedPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Crises Detected</p>
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1.5">
+                  Crises Detected
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[300px]">
+                      <p>Total number of crisis events identified by analyzing Bluesky posts with AI-powered detection algorithms</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </p>
                 <p className="text-2xl font-bold text-destructive">
                   {overview?.total_crises_detected || 0}
                 </p>
@@ -214,7 +239,17 @@ export default function DataFeedPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Feed Status</p>
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1.5">
+                  Feed Status
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[300px]">
+                      <p>Real-time status of all data collection feeds. Active means continuously monitoring and processing new posts.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </p>
                 <Badge className="bg-green-500 text-white">Active</Badge>
               </div>
               <div className="text-4xl opacity-30">✅</div>
@@ -228,7 +263,17 @@ export default function DataFeedPage() {
         {/* Feed Status Table */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Feed Status</CardTitle>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              Feed Status
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[300px]">
+                  <p>Shows the operational status of each data collection feed including last run time and next scheduled run</p>
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
             <p className="text-sm text-muted-foreground">Monitor data collection feeds</p>
           </CardHeader>
           <CardContent>
@@ -251,7 +296,17 @@ export default function DataFeedPage() {
         {/* Most Recent Crisis */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Latest Crisis</CardTitle>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              Latest Crisis
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[300px]">
+                  <p>The most recently detected crisis event with severity level and link to original Bluesky post</p>
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
             <p className="text-sm text-muted-foreground">Most recently detected event</p>
           </CardHeader>
           <CardContent>
@@ -285,7 +340,17 @@ export default function DataFeedPage() {
       {/* Weekly Crisis Details */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">Weekly Crisis Details</CardTitle>
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            Weekly Crisis Details
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[300px]">
+                <p>Complete list of all crisis events detected in the past week with details on location, type, severity, and analyzed tweets</p>
+              </TooltipContent>
+            </Tooltip>
+          </CardTitle>
           <p className="text-sm text-muted-foreground">Recent crisis events detected this week</p>
         </CardHeader>
         <CardContent>

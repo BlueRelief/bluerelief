@@ -16,8 +16,18 @@ env:
   EMAIL_SERVICE_IMAGE: bluerelief/email-service
 
 jobs:
-  deploy-preview:
+  setup:
     runs-on: self-hosted
+    outputs:
+      main_version: ${{ steps.version_prediction.outputs.main_version }}
+      new_version: ${{ steps.version_prediction.outputs.new_version }}
+      bump_type: ${{ steps.version_prediction.outputs.bump_type }}
+      branch_name: ${{ steps.vars.outputs.branch_name }}
+      sanitized_branch: ${{ steps.vars.outputs.sanitized_branch }}
+      commit_sha: ${{ steps.vars.outputs.commit_sha }}
+      image_tag: ${{ steps.vars.outputs.image_tag }}
+      backend_url: ${{ steps.vars.outputs.backend_url }}
+      frontend_url: ${{ steps.vars.outputs.frontend_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -27,14 +37,11 @@ jobs:
       - name: Predict version bump
         id: version_prediction
         run: |
-          # Get the current version from latest git tag
           git fetch origin main --tags
           MAIN_VERSION=$(git describe --tags --abbrev=0 origin/main 2>/dev/null | sed 's/^v//' || echo "0.0.0")
           
-          # Get commits in this PR
           PR_COMMITS=$(git log origin/main..HEAD --pretty=format:"%s")
           
-          # Detect bump type
           BUMP_TYPE="patch"
           if echo "$PR_COMMITS" | grep -iqE "BREAKING CHANGE|MAJOR:|breaking:"; then
             BUMP_TYPE="major"
@@ -42,7 +49,6 @@ jobs:
             BUMP_TYPE="minor"
           fi
           
-          # Calculate new version
           IFS='.' read -r major minor patch <<< "$MAIN_VERSION"
           case $BUMP_TYPE in
             major)
@@ -70,12 +76,10 @@ jobs:
           BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
           SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
           
-          # Truncate branch name if too long (max 30 chars to leave room for "bluerelief-" prefix and "-celery-worker" suffix)
           if [ ${#SANITIZED_BRANCH} -gt 30 ]; then
             SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | cut -c1-30)
           fi
           
-          # Remove trailing hyphens
           SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's/-*$//')
           
           COMMIT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
@@ -88,58 +92,78 @@ jobs:
           echo "backend_url=https://api-${SANITIZED_BRANCH}.private.bluerelief.app" >> $GITHUB_OUTPUT
           echo "frontend_url=https://${SANITIZED_BRANCH}.private.bluerelief.app" >> $GITHUB_OUTPUT
 
-      - name: Build and push backend
-        run: |
-          cd server
-          docker build \
-            -f Dockerfile.prod \
-            --build-arg VERSION=${{ steps.version_prediction.outputs.new_version }} \
-            --build-arg COMMIT_SHA=${{ steps.vars.outputs.commit_sha }} \
-            -t ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} .
-          docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
+  build:
+    needs: setup
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        service:
+          - name: backend
+            context: server
+            dockerfile: Dockerfile.prod
+            image: bluerelief/backend
+          - name: frontend
+            context: client
+            dockerfile: Dockerfile.prod
+            image: bluerelief/frontend
+          - name: email-service
+            context: email-service
+            dockerfile: Dockerfile
+            image: bluerelief/email-service
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Build and push frontend
+      - name: Build and push ${{ matrix.service.name }}
         run: |
-          cd client
+          cd ${{ matrix.service.context }}
+          
+          BUILD_ARGS="--build-arg VERSION=${{ needs.setup.outputs.new_version }}"
+          
+          if [ "${{ matrix.service.name }}" = "backend" ]; then
+            BUILD_ARGS="$BUILD_ARGS --build-arg COMMIT_SHA=${{ needs.setup.outputs.commit_sha }}"
+          elif [ "${{ matrix.service.name }}" = "frontend" ]; then
+            BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_API_URL=${{ needs.setup.outputs.backend_url }}"
+            BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_MAPBOX_TOKEN=${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}"
+            BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_IS_PREVIEW=true"
+          fi
+          
           docker build \
-            -f Dockerfile.prod \
-            --build-arg NEXT_PUBLIC_API_URL=${{ steps.vars.outputs.backend_url }} \
-            --build-arg NEXT_PUBLIC_MAPBOX_TOKEN=${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }} \
-            --build-arg VERSION=${{ steps.version_prediction.outputs.new_version }} \
-            --build-arg NEXT_PUBLIC_IS_PREVIEW=true \
-            -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} .
-          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
+            -f ${{ matrix.service.dockerfile }} \
+            $BUILD_ARGS \
+            -t ${{ env.REGISTRY }}/${{ matrix.service.image }}:${{ needs.setup.outputs.image_tag }} \
+            .
+          
+          docker push ${{ env.REGISTRY }}/${{ matrix.service.image }}:${{ needs.setup.outputs.image_tag }}
 
-      - name: Build and push email-service
-        run: |
-          cd email-service
-          docker build \
-            -f Dockerfile \
-            --build-arg VERSION=${{ steps.version_prediction.outputs.new_version }} \
-            -t ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:${{ steps.vars.outputs.image_tag }} .
-          docker push ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:${{ steps.vars.outputs.image_tag }}
+  deploy:
+    needs: [setup, build]
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Deploy to Kubernetes
         run: |
-          helm upgrade --install bluerelief-${{ steps.vars.outputs.sanitized_branch }} \
+          helm upgrade --install bluerelief-${{ needs.setup.outputs.sanitized_branch }} \
             /home/geeth/Development/k8s/helm/celery-app-chart \
             -f /home/geeth/Development/k8s/helm/celery-app-chart/bluerelief-values.yaml \
             -n bluerelief \
             --create-namespace \
-            --set app.image.tag=${{ steps.vars.outputs.image_tag }} \
-            --set frontend.image.tag=${{ steps.vars.outputs.image_tag }} \
-            --set emailService.image.tag=${{ steps.vars.outputs.image_tag }} \
-            --set ingress.host="api-${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app" \
-            --set frontend.ingress.host="${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app" \
+            --set app.image.tag=${{ needs.setup.outputs.image_tag }} \
+            --set frontend.image.tag=${{ needs.setup.outputs.image_tag }} \
+            --set emailService.image.tag=${{ needs.setup.outputs.image_tag }} \
+            --set ingress.host="api-${{ needs.setup.outputs.sanitized_branch }}.private.bluerelief.app" \
+            --set frontend.ingress.host="${{ needs.setup.outputs.sanitized_branch }}.private.bluerelief.app" \
             --set emailService.ingress.enabled=true \
-            --set emailService.ingress.host="email-api-${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app" \
-            --set frontend.env.NEXT_PUBLIC_API_URL="${{ steps.vars.outputs.backend_url }}" \
+            --set emailService.ingress.host="email-api-${{ needs.setup.outputs.sanitized_branch }}.private.bluerelief.app" \
+            --set frontend.env.NEXT_PUBLIC_API_URL="${{ needs.setup.outputs.backend_url }}" \
             --set frontend.env.NEXT_PUBLIC_IS_PREVIEW="true" \
             --set app.env.IS_PREVIEW="true" \
             --set app.env.PREVIEW_AUTH_BYPASS="true" \
-            --set app.env.REDIRECT_URL="https://${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app/dashboard" \
-            --set app.env.BACKEND_URL="${{ steps.vars.outputs.backend_url }}" \
-            --set app.env.FRONTEND_URL="https://${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app" \
+            --set app.env.REDIRECT_URL="https://${{ needs.setup.outputs.sanitized_branch }}.private.bluerelief.app/dashboard" \
+            --set app.env.BACKEND_URL="${{ needs.setup.outputs.backend_url }}" \
+            --set app.env.FRONTEND_URL="https://${{ needs.setup.outputs.sanitized_branch }}.private.bluerelief.app" \
             --wait
 
       - name: Comment on PR
@@ -153,10 +177,10 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `## 🚀 Preview Deployment Ready!\n\n` +
-                    `**Backend:** ${{ steps.vars.outputs.backend_url }}\n` +
-                    `**Frontend:** ${{ steps.vars.outputs.frontend_url }}\n` +
-                    `**Email Service:** https://email-api-${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app\n\n` +
-                    `Commit: \`${{ steps.vars.outputs.commit_sha }}\`\n\n` +
+                    `**Backend:** ${{ needs.setup.outputs.backend_url }}\n` +
+                    `**Frontend:** ${{ needs.setup.outputs.frontend_url }}\n` +
+                    `**Email Service:** https://email-api-${{ needs.setup.outputs.sanitized_branch }}.private.bluerelief.app\n\n` +
+                    `Commit: \`${{ needs.setup.outputs.commit_sha }}\`\n\n` +
                     `---\n\n` +
                     `## 🔐 Authentication\n` +
                     `**Demo Login:** Click "Google Sign In" → Use demo auth (no Google account needed)\n` +
@@ -165,7 +189,7 @@ jobs:
                     `---\n\n` +
                     `## ✨ Version Bump Prediction\n` +
                     `When this PR is merged to main, the version will be bumped:\n\n` +
-                    `**${{ steps.version_prediction.outputs.main_version }}** → **${{ steps.version_prediction.outputs.new_version }}** (${{ steps.version_prediction.outputs.bump_type }})\n\n` +
+                    `**${{ needs.setup.outputs.main_version }}** → **${{ needs.setup.outputs.new_version }}** (${{ needs.setup.outputs.bump_type }})\n\n` +
                     `💡 **How to change the version bump type**\n` +
                     `- For **patch**: Use \`fix:\`, \`chore:\`, \`docs:\`, or \`ci:\` in commit messages\n` +
                     `- For **minor**: Use \`feat:\` or \`feature:\` in commit messages\n` +
@@ -179,14 +203,14 @@ jobs:
           echo "🚀 Preview Deployment Ready!"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo ""
-          echo "Backend:       ${{ steps.vars.outputs.backend_url }}"
-          echo "Frontend:      ${{ steps.vars.outputs.frontend_url }}"
-          echo "Email Service: https://email-api-${{ steps.vars.outputs.sanitized_branch }}.private.bluerelief.app"
-          echo "Commit:        ${{ steps.vars.outputs.commit_sha }}"
+          echo "Backend:       ${{ needs.setup.outputs.backend_url }}"
+          echo "Frontend:      ${{ needs.setup.outputs.frontend_url }}"
+          echo "Email Service: https://email-api-${{ needs.setup.outputs.sanitized_branch }}.private.bluerelief.app"
+          echo "Commit:        ${{ needs.setup.outputs.commit_sha }}"
           echo ""
           echo "Version Prediction:"
-          echo "  Current:  v${{ steps.version_prediction.outputs.main_version }}"
-          echo "  New:      v${{ steps.version_prediction.outputs.new_version }}"
-          echo "  Type:     ${{ steps.version_prediction.outputs.bump_type }}"
+          echo "  Current:  v${{ needs.setup.outputs.main_version }}"
+          echo "  New:      v${{ needs.setup.outputs.new_version }}"
+          echo "  Type:     ${{ needs.setup.outputs.bump_type }}"
           echo ""
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
