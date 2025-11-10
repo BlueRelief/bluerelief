@@ -58,6 +58,7 @@ interface RecentEvent {
 export default function DashboardPage() {
   const { user } = useAuth();
   const [timeRange, setTimeRange] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
   const [severityFilter, setSeverityFilter] = useState("all");
   const [regions, setRegions] = useState<Array<{
@@ -76,6 +77,9 @@ export default function DashboardPage() {
   const [sentimentData, setSentimentData] = useState<SentimentTrend[]>([]);
   const [recentEvents, setRecentEvents] = useState<RecentEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastFetch, setLastFetch] = useState<Date | null>(null);
+  const [now, setNow] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Enable real-time alert notifications
   useAlertNotifications({
@@ -84,10 +88,12 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
+    let cancelled = false;
     const fetchDashboardData = async () => {
       try {
+        setIsRefreshing(true);
         setLoading(true);
-        
+
         const timeParam = timeRange || '24h';
         const [statsData, sentimentResponse, eventsResponse, incidentsData] = await Promise.all([
           apiGet<DashboardStats>(`/api/dashboard/stats?time_range=${timeParam}`),
@@ -102,19 +108,33 @@ export default function DashboardPage() {
           }>>(`/api/incidents?time_range=${timeParam}`),
         ]);
 
+        if (cancelled) return;
+
         setStats(statsData);
         setSentimentData(sentimentResponse.trends);
         setRecentEvents(eventsResponse.events);
         setRegions(incidentsData);
+        setLastFetch(new Date());
       } catch (e) {
         console.warn('Failed to fetch dashboard data:', e);
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setIsRefreshing(false);
+        }
       }
     };
 
     fetchDashboardData();
+
+    return () => { cancelled = true; };
   }, [timeRange]);
+
+  // update `now` every 60s so "X minutes ago" UI updates automatically
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(t);
+  }, []);
 
   const getRegionFromCoordinates = (lng: number, lat: number): string => {
     // North America: roughly -170 to -50 longitude, 15 to 72 latitude
@@ -199,19 +219,69 @@ export default function DashboardPage() {
     });
   }, [regions, severityFilter, locationFilter]);
 
+  const formatTimeRangeLabel = (val: string) => {
+    switch (val) {
+      case '6h': return 'Last 6 Hours';
+      case '12h': return 'Last 12 Hours';
+      case '24h': return 'Last 24 Hours (Current Events)';
+      case '48h': return 'Last 48 Hours';
+      case '7d': return 'Last 7 Days';
+      case '30d': return 'Last 30 Days';
+      default: return 'Last 24 Hours (Current Events)';
+    }
+  };
+
+  const lastUpdatedText = () => {
+    if (!lastFetch) return 'Never updated';
+    const diffMs = now.getTime() - lastFetch.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins === 1) return '1 minute ago';
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours === 1) return '1 hour ago';
+    return `${diffHours} hours ago`;
+  };
+
   return (
     <div className="space-y-4">
+      {/* Date context banner (Card for consistent UI) */}
+      <Card className="bg-slate-50">
+        <CardContent className="p-3 flex items-center justify-between">
+          <div>
+            <div className="text-sm text-muted-foreground">Showing events from</div>
+            <div className="text-base font-semibold">{formatTimeRangeLabel(timeRange || '24h')}</div>
+          </div>
+          <div className="text-right text-sm text-muted-foreground">
+            <div className="flex items-center gap-3 justify-end">
+              <div className="text-sm">
+                <span className="text-muted-foreground">Last updated:</span>{' '}
+                <span className="font-medium text-foreground">{lastUpdatedText()}</span>
+              </div>
+              {isRefreshing ? (
+                <div className="flex items-center">
+                  <div className="h-4 w-4 rounded-full border-2 border-primary/25 border-t-primary animate-spin" aria-hidden />
+                </div>
+              ) : null}
+            </div>
+            <div className="text-xs text-muted-foreground">Auto-refresh on time range change</div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <Select value={timeRange || "24h"} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Last 24 hours" />
+          <SelectTrigger className="w-[220px]">
+            <SelectValue placeholder="Last 24 Hours (Current Events)" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="6h">Last 6 hours</SelectItem>
-            <SelectItem value="12h">Last 12 hours</SelectItem>
-            <SelectItem value="24h">Last 24 hours</SelectItem>
-            <SelectItem value="48h">Last 48 hours</SelectItem>
+            <SelectItem value="6h">Last 6 Hours</SelectItem>
+            <SelectItem value="12h">Last 12 Hours</SelectItem>
+            <SelectItem value="24h">Last 24 Hours (Current Events)</SelectItem>
+            <SelectItem value="48h">Last 48 Hours</SelectItem>
+            <SelectItem value="7d">Last 7 Days</SelectItem>
+            <SelectItem value="30d">Last 30 Days</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -417,8 +487,8 @@ export default function DashboardPage() {
               <Input
                 placeholder="Search events..."
                 className="pl-8 h-8 w-[180px] text-sm"
-                value={timeRange}
-                onChange={(e) => setTimeRange(e.target.value)}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
           </div>
@@ -431,7 +501,7 @@ export default function DashboardPage() {
               </div>
             ) : recentEvents.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-sm">
-                No recent events found
+                No events found in this time frame. Try expanding your time range or location filter.
               </div>
             ) : (
               recentEvents.map((event) => (
