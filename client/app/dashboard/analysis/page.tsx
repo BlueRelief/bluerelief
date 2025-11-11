@@ -6,6 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   LineChart,
   Line,
@@ -22,7 +30,7 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { TrendingUp, AlertTriangle, Activity, Target, Filter, X, Info } from "lucide-react";
+import { TrendingUp, AlertTriangle, Activity, Target, Filter, X, Info, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { Combobox } from "@/components/ui/combobox";
 import {
   Tooltip,
@@ -83,12 +91,45 @@ const validateApiData = (data: unknown, dataType: string): boolean => {
   return true;
 };
 
+// Comparison Indicator Component
+const ComparisonIndicator = ({ 
+  current, 
+  previous, 
+  isLowerBetter = false 
+}: { 
+  current: number; 
+  previous: number; 
+  isLowerBetter?: boolean;
+}) => {
+  if (previous === 0) return null;
+  
+  const change = ((current - previous) / previous) * 100;
+  const isPositive = change > 0;
+  const isImprovement = isLowerBetter ? change < 0 : change > 0;
+  
+  return (
+    <div className={`flex items-center gap-1 text-xs ${isImprovement ? 'text-green-600' : 'text-red-600'}`}>
+      {isPositive ? (
+        <ArrowUpRight className="h-3 w-3" />
+      ) : (
+        <ArrowDownRight className="h-3 w-3" />
+      )}
+      <span className="font-medium">{Math.abs(change).toFixed(1)}%</span>
+      <span className="text-muted-foreground">vs previous</span>
+    </div>
+  );
+};
+
 export default function AnalysisPage() {
   // Filter state
   const [selectedCountry, setSelectedCountry] = useState<string>("");
   const [selectedDisasterTypes, setSelectedDisasterTypes] = useState<string[]>([]);
   const [availableCountries, setAvailableCountries] = useState<string[]>([]);
   const [availableDisasterTypes, setAvailableDisasterTypes] = useState<string[]>([]);
+  
+  // Comparison state
+  const [comparisonEnabled, setComparisonEnabled] = useState(false);
+  const [comparisonPeriod, setComparisonPeriod] = useState<'week' | 'month' | 'quarter'>('month');
   
   // State for API data
   const [keyMetrics, setKeyMetrics] = useState<{
@@ -99,6 +140,14 @@ export default function AnalysisPage() {
     tweets_recognized: number;
     prediction_accuracy: number;
     anomalies_detected: number;
+  } | null>(null);
+  
+  // Previous period metrics for comparison
+  const [previousMetrics, setPreviousMetrics] = useState<{
+    total_incidents: number;
+    high_priority: number;
+    response_rate: number;
+    avg_response_time: number;
   } | null>(null);
 
   const [trends, setTrends] = useState<Array<{
@@ -140,6 +189,38 @@ export default function AnalysisPage() {
         ? prev.filter(t => t !== type)
         : [...prev, type]
     );
+  };
+  
+  // Helper function to calculate date ranges for comparison
+  const getDateRanges = () => {
+    const now = new Date();
+    const currentEnd = now.toISOString().split('T')[0];
+    
+    let currentStart: string;
+    let previousStart: string;
+    let previousEnd: string;
+    
+    if (comparisonPeriod === 'week') {
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+      currentStart = weekAgo.toISOString().split('T')[0];
+      previousStart = twoWeeksAgo.toISOString().split('T')[0];
+      previousEnd = weekAgo.toISOString().split('T')[0];
+    } else if (comparisonPeriod === 'month') {
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const twoMonthsAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+      currentStart = monthAgo.toISOString().split('T')[0];
+      previousStart = twoMonthsAgo.toISOString().split('T')[0];
+      previousEnd = monthAgo.toISOString().split('T')[0];
+    } else { // quarter
+      const quarterAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      const twoQuartersAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+      currentStart = quarterAgo.toISOString().split('T')[0];
+      previousStart = twoQuartersAgo.toISOString().split('T')[0];
+      previousEnd = quarterAgo.toISOString().split('T')[0];
+    }
+    
+    return { currentStart, currentEnd, previousStart, previousEnd };
   };
 
   const clearFilters = () => {
@@ -234,31 +315,93 @@ export default function AnalysisPage() {
           ? selectedDisasterTypes.join(',') 
           : undefined;
 
+        // Get date ranges for comparison if enabled
+        const dateRanges = comparisonEnabled ? getDateRanges() : null;
+
         // Fetch all analysis data in parallel
-        const [
-          keyMetricsData,
-          trendsData,
-          regionalData,
-          statisticsData,
-          patternsData
-        ] = await Promise.all([
-          getAnalysisKeyMetrics(country, disasterType),
+        const promises = [
+          dateRanges 
+            ? getAnalysisKeyMetrics(country, disasterType, dateRanges.currentStart, dateRanges.currentEnd)
+            : getAnalysisKeyMetrics(country, disasterType),
           getAnalysisTrends(30, country, disasterType),
           getAnalysisRegionalAnalysis(country, disasterType),
           getAnalysisStatistics(country, disasterType),
           getAnalysisPatterns(country, disasterType)
-        ]);
+        ];
+        
+        // Fetch previous period data if comparison is enabled
+        if (comparisonEnabled && dateRanges) {
+          promises.push(
+            getAnalysisKeyMetrics(country, disasterType, dateRanges.previousStart, dateRanges.previousEnd)
+          );
+        }
+        
+        const results = await Promise.all(promises);
+        
+        const keyMetricsData = results[0] as {
+          total_incidents: number;
+          high_priority: number;
+          response_rate: number;
+          avg_response_time: number;
+          tweets_recognized: number;
+          prediction_accuracy: number;
+          anomalies_detected: number;
+        };
+        const trendsData = results[1] as Array<{
+          date: string;
+          high_priority: number;
+          medium_priority: number;
+          total_incidents: number;
+        }>;
+        const regionalData = results[2] as Array<{
+          region: string;
+          incident_count: number;
+          severity: string;
+          coordinates: [number, number];
+        }>;
+        const statisticsData = results[3] as {
+          tweets_recognized: number;
+          prediction_accuracy: number;
+          anomalies_detected: number;
+          total_affected_population: number;
+          sentiment_breakdown: {
+            positive: number;
+            negative: number;
+            neutral: number;
+            urgent: number;
+            fearful: number;
+          };
+        };
+        const patternsData = results[4] as {
+          recurring_patterns: {
+            count: number;
+          };
+          pattern_types: {
+            [key: string]: number;
+          };
+        };
+        const previousMetricsData = comparisonEnabled && results.length > 5 ? results[5] as {
+          total_incidents: number;
+          high_priority: number;
+          response_rate: number;
+          avg_response_time: number;
+        } : null;
 
         // Validate and set data
         if (validateApiData(keyMetricsData, 'Key Metrics')) {
           setKeyMetrics(keyMetricsData);
+        }
+        if (comparisonEnabled && previousMetricsData && validateApiData(previousMetricsData, 'Previous Metrics')) {
+          setPreviousMetrics(previousMetricsData);
+        } else {
+          setPreviousMetrics(null);
         }
         if (validateApiData(trendsData, 'Trends')) {
           setTrends(trendsData);
         }
         if (validateApiData(regionalData, 'Regional')) {
           // Transform API data to match component interface
-          const transformedRegions = regionalData.map(region => ({
+          const transformedRegions = regionalData.map((region) => ({
             region: region.region,
             incidents: region.incident_count,
             severity: region.severity,
@@ -282,7 +425,8 @@ export default function AnalysisPage() {
     };
 
     fetchAnalysisData();
-  }, [selectedCountry, selectedDisasterTypes]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCountry, selectedDisasterTypes, comparisonEnabled, comparisonPeriod]);
 
   if (error) {
     return (
@@ -329,7 +473,7 @@ export default function AnalysisPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Filter className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Filters</CardTitle>
+              <CardTitle className="text-lg">Filters & Comparison</CardTitle>
             </div>
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -340,6 +484,39 @@ export default function AnalysisPage() {
           </div>
         </CardHeader>
         <CardContent>
+          {/* Comparison Toggle */}
+          <div className="mb-6 p-4 border rounded-lg bg-muted/20">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={comparisonEnabled}
+                  onCheckedChange={setComparisonEnabled}
+                  id="comparison-mode"
+                />
+                <label htmlFor="comparison-mode" className="text-sm font-medium cursor-pointer">
+                  Enable Historical Comparison
+                </label>
+              </div>
+              {comparisonEnabled && (
+                <Select value={comparisonPeriod} onValueChange={(value) => setComparisonPeriod(value as 'week' | 'month' | 'quarter')}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">Week vs Week</SelectItem>
+                    <SelectItem value="month">Month vs Month</SelectItem>
+                    <SelectItem value="quarter">Quarter vs Quarter</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            {comparisonEnabled && (
+              <p className="text-xs text-muted-foreground">
+                Comparing current {comparisonPeriod} with previous {comparisonPeriod}
+              </p>
+            )}
+          </div>
+          
           <div className="flex flex-col md:flex-row gap-4">
             {/* Country Filter */}
             <div className="flex-1">
@@ -429,11 +606,20 @@ export default function AnalysisPage() {
                 {formatNumber(keyMetrics?.total_incidents)}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">
-              {keyMetrics
-                ? `${(keyMetrics.total_incidents === 0 ? 0 : (keyMetrics.high_priority / keyMetrics.total_incidents) * 100).toFixed(1)}% high priority`
-                : 'Loading...'}
-            </p>
+            <div className="flex flex-col gap-1">
+              <p className="text-xs text-muted-foreground">
+                {keyMetrics
+                  ? `${(keyMetrics.total_incidents === 0 ? 0 : (keyMetrics.high_priority / keyMetrics.total_incidents) * 100).toFixed(1)}% high priority`
+                  : 'Loading...'}
+              </p>
+              {comparisonEnabled && previousMetrics && keyMetrics && (
+                <ComparisonIndicator 
+                  current={keyMetrics.total_incidents} 
+                  previous={previousMetrics.total_incidents} 
+                  isLowerBetter={true}
+                />
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -460,11 +646,20 @@ export default function AnalysisPage() {
                 {formatNumber(keyMetrics?.high_priority)}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">
-              {keyMetrics
-                ? `${(keyMetrics.total_incidents === 0 ? 0 : (keyMetrics.high_priority / keyMetrics.total_incidents) * 100).toFixed(1)}% of total incidents`
-                : 'Loading...'}
-            </p>
+            <div className="flex flex-col gap-1">
+              <p className="text-xs text-muted-foreground">
+                {keyMetrics
+                  ? `${(keyMetrics.total_incidents === 0 ? 0 : (keyMetrics.high_priority / keyMetrics.total_incidents) * 100).toFixed(1)}% of total incidents`
+                  : 'Loading...'}
+              </p>
+              {comparisonEnabled && previousMetrics && keyMetrics && (
+                <ComparisonIndicator 
+                  current={keyMetrics.high_priority} 
+                  previous={previousMetrics.high_priority} 
+                  isLowerBetter={true}
+                />
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -491,9 +686,18 @@ export default function AnalysisPage() {
                 {formatPercentage(keyMetrics?.response_rate)}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">
-              System response efficiency
-            </p>
+            <div className="flex flex-col gap-1">
+              <p className="text-xs text-muted-foreground">
+                System response efficiency
+              </p>
+              {comparisonEnabled && previousMetrics && keyMetrics && (
+                <ComparisonIndicator 
+                  current={keyMetrics.response_rate} 
+                  previous={previousMetrics.response_rate} 
+                  isLowerBetter={false}
+                />
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -520,9 +724,18 @@ export default function AnalysisPage() {
                 {formatTime(keyMetrics?.avg_response_time)}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">
-              Average response time
-            </p>
+            <div className="flex flex-col gap-1">
+              <p className="text-xs text-muted-foreground">
+                Average response time
+              </p>
+              {comparisonEnabled && previousMetrics && keyMetrics && (
+                <ComparisonIndicator 
+                  current={keyMetrics.avg_response_time} 
+                  previous={previousMetrics.avg_response_time} 
+                  isLowerBetter={true}
+                />
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
