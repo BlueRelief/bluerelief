@@ -96,7 +96,7 @@
   --muted-foreground: oklch(0.5544 0.0407 257.4166);
   --accent: oklch(0.6128 0.1689 257.5652);
   --accent-foreground: oklch(1.0000 0 0);
-  --destructive: oklch(0.6368 0.2078 25.3313);
+  --destructive: oklch(0.5782 0.2049 27.3250);
   --border: oklch(0.9288 0.0126 255.5078);
   --input: oklch(0.9288 0.0126 255.5078);
   --ring: oklch(0.5593 0.1942 258.4556);
@@ -178,7 +178,7 @@
   --foreground: oklch(0.9851 0 0);
   --card: oklch(0.1802 0.0325 266.6248);
   --card-foreground: oklch(0.9851 0 0);
-  --popover: oklch(0.1363 0.0364 259.2010);
+  --popover: oklch(0.1802 0.0325 266.6248);
   --popover-foreground: oklch(0.9851 0 0);
   --primary: oklch(0.6128 0.1689 257.5652);
   --primary-foreground: oklch(1.0000 0 0);
@@ -188,7 +188,7 @@
   --muted-foreground: oklch(0.7107 0.0351 256.7878);
   --accent: oklch(0.5593 0.1942 258.4556);
   --accent-foreground: oklch(1.0000 0 0);
-  --destructive: oklch(0.3958 0.1331 25.7230);
+  --destructive: oklch(0.5782 0.2049 27.3250);
   --border: oklch(0.2795 0.0368 260.0310);
   --input: oklch(0.2795 0.0368 260.0310);
   --ring: oklch(0.6128 0.1689 257.5652);
@@ -205,7 +205,7 @@
   --sidebar-accent-foreground: oklch(1.0000 0 0);
   --sidebar-border: oklch(0.2795 0.0368 260.0310);
   --sidebar-ring: oklch(0.6128 0.1689 257.5652);
-  --destructive-foreground: oklch(0.9851 0 0);
+  --destructive-foreground: oklch(1.0000 0 0);
   --radius: 0.5rem;
   --font-sans: Lato;
   --font-serif: serif;
@@ -255,16 +255,16 @@
   --info-900: oklch(0.85 0.070 220);
   
   /* Severity badge colors (dark mode) */
-  --severity-critical-bg: rgb(127 29 29);
-  --severity-critical-text: rgb(254 226 226);
-  --severity-high-bg: rgb(154 52 18);
-  --severity-high-text: rgb(255 237 213);
-  --severity-medium-bg: rgb(161 98 7);
-  --severity-medium-text: rgb(254 243 199);
-  --severity-low-bg: rgb(20 83 45);
-  --severity-low-text: rgb(209 250 229);
-  --severity-info-bg: rgb(30 58 138);
-  --severity-info-text: rgb(219 234 254);
+  --severity-critical-bg: rgb(153 27 27);
+  --severity-critical-text: rgb(254 242 242);
+  --severity-high-bg: rgb(194 65 12);
+  --severity-high-text: rgb(255 247 237);
+  --severity-medium-bg: rgb(202 138 4);
+  --severity-medium-text: rgb(254 252 232);
+  --severity-low-bg: rgb(22 101 52);
+  --severity-low-text: rgb(240 253 244);
+  --severity-info-bg: rgb(29 78 216);
+  --severity-info-text: rgb(239 246 255);
 }
 
 @layer base {

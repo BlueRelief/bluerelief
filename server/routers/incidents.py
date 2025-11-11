@@ -5,7 +5,7 @@ from db_utils.db import SessionLocal, Disaster
 from datetime import datetime, timedelta
 import re
 
-router = APIRouter()
+router = APIRouter(prefix="/api/incidents", tags=["Incidents"])
 
 
 def get_db():
@@ -42,7 +42,7 @@ def get_severity_label(severity: int) -> str:
     return severity_map.get(int(severity) if severity else 1, "Info")
 
 
-@router.get("/api/incidents")
+@router.get("")
 async def list_incidents(time_range: str = "24h", db: Session = Depends(get_db)):
     """Return recent disasters for the map"""
     # Parse time range and calculate cutoff time
@@ -79,7 +79,7 @@ async def list_incidents(time_range: str = "24h", db: Session = Depends(get_db))
     return result
 
 
-@router.get("/api/incidents/nearby")
+@router.get("/nearby")
 async def get_nearby_disasters(
     lat: float, lon: float, radius_km: float = 50, db: Session = Depends(get_db)
 ):
@@ -108,7 +108,7 @@ async def get_nearby_disasters(
     ]
 
 
-@router.get("/api/incidents/{disaster_id}")
+@router.get("/{disaster_id}")
 async def get_disaster_details(disaster_id: int, db: Session = Depends(get_db)):
     """Get detailed information about a specific disaster"""
 

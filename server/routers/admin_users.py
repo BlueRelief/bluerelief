@@ -8,7 +8,7 @@ from pydantic import BaseModel, EmailStr
 from datetime import datetime, timedelta
 import sqlalchemy
 
-router = APIRouter()
+router = APIRouter(prefix="/api/admin", tags=["Admin - Users"])
 
 
 class CreateUserRequest(BaseModel):
@@ -18,7 +18,7 @@ class CreateUserRequest(BaseModel):
     is_admin: Optional[bool] = False
 
 
-@router.post('/api/admin/users')
+@router.post('/users')
 async def create_user(user_data: CreateUserRequest, request: Request, current_admin: User = Depends(get_current_admin)):
     if user_data.is_admin and not domain_validator.is_valid_admin_email(user_data.email):
         log_admin_activity(admin_id=current_admin.id if current_admin else None, action='ADMIN_CREATION_DENIED_DOMAIN', details={'email': user_data.email})
@@ -45,7 +45,7 @@ async def create_user(user_data: CreateUserRequest, request: Request, current_ad
 # --- New admin user management endpoints ---
 
 
-@router.get('/api/admin/users')
+@router.get('/users')
 def list_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
@@ -115,7 +115,7 @@ def list_users(
         db.close()
 
 
-@router.get('/api/admin/users/stats')
+@router.get('/users/stats')
 def users_stats(current_admin: User = Depends(get_current_admin)):
     db = SessionLocal()
     try:
@@ -142,7 +142,7 @@ class BulkDeleteRequest(BaseModel):
     hard_delete: Optional[bool] = False
 
 
-@router.post('/api/admin/users/bulk-delete')
+@router.post('/users/bulk-delete')
 def bulk_delete(body: BulkDeleteRequest, current_admin: User = Depends(get_current_admin)):
     db = SessionLocal()
     try:
@@ -169,7 +169,7 @@ def bulk_delete(body: BulkDeleteRequest, current_admin: User = Depends(get_curre
         db.close()
 
 
-@router.get('/api/admin/users/{user_id}')
+@router.get('/users/{user_id}')
 def get_user(user_id: str, current_admin: User = Depends(get_current_admin)):
     db = SessionLocal()
     try:
@@ -202,7 +202,7 @@ class UpdateUserRequest(BaseModel):
     account_locked_until: Optional[datetime]
 
 
-@router.put('/api/admin/users/{user_id}')
+@router.put('/users/{user_id}')
 def update_user(user_id: str, body: UpdateUserRequest, current_admin: User = Depends(get_current_admin)):
     db = SessionLocal()
     try:
@@ -251,7 +251,7 @@ def update_user(user_id: str, body: UpdateUserRequest, current_admin: User = Dep
         db.close()
 
 
-@router.delete('/api/admin/users/{user_id}')
+@router.delete('/users/{user_id}')
 def delete_user(user_id: str, hard_delete: bool = Query(False), current_admin: User = Depends(get_current_admin)):
     db = SessionLocal()
     try:

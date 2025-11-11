@@ -6,13 +6,9 @@ class AdminDomainValidator:
     def __init__(self):
         self.enabled = os.getenv('ADMIN_DOMAIN_CHECK_ENABLED', 'true').lower() == 'true'
 
-        # Parse allowed domains from env (comma-separated)
-        domains_str = os.getenv('ADMIN_ALLOWED_DOMAINS', 'bluerelief.com')
-        self.allowed_domains: Set[str] = set(
-            domain.strip().lower()
-            for domain in domains_str.split(',')
-            if domain.strip()
-        )
+        # Single allowed domain from env
+        domain = os.getenv("ADMIN_ALLOWED_DOMAIN", "bluerelief.app")
+        self.allowed_domains: Set[str] = {domain.strip().lower()}
 
         # Parse exception emails from env (comma-separated)
         exceptions_str = os.getenv('ADMIN_EXCEPTION_EMAILS', '')

@@ -41,12 +41,48 @@ export function isDemoAuthAvailable(): boolean {
   return isPreview || process.env.NODE_ENV === "development";
 }
 
+export async function loginWithEmail(email: string, password: string): Promise<void> {
+  const response = await fetch(`${API_URL}/auth/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, password }),
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Login failed");
+  }
+
+  window.location.href = "/dashboard";
+}
+
+export async function registerWithEmail(name: string, email: string, password: string): Promise<void> {
+  const response = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name, email, password }),
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Registration failed");
+  }
+
+  window.location.href = "/dashboard";
+}
+
 export async function logout() {
   try {
     const response = await apiClient("/auth/logout");
     
     if (response.ok) {
-      window.location.href = "/login";
+      window.location.href = "/";
     }
   } catch (error) {
     console.error("Logout failed:", error);

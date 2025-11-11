@@ -5,10 +5,10 @@ from middleware.admin_auth import get_current_admin
 import logging
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(prefix="/api/admin/relevancy", tags=["Admin - Relevancy"])
 relevancy_service = RelevancyService()
 
-@router.get("/api/admin/relevancy/config")
+@router.get("/config")
 async def get_relevancy_config(current_user = Depends(get_current_admin)):
     """Get current relevancy scoring configuration."""
     try:
@@ -38,7 +38,7 @@ async def get_relevancy_config(current_user = Depends(get_current_admin)):
         logger.error(f"Error getting relevancy config: {e}")
         raise HTTPException(status_code=500, detail="Error getting configuration")
 
-@router.put("/api/admin/relevancy/config")
+@router.put("/config")
 async def update_relevancy_config(
     config: Dict,
     current_user = Depends(get_current_admin)
@@ -60,7 +60,7 @@ async def update_relevancy_config(
         logger.error(f"Error updating relevancy config: {e}")
         raise HTTPException(status_code=500, detail="Error updating configuration")
 
-@router.post("/api/admin/relevancy/recalculate")
+@router.post("/recalculate")
 async def recalculate_relevancy_scores(current_user = Depends(get_current_admin)):
     """Recalculate relevancy scores for all existing posts."""
     try:

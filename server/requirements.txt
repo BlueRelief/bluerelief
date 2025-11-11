@@ -92,3 +92,4 @@ wcwidth==0.2.14
 websockets==13.1
 alembic==1.12.0
 Mako==1.2.4
+argon2-cffi==23.1.0
