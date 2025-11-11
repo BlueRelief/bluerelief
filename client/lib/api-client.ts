@@ -120,10 +120,12 @@ export async function getWeeklyCrises(days = 7, page = 1, pageSize = 10) {
 }
 
 // Analysis API functions
-export async function getAnalysisKeyMetrics(country?: string, disasterType?: string) {
+export async function getAnalysisKeyMetrics(country?: string, disasterType?: string, startDate?: string, endDate?: string) {
   const params = new URLSearchParams();
   if (country) params.append('country', country);
   if (disasterType) params.append('disaster_type', disasterType);
+  if (startDate) params.append('start_date', startDate);
+  if (endDate) params.append('end_date', endDate);
   const queryString = params.toString();
   
   return apiGet<{
