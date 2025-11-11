@@ -65,10 +65,10 @@ export function AdminLoginModal({ open, onOpenChange }: AdminLoginModalProps) {
       });
       
       window.location.href = "/admin";
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Login failed",
-        description: error.message || "Invalid credentials",
+        description: error instanceof Error ? error.message : "Invalid credentials",
         variant: "destructive",
       });
     } finally {

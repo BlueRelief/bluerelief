@@ -1,0 +1,205 @@
+name: Lint and Format
+
+on:
+  pull_request:
+    paths:
+      - 'server/**/*.py'
+      - 'client/**/*.{ts,tsx,js,jsx,mjs}'
+      - 'email-service/**/*.{ts,tsx,js}'
+      - '.github/workflows/lint-and-format.yml'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'server/**/*.py'
+      - 'client/**/*.{ts,tsx,js,jsx,mjs}'
+      - 'email-service/**/*.{ts,tsx,js}'
+
+jobs:
+  # Backend Python formatting and linting
+  format-backend:
+    name: Format & Lint Backend (Python)
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.pull_request.changed_files, 'server/') ||
+      contains(github.event.commits[0].modified, 'server/') ||
+      github.event_name == 'push'
+    
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install formatting tools
+        run: |
+          pip install black isort ruff
+
+      - name: Format with Black
+        run: |
+          black --line-length 88 --preview server/
+        continue-on-error: true
+
+      - name: Sort imports with isort
+        run: |
+          isort --profile black server/
+        continue-on-error: true
+
+      - name: Lint with Ruff (auto-fix)
+        run: |
+          ruff check --fix server/
+        continue-on-error: true
+
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add server/
+          git commit -m "style(backend): auto-format Python code with black, isort, and ruff"
+          git push
+
+  # Frontend formatting and linting
+  format-frontend:
+    name: Format & Lint Frontend (Next.js)
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.pull_request.changed_files, 'client/') ||
+      contains(github.event.commits[0].modified, 'client/') ||
+      github.event_name == 'push'
+    
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          cache-dependency-path: 'client/pnpm-lock.yaml'
+
+      - name: Install dependencies
+        working-directory: ./client
+        run: pnpm install --frozen-lockfile
+
+      - name: Add Prettier
+        working-directory: ./client
+        run: pnpm add -D prettier prettier-plugin-tailwindcss
+
+      - name: Format with Prettier
+        working-directory: ./client
+        run: |
+          npx prettier --write "**/*.{ts,tsx,js,jsx,mjs,json,css}"
+        continue-on-error: true
+
+      - name: Lint with ESLint (auto-fix)
+        working-directory: ./client
+        run: |
+          pnpm lint --fix
+        continue-on-error: true
+
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add client/
+          git commit -m "style(frontend): auto-format with prettier and eslint"
+          git push
+
+  # Email Service formatting and linting
+  format-email-service:
+    name: Format & Lint Email Service (TypeScript)
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.pull_request.changed_files, 'email-service/') ||
+      contains(github.event.commits[0].modified, 'email-service/') ||
+      github.event_name == 'push'
+    
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          cache-dependency-path: 'email-service/pnpm-lock.yaml'
+
+      - name: Install dependencies
+        working-directory: ./email-service
+        run: pnpm install --frozen-lockfile
+
+      - name: Add Prettier and ESLint
+        working-directory: ./email-service
+        run: |
+          pnpm add -D prettier @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint
+
+      - name: Format with Prettier
+        working-directory: ./email-service
+        run: |
+          npx prettier --write "src/**/*.{ts,tsx,js}"
+        continue-on-error: true
+
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add email-service/
+          git commit -m "style(email-service): auto-format with prettier"
+          git push
+

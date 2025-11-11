@@ -50,10 +50,10 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
         title: "Success",
         description: "Logged in successfully!",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Login failed",
-        description: error.message || "Invalid credentials",
+        description: error instanceof Error ? error.message : "Invalid credentials",
         variant: "destructive",
       });
     } finally {
@@ -91,10 +91,10 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
         title: "Success",
         description: "Account created successfully!",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Registration failed",
-        description: error.message || "Could not create account",
+        description: error instanceof Error ? error.message : "Could not create account",
         variant: "destructive",
       });
     } finally {
@@ -123,10 +123,10 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       });
       setShowForgotPasswordModal(false);
       setForgotEmail("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to send reset email",
+        description: error instanceof Error ? error.message : "Failed to send reset email",
         variant: "destructive",
       });
     } finally {

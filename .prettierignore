@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs
+.next
+out
+dist
+build
+*.pyc
+__pycache__
+
+# Logs
+*.log
+npm-debug.log*
+
+# Lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Environment files
+.env
+.env.*
+
+# IDE
+.vscode
+.idea
+
+# Git
+.git
+
+# Python
+*.py
+__pycache__
+*.pyc
+.venv
+venv
+
+# Misc
+.DS_Store
+coverage
+.turbo
+
