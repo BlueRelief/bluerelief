@@ -65,8 +65,56 @@ jobs:
           echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-  build:
+  # Lint and format check (must pass before building)
+  lint-check:
+    name: Lint & Format Check
     needs: version
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        check:
+          - name: backend
+            path: server
+          - name: frontend
+            path: client
+          - name: email-service
+            path: email-service
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Backend (Black)
+        if: matrix.check.name == 'backend'
+        uses: psf/black@stable
+        with:
+          options: "--check --line-length 88 --preview"
+          src: "./server"
+
+      - name: Setup Node for Frontend/Email
+        if: matrix.check.name != 'backend'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Setup pnpm
+        if: matrix.check.name != 'backend'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        if: matrix.check.name != 'backend'
+        working-directory: ./${{ matrix.check.path }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Check Prettier
+        if: matrix.check.name != 'backend'
+        working-directory: ./${{ matrix.check.path }}
+        run: pnpm format:check || (echo "❌ Code not formatted. Run 'pnpm format' locally." && exit 1)
+
+  build:
+    needs: [version, lint-check]
     runs-on: self-hosted
     strategy:
       matrix:
