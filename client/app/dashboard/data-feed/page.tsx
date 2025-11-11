@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Activity, TrendingUp, Clock, RefreshCw, ExternalLink } from "lucide-react"
+import { Activity, TrendingUp, Clock, RefreshCw, ExternalLink, CheckCircle, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/pagination"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getDataFeedStatus, getDataFeedOverview, getWeeklyCrises } from "@/lib/api-client"
+import { formatActivityTime } from "@/lib/utils"
 
 interface Feed {
   id: number
@@ -71,6 +72,8 @@ export default function DataFeedPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingCrises, setLoadingCrises] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   useEffect(() => {
     async function fetchInitialData() {
@@ -82,6 +85,7 @@ export default function DataFeedPage() {
         ])
         setFeedStatus(statusData)
         setOverview(overviewData)
+        setLastUpdated(new Date())
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred')
       } finally {
@@ -94,11 +98,15 @@ export default function DataFeedPage() {
   useEffect(() => {
     async function fetchCrises() {
       try {
+        setLoadingCrises(true)
         const crisesData = await getWeeklyCrises(7, currentPage, 10)
         setWeeklyCrises(crisesData.crises)
         setPagination(crisesData.pagination)
+        setLastUpdated(new Date())
       } catch (err) {
         console.error('Error fetching crises:', err)
+      } finally {
+        setLoadingCrises(false)
       }
     }
     fetchCrises()
@@ -117,18 +125,35 @@ export default function DataFeedPage() {
 
   const formatRelativeTime = (dateString: string | null) => {
     if (!dateString) return 'Never'
+    return formatActivityTime(dateString)
+  }
+
+  const formatCountdown = (dateString: string | null) => {
+    if (!dateString) return 'Not scheduled'
     const date = new Date(dateString)
     const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
+    const diffMs = date.getTime() - now.getTime()
     
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffMs < 0) return 'Overdue'
+    
+    const diffMins = Math.floor(diffMs / 60000)
+    if (diffMins < 1) return 'Imminent'
+    if (diffMins < 60) return `in ${diffMins}m`
     const diffHours = Math.floor(diffMins / 60)
-    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffHours < 24) return `in ${diffHours}h`
     const diffDays = Math.floor(diffHours / 24)
-    return `${diffDays}d ago`
+    return `in ${diffDays}d`
   }
+
+  const [timeNow, setTimeNow] = useState(new Date())
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeNow(new Date())
+    }, 60000)
+    
+    return () => clearInterval(interval)
+  }, [])
 
   if (error) {
     return (
@@ -150,17 +175,50 @@ export default function DataFeedPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Data Feed</h1>
-          <p className="text-muted-foreground mt-1">
-            Real-time crisis detection from Bluesky social media
-          </p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold">Data Feed</h1>
+            {loading && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                <span>Feed is updating...</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-4 mt-1">
+            <p className="text-muted-foreground">
+              Real-time crisis detection from Bluesky social media
+            </p>
+            {lastUpdated && (
+              <p className="text-sm text-muted-foreground">
+                Last updated: {formatActivityTime(lastUpdated.toISOString())}
+                <span className="hidden">{timeNow.getTime()}</span>
+              </p>
+            )}
+          </div>
         </div>
-        <Button variant="ghost" size="icon">
-          <RefreshCw className="h-4 w-4" onClick={() => window.location.reload()} />
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={() => window.location.reload()}
+          disabled={loading}
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 
       {/* Overview Stats */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardContent className="pt-6">
+                <Skeleton className="h-8 w-32 mb-2" />
+                <Skeleton className="h-6 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
@@ -225,9 +283,10 @@ export default function DataFeedPage() {
               </div>
               <div className="text-4xl">✅</div>
             </div>
-          </CardContent>
+          </CardContent>  
         </Card>
       </div>
+      )}
 
       {/* Feed Status Section - Redesigned */}
       <Card>
@@ -263,22 +322,39 @@ export default function DataFeedPage() {
               {feedStatus.feeds.map((feed) => (
                 <div 
                   key={feed.id} 
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                  className="p-4 border rounded-lg hover:bg-accent/50 transition-colors"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-2 h-2 rounded-full ${
-                      feed.status === "active" ? "bg-green-500 animate-pulse" : "bg-gray-400"
-                    }`} />
-                    <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-2 h-2 rounded-full ${
+                        feed.status === "active" ? "bg-green-500 animate-pulse" : "bg-gray-400"
+                      }`} />
                       <p className="font-medium">{feed.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Last run: {formatRelativeTime(feed.last_run)}
-                      </p>
+                    </div>
+                    <Badge variant={feed.status === "active" ? "default" : "secondary"}>
+                      {feed.status === "active" ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      <span className="text-xs">
+                        Last run: <span className="font-medium">{formatRelativeTime(feed.last_run)}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      <span className="text-xs">
+                        Next run: <span className="font-medium">{formatCountdown(feed.next_run)}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Activity className="h-3 w-3" />
+                      <span className="text-xs">
+                        Processed: <span className="font-medium">{overview?.total_tweets_processed?.toLocaleString() || 0} posts</span>
+                      </span>
                     </div>
                   </div>
-                  <Badge variant={feed.status === "active" ? "default" : "secondary"}>
-                    {feed.status === "active" ? "Active" : "Inactive"}
-                  </Badge>
                 </div>
               ))}
             </div>
@@ -294,7 +370,7 @@ export default function DataFeedPage() {
         </CardContent>
       </Card>
 
-      {/* Crisis Feed */}
+        {/* Crisis Feed */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -308,7 +384,12 @@ export default function DataFeedPage() {
           </p>
         </CardHeader>
         <CardContent>
-          {weeklyCrises.length > 0 ? (
+          {loadingCrises ? (
+            <div className="text-center py-16">
+              <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Feed is updating...</p>
+            </div>
+          ) : weeklyCrises.length > 0 ? (
             <div className="space-y-4">
               {weeklyCrises.map((crisis) => (
                 <div 
@@ -360,9 +441,10 @@ export default function DataFeedPage() {
                         <span className="font-medium">🕒</span>
                         <span>{formatDateTime(crisis.date)}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <span className="font-medium">📊</span>
-                        <span>{crisis.tweets_analyzed} posts</span>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="font-semibold">
+                          📊 {crisis.tweets_analyzed} {crisis.tweets_analyzed === 1 ? 'post' : 'posts'}
+                        </Badge>
                       </div>
                     </div>
                     {crisis.bluesky_url && (
@@ -383,10 +465,12 @@ export default function DataFeedPage() {
             </div>
           ) : (
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
-              <div className="text-6xl mb-4">📡</div>
-              <p className="text-lg font-medium text-muted-foreground">No crises detected</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Crisis events will appear here as they&apos;re detected from Bluesky
+              <CheckCircle className="h-16 w-16 mx-auto mb-4 text-green-500" />
+              <p className="text-lg font-medium text-muted-foreground">
+                No crises detected in the past week. This is good news!
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Try adjusting your time range or filters
               </p>
             </div>
           )}
