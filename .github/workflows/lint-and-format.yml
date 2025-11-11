@@ -16,6 +16,10 @@ on:
       - 'client/**/*.{ts,tsx,js,jsx,mjs}'
       - 'email-service/**/*.{ts,tsx,js}'
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   # Backend Python formatting and linting
   format-backend:
@@ -68,12 +72,12 @@ jobs:
           fi
 
       - name: Commit and push changes
-        if: steps.verify-changed-files.outputs.changed == 'true'
+        if: steps.verify-changed-files.outputs.changed == 'true' && github.event_name == 'pull_request'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add server/
-          git commit -m "style(backend): auto-format Python code with black, isort, and ruff"
+          git commit -m "style(backend): auto-format Python code with black, isort, and ruff [skip ci]"
           git push
 
   # Frontend formatting and linting
@@ -134,12 +138,12 @@ jobs:
           fi
 
       - name: Commit and push changes
-        if: steps.verify-changed-files.outputs.changed == 'true'
+        if: steps.verify-changed-files.outputs.changed == 'true' && github.event_name == 'pull_request'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add client/
-          git commit -m "style(frontend): auto-format with prettier and eslint"
+          git commit -m "style(frontend): auto-format with prettier and eslint [skip ci]"
           git push
 
   # Email Service formatting and linting
@@ -195,11 +199,11 @@ jobs:
           fi
 
       - name: Commit and push changes
-        if: steps.verify-changed-files.outputs.changed == 'true'
+        if: steps.verify-changed-files.outputs.changed == 'true' && github.event_name == 'pull_request'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add email-service/
-          git commit -m "style(email-service): auto-format with prettier"
+          git commit -m "style(email-service): auto-format with prettier [skip ci]"
           git push
 
