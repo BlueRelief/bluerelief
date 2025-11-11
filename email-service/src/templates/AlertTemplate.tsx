@@ -24,12 +24,7 @@ interface AlertTemplateProps {
 }
 
 const Logo = () => (
-  <svg
-    width="48"
-    height="48"
-    viewBox="0 0 100 100"
-    style={{ margin: '0 auto', display: 'block' }}
-  >
+  <svg width="48" height="48" viewBox="0 0 100 100" style={{ margin: '0 auto', display: 'block' }}>
     <defs>
       <mask id="logo-mask">
         <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
@@ -60,36 +55,41 @@ export const AlertTemplate = ({
   ...props
 }: AlertTemplateProps) => {
   const severityColors = {
-    'Low': { bg: '#22c55e', text: '#ffffff' },
-    'Medium': { bg: '#f59e0b', text: '#ffffff' },
-    'High': { bg: '#f97316', text: '#ffffff' },
-    'Critical': { bg: '#ef4444', text: '#ffffff' }
+    Low: { bg: '#22c55e', text: '#ffffff' },
+    Medium: { bg: '#f59e0b', text: '#ffffff' },
+    High: { bg: '#f97316', text: '#ffffff' },
+    Critical: { bg: '#ef4444', text: '#ffffff' },
   };
 
-  const severityColor = severityColors[severity as keyof typeof severityColors] || severityColors.Critical;
+  const severityColor =
+    severityColors[severity as keyof typeof severityColors] || severityColors.Critical;
 
   return (
     <Html>
       <Head />
-      <Preview>{alertType} - {location}</Preview>
+      <Preview>
+        {alertType} - {location}
+      </Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={logoContainer}>
             <Logo />
           </Section>
-          
+
           <Section style={alertHeader}>
             <Text style={alertIcon}>⚠️</Text>
             <Heading style={alertTitle}>{alertType}</Heading>
-            <Text style={{
-              ...severityBadge,
-              backgroundColor: severityColor.bg,
-              color: severityColor.text
-            }}>
+            <Text
+              style={{
+                ...severityBadge,
+                backgroundColor: severityColor.bg,
+                color: severityColor.text,
+              }}
+            >
               {severity} Priority
             </Text>
           </Section>
-          
+
           <Section style={contentSection}>
             <Section style={metaContainer}>
               <Text style={metaItem}>
@@ -101,12 +101,12 @@ export const AlertTemplate = ({
                 <span style={metaText}>{new Date(timestamp).toLocaleString()}</span>
               </Text>
             </Section>
-            
+
             <Hr style={divider} />
-            
+
             <Text style={descriptionText}>{description}</Text>
           </Section>
-          
+
           {actionText && actionUrl && (
             <Section style={buttonContainer}>
               <Link style={actionButton} href={actionUrl}>
@@ -114,14 +114,12 @@ export const AlertTemplate = ({
               </Link>
             </Section>
           )}
-          
+
           <Section style={footerSection}>
             <Text style={footerText}>
               This is an automated alert from BlueRelief Emergency Response System.
             </Text>
-            <Text style={footerText}>
-              Stay safe and follow local emergency guidelines.
-            </Text>
+            <Text style={footerText}>Stay safe and follow local emergency guidelines.</Text>
           </Section>
         </Container>
       </Body>

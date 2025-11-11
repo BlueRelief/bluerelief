@@ -24,12 +24,7 @@ interface CrisisAlertProps {
 }
 
 const Logo = () => (
-  <svg
-    width="48"
-    height="48"
-    viewBox="0 0 100 100"
-    style={{ margin: '0 auto', display: 'block' }}
-  >
+  <svg width="48" height="48" viewBox="0 0 100 100" style={{ margin: '0 auto', display: 'block' }}>
     <defs>
       <mask id="logo-mask">
         <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
@@ -60,10 +55,10 @@ export const CrisisAlertTemplate = ({
   actionUrl = '#',
 }: CrisisAlertProps) => {
   const severityConfig = {
-    'Low': { bg: '#22c55e', icon: '🟢' },
-    'Medium': { bg: '#f59e0b', icon: '🟡' },
-    'High': { bg: '#f97316', icon: '🟠' },
-    'Critical': { bg: '#ef4444', icon: '🔴' }
+    Low: { bg: '#22c55e', icon: '🟢' },
+    Medium: { bg: '#f59e0b', icon: '🟡' },
+    High: { bg: '#f97316', icon: '🟠' },
+    Critical: { bg: '#ef4444', icon: '🔴' },
   };
 
   const config = severityConfig[severity as keyof typeof severityConfig] || severityConfig.Critical;
@@ -71,28 +66,32 @@ export const CrisisAlertTemplate = ({
   return (
     <Html>
       <Head />
-      <Preview>{disasterType} - {location} - {severity} Priority</Preview>
+      <Preview>
+        {disasterType} - {location} - {severity} Priority
+      </Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={logoContainer}>
             <Logo />
           </Section>
-          
+
           <Section style={alertBanner}>
             <Text style={bannerIcon}>🚨</Text>
             <Heading style={bannerTitle}>CRISIS ALERT</Heading>
           </Section>
-          
+
           <Section style={alertHeader}>
             <Heading style={disasterTypeText}>{disasterType}</Heading>
-            <Text style={{
-              ...severityBadge,
-              backgroundColor: config.bg,
-            }}>
+            <Text
+              style={{
+                ...severityBadge,
+                backgroundColor: config.bg,
+              }}
+            >
               {config.icon} {severity} Priority
             </Text>
           </Section>
-          
+
           <Section style={contentSection}>
             <Section style={infoGrid}>
               <Section style={infoCard}>
@@ -108,15 +107,15 @@ export const CrisisAlertTemplate = ({
                 <Text style={infoValue}>🕐 {new Date(timestamp).toLocaleString()}</Text>
               </Section>
             </Section>
-            
+
             <Hr style={divider} />
-            
+
             <Section style={descriptionSection}>
               <Text style={descriptionLabel}>Situation Details</Text>
               <Text style={descriptionText}>{description}</Text>
             </Section>
           </Section>
-          
+
           {actionText && actionUrl && (
             <Section style={buttonContainer}>
               <Link style={actionButton} href={actionUrl}>
@@ -124,7 +123,7 @@ export const CrisisAlertTemplate = ({
               </Link>
             </Section>
           )}
-          
+
           <Section style={warningBox}>
             <Text style={warningTitle}>⚠️ Safety Notice</Text>
             <Text style={warningText}>

@@ -20,12 +20,7 @@ interface PasswordResetTemplateProps {
 }
 
 const Logo = () => (
-  <svg
-    width="56"
-    height="56"
-    viewBox="0 0 100 100"
-    style={{ margin: '0 auto', display: 'block' }}
-  >
+  <svg width="56" height="56" viewBox="0 0 100 100" style={{ margin: '0 auto', display: 'block' }}>
     <defs>
       <mask id="logo-mask">
         <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
@@ -68,10 +63,10 @@ export const PasswordResetTemplate = ({
 
           <Section style={contentSection}>
             <Text style={greetingText}>Hello {userName},</Text>
-            
+
             <Text style={bodyText}>
-              We received a request to reset your password for your BlueRelief account. 
-              Click the button below to create a new password:
+              We received a request to reset your password for your BlueRelief account. Click the
+              button below to create a new password:
             </Text>
 
             <Section style={buttonContainer}>
@@ -81,8 +76,8 @@ export const PasswordResetTemplate = ({
             </Section>
 
             <Text style={infoText}>
-              This link will expire in <strong>{expiresIn}</strong>. If you didn't request 
-              a password reset, you can safely ignore this email.
+              This link will expire in <strong>{expiresIn}</strong>. If you didn't request a
+              password reset, you can safely ignore this email.
             </Text>
 
             <Hr style={divider} />
@@ -98,8 +93,8 @@ export const PasswordResetTemplate = ({
 
             <Section style={warningBox}>
               <Text style={warningText}>
-                <strong>Security Note:</strong> For your account's security, never share 
-                this email or link with anyone.
+                <strong>Security Note:</strong> For your account's security, never share this email
+                or link with anyone.
               </Text>
             </Section>
           </Section>
@@ -113,11 +108,17 @@ export const PasswordResetTemplate = ({
               This is an automated message, please do not reply to this email.
             </Text>
             <Text style={footerLinks}>
-              <Link href="https://bluerelief.com/support" style={footerLink}>Support</Link>
+              <Link href="https://bluerelief.com/support" style={footerLink}>
+                Support
+              </Link>
               {' • '}
-              <Link href="https://bluerelief.com/privacy" style={footerLink}>Privacy</Link>
+              <Link href="https://bluerelief.com/privacy" style={footerLink}>
+                Privacy
+              </Link>
               {' • '}
-              <Link href="https://bluerelief.com/terms" style={footerLink}>Terms</Link>
+              <Link href="https://bluerelief.com/terms" style={footerLink}>
+                Terms
+              </Link>
             </Text>
           </Section>
         </Container>
@@ -295,4 +296,3 @@ const footerLink = {
 };
 
 export default PasswordResetTemplate;
-

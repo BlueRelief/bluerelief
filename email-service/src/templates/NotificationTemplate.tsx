@@ -23,12 +23,7 @@ interface NotificationTemplateProps {
 }
 
 const Logo = () => (
-  <svg
-    width="48"
-    height="48"
-    viewBox="0 0 100 100"
-    style={{ margin: '0 auto', display: 'block' }}
-  >
+  <svg width="48" height="48" viewBox="0 0 100 100" style={{ margin: '0 auto', display: 'block' }}>
     <defs>
       <mask id="logo-mask">
         <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
@@ -58,10 +53,10 @@ export const NotificationTemplate = ({
   ...props
 }: NotificationTemplateProps) => {
   const typeConfig = {
-    'info': { bg: '#eff6ff', border: '#93c5fd', iconBg: '#3b82f6', icon: 'ℹ️' },
-    'success': { bg: '#f0fdf4', border: '#86efac', iconBg: '#22c55e', icon: '✅' },
-    'warning': { bg: '#fffbeb', border: '#fcd34d', iconBg: '#f59e0b', icon: '⚠️' },
-    'error': { bg: '#fef2f2', border: '#fca5a5', iconBg: '#ef4444', icon: '❌' }
+    info: { bg: '#eff6ff', border: '#93c5fd', iconBg: '#3b82f6', icon: 'ℹ️' },
+    success: { bg: '#f0fdf4', border: '#86efac', iconBg: '#22c55e', icon: '✅' },
+    warning: { bg: '#fffbeb', border: '#fcd34d', iconBg: '#f59e0b', icon: '⚠️' },
+    error: { bg: '#fef2f2', border: '#fca5a5', iconBg: '#ef4444', icon: '❌' },
   };
 
   const config = typeConfig[type as keyof typeof typeConfig] || typeConfig.info;
@@ -75,31 +70,33 @@ export const NotificationTemplate = ({
           <Section style={logoContainer}>
             <Logo />
           </Section>
-          
-          <Section style={{
-            ...headerSection,
-            backgroundColor: config.bg,
-            borderColor: config.border,
-          }}>
-            <Section style={{
-              ...iconCircle,
-              backgroundColor: config.iconBg,
-            }}>
+
+          <Section
+            style={{
+              ...headerSection,
+              backgroundColor: config.bg,
+              borderColor: config.border,
+            }}
+          >
+            <Section
+              style={{
+                ...iconCircle,
+                backgroundColor: config.iconBg,
+              }}
+            >
               <Text style={typeIconText}>{config.icon}</Text>
             </Section>
             <Heading style={titleText}>{title}</Heading>
           </Section>
-          
+
           <Section style={contentSection}>
             <Section style={timestampContainer}>
-              <Text style={timestampText}>
-                🕐 {new Date(timestamp).toLocaleString()}
-              </Text>
+              <Text style={timestampText}>🕐 {new Date(timestamp).toLocaleString()}</Text>
             </Section>
-            
+
             <Text style={messageText}>{message}</Text>
           </Section>
-          
+
           {actionText && actionUrl && (
             <Section style={buttonContainer}>
               <Link style={actionButton} href={actionUrl}>
@@ -107,9 +104,9 @@ export const NotificationTemplate = ({
               </Link>
             </Section>
           )}
-          
+
           <Hr style={divider} />
-          
+
           <Section style={footerSection}>
             <Text style={footerText}>
               This notification was sent by BlueRelief Emergency Response System.

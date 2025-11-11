@@ -10,16 +10,16 @@ router.get('/', (req, res) => {
     endpoints: {
       health: '/health',
       send: 'POST /send',
-      templates: '/templates'
+      templates: '/templates',
     },
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
 router.get('/health', (req, res) => {
   const hasApiKey = !!process.env.RESEND_API_KEY;
   const emailFrom = process.env.EMAIL_FROM || 'noreply@bluerelief.com';
-  
+
   res.json({
     status: 'healthy',
     service: 'BlueRelief Email Service',
@@ -27,8 +27,8 @@ router.get('/health', (req, res) => {
     version: process.env.SERVICE_VERSION || '1.0.0',
     config: {
       hasApiKey: hasApiKey,
-      emailFrom: emailFrom
-    }
+      emailFrom: emailFrom,
+    },
   });
 });
 
@@ -41,11 +41,10 @@ router.get('/templates', (req, res) => {
       'crisis-alert',
       'weekly-digest',
       'mention-notification',
-      'welcome'
+      'welcome',
     ],
-    usage: 'POST /send with template name in body'
+    usage: 'POST /send with template name in body',
   });
 });
 
 export default router;
-
