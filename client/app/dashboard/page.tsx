@@ -597,7 +597,7 @@ export default function DashboardPage() {
                   <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[300px]">
-                  <p>Chronological list of detected crisis events from monitored sources. Click "View on Bluesky" to see original social media posts.</p>
+                  <p>Chronological list of detected crisis events from monitored sources. Click &quot;View on Bluesky&quot; to see original social media posts.</p>
                 </TooltipContent>
               </Tooltip>
             </CardTitle>
