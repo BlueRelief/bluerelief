@@ -36,7 +36,7 @@ type StartTaskResponse = {
 export default function DevToolsPage() {
   const [includeEnhanced, setIncludeEnhanced] = useState(true);
   // disaster types is not currently used on backend but kept for future extensibility
-  const [disasterTypes, setDisasterTypes] = useState<string[]>([]);
+  const [disasterTypes] = useState<string[]>([]);
   const [daysThreshold, setDaysThreshold] = useState<number>(2);
   const [tasks, setTasks] = useState<Record<string, TaskRecord>>({});
   const pollingRef = useRef<number | null>(null);

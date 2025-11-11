@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { Smile, Frown, Meh, AlertTriangle, Heart } from "lucide-react";
+import { Frown, Meh, AlertTriangle, Heart } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,

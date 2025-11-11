@@ -1,12 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Info, Activity, TrendingUp, Clock, RefreshCw, ExternalLink } from "lucide-react"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Activity, TrendingUp, Clock, RefreshCw, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -391,7 +386,7 @@ export default function DataFeedPage() {
               <div className="text-6xl mb-4">📡</div>
               <p className="text-lg font-medium text-muted-foreground">No crises detected</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Crisis events will appear here as they're detected from Bluesky
+                Crisis events will appear here as they&apos;re detected from Bluesky
               </p>
             </div>
           )}

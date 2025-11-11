@@ -19,7 +19,7 @@ export function useLogFilters(initialFilters: LogFilters = {}) {
     }
   }, []);
 
-  const updateFilter = useCallback((key: keyof LogFilters, value: any) => {
+  const updateFilter = useCallback((key: keyof LogFilters, value: string | string[] | number | undefined) => {
     setFilters((prev) => ({
       ...prev,
       [key]: value === undefined || value === '' || (Array.isArray(value) && value.length === 0) 
