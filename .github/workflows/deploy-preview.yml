@@ -128,7 +128,7 @@ jobs:
       - name: Format Frontend
         working-directory: ./client
         run: |
-          npx prettier --write "**/*.{ts,tsx,js,jsx,mjs,json,css}"
+          pnpm exec prettier --write "**/*.{ts,tsx,js,jsx,mjs,json,css}"
 
       - name: Install Email Service dependencies
         working-directory: ./email-service
@@ -137,7 +137,7 @@ jobs:
       - name: Format Email Service
         working-directory: ./email-service
         run: |
-          npx prettier --write "**/*.{ts,tsx,js}"
+          pnpm exec prettier --write "**/*.{ts,tsx,js}"
 
       - name: Commit formatting changes
         run: |
