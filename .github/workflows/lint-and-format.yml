@@ -1,12 +1,9 @@
-name: Lint and Format
+name: Lint and Format (Manual Trigger)
 
+# This workflow is for manual formatting only
+# Deployments automatically format code, so this is optional
 on:
-  pull_request:
-    paths:
-      - 'server/**/*.py'
-      - 'client/**/*.{ts,tsx,js,jsx,mjs}'
-      - 'email-service/**/*.{ts,tsx,js}'
-      - '.github/workflows/lint-and-format.yml'
+  workflow_dispatch:  # Manual trigger only
   push:
     branches:
       - main

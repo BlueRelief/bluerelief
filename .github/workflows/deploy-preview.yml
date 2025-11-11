@@ -92,56 +92,60 @@ jobs:
           echo "backend_url=https://api-${SANITIZED_BRANCH}.private.bluerelief.app" >> $GITHUB_OUTPUT
           echo "frontend_url=https://${SANITIZED_BRANCH}.private.bluerelief.app" >> $GITHUB_OUTPUT
 
-  # Lint and format check (must pass before building)
-  lint-check:
-    name: Lint & Format Check
+  # Lint and format (auto-formats before building)
+  lint-format:
+    name: Lint & Format
     needs: setup
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        check:
-          - name: backend
-            path: server
-          - name: frontend
-            path: client
-          - name: email-service
-            path: email-service
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
-      - name: Check Backend (Black)
-        if: matrix.check.name == 'backend'
+      - name: Format Backend (Black)
         uses: psf/black@stable
         with:
-          options: "--check --line-length 88 --preview"
+          options: "--line-length 88 --preview"
           src: "./server"
 
-      - name: Setup Node for Frontend/Email
-        if: matrix.check.name != 'backend'
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-
       - name: Setup pnpm
-        if: matrix.check.name != 'backend'
         uses: pnpm/action-setup@v4
         with:
           version: 10
 
-      - name: Install dependencies
-        if: matrix.check.name != 'backend'
-        working-directory: ./${{ matrix.check.path }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install Frontend dependencies
+        working-directory: ./client
         run: pnpm install --frozen-lockfile
 
-      - name: Check Prettier
-        if: matrix.check.name != 'backend'
-        working-directory: ./${{ matrix.check.path }}
-        run: pnpm format:check || (echo "❌ Code not formatted. Run 'pnpm format' locally." && exit 1)
+      - name: Format Frontend
+        uses: creyD/prettier_action@v4.3
+        with:
+          prettier_options: --write "client/**/*.{ts,tsx,js,jsx,mjs,json,css}"
+          commit_message: "style: auto-format code [skip ci]"
+          same_commit: true
+
+      - name: Install Email Service dependencies
+        working-directory: ./email-service
+        run: pnpm install --frozen-lockfile
+
+      - name: Format Email Service
+        uses: creyD/prettier_action@v4.3
+        with:
+          prettier_options: --write "email-service/**/*.{ts,tsx,js}"
+          commit_message: "style: auto-format code [skip ci]"
+          same_commit: true
 
   build:
-    needs: [setup, lint-check]
+    needs: [setup, lint-format]
     runs-on: self-hosted
     strategy:
       matrix:

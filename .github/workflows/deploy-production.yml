@@ -65,56 +65,62 @@ jobs:
           echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-  # Lint and format check (must pass before building)
-  lint-check:
-    name: Lint & Format Check
+  # Lint and format (auto-formats before building)
+  lint-format:
+    name: Lint & Format
     needs: version
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        check:
-          - name: backend
-            path: server
-          - name: frontend
-            path: client
-          - name: email-service
-            path: email-service
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check Backend (Black)
-        if: matrix.check.name == 'backend'
+      - name: Format Backend (Black)
         uses: psf/black@stable
         with:
-          options: "--check --line-length 88 --preview"
+          options: "--line-length 88 --preview"
           src: "./server"
 
-      - name: Setup Node for Frontend/Email
-        if: matrix.check.name != 'backend'
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-
       - name: Setup pnpm
-        if: matrix.check.name != 'backend'
         uses: pnpm/action-setup@v4
         with:
           version: 10
 
-      - name: Install dependencies
-        if: matrix.check.name != 'backend'
-        working-directory: ./${{ matrix.check.path }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install Frontend dependencies
+        working-directory: ./client
         run: pnpm install --frozen-lockfile
 
-      - name: Check Prettier
-        if: matrix.check.name != 'backend'
-        working-directory: ./${{ matrix.check.path }}
-        run: pnpm format:check || (echo "❌ Code not formatted. Run 'pnpm format' locally." && exit 1)
+      - name: Format Frontend
+        run: |
+          cd client
+          npx prettier --write "**/*.{ts,tsx,js,jsx,mjs,json,css}"
+
+      - name: Install Email Service dependencies
+        working-directory: ./email-service
+        run: pnpm install --frozen-lockfile
+
+      - name: Format Email Service
+        run: |
+          cd email-service
+          npx prettier --write "**/*.{ts,tsx,js}"
+
+      - name: Commit formatting changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -A
+          git diff --staged --quiet || git commit -m "style: auto-format code [skip ci]"
+          git push || true
 
   build:
-    needs: [version, lint-check]
+    needs: [version, lint-format]
     runs-on: self-hosted
     strategy:
       matrix:
