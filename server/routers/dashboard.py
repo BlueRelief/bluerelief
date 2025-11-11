@@ -217,6 +217,8 @@ def get_recent_events(time_range: str = "24h", limit: int = 10, db: Session = De
                 "severity": label,
                 "severityColor": color,
                 "bluesky_url": bluesky_url,
+                "sentiment": d.post.sentiment if d.post else None,
+                "sentiment_score": d.post.sentiment_score if d.post else None,
             }
         )
 
