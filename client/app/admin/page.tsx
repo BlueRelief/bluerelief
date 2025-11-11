@@ -18,6 +18,7 @@ import {
   type RecentCrisis,
   type RecentUser
 } from "@/lib/admin-api-client";
+import { formatActivityTime } from "@/lib/utils";
 
 interface AdminUser {
   id: string;
@@ -126,21 +127,6 @@ export default function AdminDashboard() {
     localStorage.removeItem('admin_user');
     sessionStorage.removeItem('admin_user');
     router.push('/admin/login');
-  };
-
-  const formatActivityTime = (timeStr: string | null) => {
-    if (!timeStr) return "Just now";
-    const date = new Date(timeStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-    
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${diffDays}d ago`;
   };
 
   const formatLastLogin = (timeStr: string | null) => {
