@@ -120,29 +120,34 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'pnpm'
 
       - name: Install Frontend dependencies
         working-directory: ./client
         run: pnpm install --frozen-lockfile
 
       - name: Format Frontend
-        uses: creyD/prettier_action@v4.3
-        with:
-          prettier_options: --write "client/**/*.{ts,tsx,js,jsx,mjs,json,css}"
-          commit_message: "style: auto-format code [skip ci]"
-          same_commit: true
+        working-directory: ./client
+        run: |
+          npx prettier --write "**/*.{ts,tsx,js,jsx,mjs,json,css}"
 
       - name: Install Email Service dependencies
         working-directory: ./email-service
         run: pnpm install --frozen-lockfile
 
       - name: Format Email Service
-        uses: creyD/prettier_action@v4.3
-        with:
-          prettier_options: --write "email-service/**/*.{ts,tsx,js}"
-          commit_message: "style: auto-format code [skip ci]"
-          same_commit: true
+        working-directory: ./email-service
+        run: |
+          npx prettier --write "**/*.{ts,tsx,js}"
+
+      - name: Commit formatting changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -A
+          if ! git diff --staged --quiet; then
+            git commit -m "style: auto-format code [skip ci]"
+            git push
+          fi
 
   build:
     needs: [setup, lint-format]
