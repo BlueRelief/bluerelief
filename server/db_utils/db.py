@@ -38,6 +38,8 @@ class User(Base):
     name = Column(String, nullable=False)
     picture = Column(String, nullable=True)
     password = Column(String(255), nullable=True)
+    password_reset_token = Column(String(255), nullable=True)
+    password_reset_expires = Column(DateTime, nullable=True)
     location = Column(String, nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)

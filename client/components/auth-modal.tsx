@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { loginWithGoogle, loginWithDemo, isDemoAuthAvailable, loginWithEmail, registerWithEmail } from "@/lib/auth";
+import { loginWithGoogle, loginWithDemo, isDemoAuthAvailable, loginWithEmail, registerWithEmail, forgotPassword } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthModalProps {
@@ -17,10 +17,13 @@ interface AuthModalProps {
 
 export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isForgotLoading, setIsForgotLoading] = useState(false);
   const [isDemoLoading, setIsDemoLoading] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
   const { toast } = useToast();
   const showDemoAuth = isDemoAuthAvailable();
 
@@ -108,7 +111,31 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
     loginWithDemo();
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsForgotLoading(true);
+    
+    try {
+      const message = await forgotPassword(forgotEmail);
+      toast({
+        title: "Email Sent",
+        description: message,
+      });
+      setShowForgotPasswordModal(false);
+      setForgotEmail("");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send reset email",
+        variant: "destructive",
+      });
+    } finally {
+      setIsForgotLoading(false);
+    }
+  };
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-card border">
         <DialogHeader>
@@ -224,6 +251,19 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                     ) : (
                       <Eye className="h-4 w-4" />
                     )}
+                  </Button>
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="px-0 text-sm h-auto"
+                    onClick={() => {
+                      onOpenChange(false);
+                      setShowForgotPasswordModal(true);
+                    }}
+                  >
+                    Forgot password?
                   </Button>
                 </div>
               </div>
@@ -384,6 +424,43 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
         </Tabs>
       </DialogContent>
     </Dialog>
+
+    {/* Forgot Password Modal */}
+    <Dialog open={showForgotPasswordModal} onOpenChange={setShowForgotPasswordModal}>
+      <DialogContent className="sm:max-w-md bg-card border">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-semibold">Reset Password</DialogTitle>
+          <DialogDescription>
+            Enter your email to receive a password reset link
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleForgotPassword} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="forgot-email">Email</Label>
+            <Input
+              id="forgot-email"
+              type="email"
+              placeholder="your.email@example.com"
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+              required
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={isForgotLoading}>
+            {isForgotLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              "Send Reset Link"
+            )}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 

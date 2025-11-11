@@ -7,7 +7,8 @@ import {
   MentionNotificationTemplate,
   WelcomeTemplate,
   AlertTemplate,
-  NotificationTemplate
+  NotificationTemplate,
+  PasswordResetTemplate
 } from '../templates';
 
 interface EmailData {
@@ -107,6 +108,9 @@ class EmailService {
           break;
         case 'notification':
           template = NotificationTemplate(data as any);
+          break;
+        case 'password-reset':
+          template = PasswordResetTemplate(data as any);
           break;
         case 'email':
         default:

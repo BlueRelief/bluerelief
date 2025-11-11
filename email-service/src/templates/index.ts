@@ -3,6 +3,7 @@ export { AlertTemplate } from './AlertTemplate';
 export { NotificationTemplate } from './NotificationTemplate';
 export { CrisisAlertTemplate } from './CrisisAlertTemplate';
 export { WeeklyDigestTemplate } from './WeeklyDigestTemplate';
+export { PasswordResetTemplate } from './PasswordResetTemplate';
 export { MentionNotificationTemplate } from './MentionNotificationTemplate';
 export { WelcomeTemplate } from './WelcomeTemplate';
 

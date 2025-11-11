@@ -27,7 +27,8 @@ export function validateEmailRequest(req: Request, res: Response, next: NextFunc
     'crisis-alert',
     'weekly-digest',
     'mention-notification',
-    'welcome'
+    'welcome',
+    'password-reset'
   ];
 
   if (!validTemplates.includes(template)) {
