@@ -20,6 +20,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { SentimentBadge } from "@/components/sentiment-badge";
+import { BlueskyIcon } from "@/components/bluesky-icon";
 import CrisisMap from "@/components/crisis-map";
 import { useState, useEffect, useMemo } from "react";
 import {
@@ -59,6 +61,8 @@ interface RecentEvent {
   severity: string;
   severityColor: string;
   bluesky_url?: string;
+  sentiment?: string | null;
+  sentiment_score?: number | null;
 }
 
 export default function DashboardPage() {
@@ -629,21 +633,31 @@ export default function DashboardPage() {
                   className="flex flex-col gap-2 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex items-start gap-3">
-                    <Badge 
-                      className={`text-xs px-2 py-0.5 mt-0.5 border ${
-                        event.severity.toLowerCase() === "critical" 
-                          ? "!bg-red-500/10 !text-red-700 dark:!bg-red-950/50 dark:!text-red-300"
-                          : event.severity.toLowerCase() === "high"
-                          ? "!bg-orange-500/10 !text-orange-700 dark:!bg-orange-950/50 dark:!text-orange-300"
-                          : event.severity.toLowerCase() === "medium"
-                          ? "!bg-yellow-500/10 !text-yellow-700 dark:!bg-yellow-950/50 dark:!text-yellow-300"
-                          : event.severity.toLowerCase() === "low"
-                          ? "!bg-green-500/10 !text-green-700 dark:!bg-green-950/50 dark:!text-green-300"
-                          : "!bg-blue-500/10 !text-blue-700 dark:!bg-blue-950/50 dark:!text-blue-300"
-                      }`}
-                    >
-                      {event.severity}
-                    </Badge>
+                    <div className="flex gap-1.5 mt-0.5">
+                      <Badge 
+                        className={`text-xs px-2 py-0.5 border ${
+                          event.severity.toLowerCase() === "critical" 
+                            ? "!bg-red-500/10 !text-red-700 dark:!bg-red-950/50 dark:!text-red-300"
+                            : event.severity.toLowerCase() === "high"
+                            ? "!bg-orange-500/10 !text-orange-700 dark:!bg-orange-950/50 dark:!text-orange-300"
+                            : event.severity.toLowerCase() === "medium"
+                            ? "!bg-yellow-500/10 !text-yellow-700 dark:!bg-yellow-950/50 dark:!text-yellow-300"
+                            : event.severity.toLowerCase() === "low"
+                            ? "!bg-green-500/10 !text-green-700 dark:!bg-green-950/50 dark:!text-green-300"
+                            : "!bg-blue-500/10 !text-blue-700 dark:!bg-blue-950/50 dark:!text-blue-300"
+                        }`}
+                      >
+                        {event.severity}
+                      </Badge>
+                      {event.sentiment && (
+                        <SentimentBadge
+                          sentiment={event.sentiment}
+                          sentiment_score={event.sentiment_score}
+                          showLabel={false}
+                          size="sm"
+                        />
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm truncate">{event.title}</div>
                       <div className="text-xs text-muted-foreground mb-1">{event.location}</div>
@@ -660,9 +674,7 @@ export default function DashboardPage() {
                         size="sm"
                         onClick={() => window.open(event.bluesky_url, '_blank')}
                       >
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.593-.218 1.267-.218 2.018 0 .751.08 1.425.218 2.018-.14-.017-.279-.036-.415-.056-2.67-.296-5.568.628-6.383 3.364C.378 21.729 0 26.689 0 27.377c0 .688.139 1.86.902 2.203.659.299 1.664.621 4.3-1.24C7.954 26.397 10.913 22.458 12 20.344c1.087 2.114 4.046 6.053 6.798 7.995 2.636 1.861 3.641 1.539 4.3 1.24.763-.343.902-1.515.902-2.203 0-.688-.378-5.648-.624-6.477-.815-2.736-3.713-3.66-6.383-3.364-.136.02-.275.039-.415.056.138-.593.218-1.267.218-2.018 0-.751-.08-1.425-.218-2.018.14.017.279.036.415.056 2.67.296 5.568-.628 6.383-3.364.246-.829.624-5.789.624-6.479 0-.688-.139-1.86-.902-2.203-.659-.299-1.664-.621-4.3 1.24C16.046 4.747 13.087 8.686 12 10.8z"/>
-                        </svg>
+                        <BlueskyIcon className="text-[#1185fe]" size={12} />
                         View on Bluesky
                       </Button>
                     </div>

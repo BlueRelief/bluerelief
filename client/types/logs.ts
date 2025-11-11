@@ -14,7 +14,7 @@ export interface SystemLog {
   action: string;
   status: LogStatus;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   ip_address?: string;
   user_agent?: string;
   request_method?: string;

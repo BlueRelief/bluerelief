@@ -103,6 +103,8 @@ export async function getWeeklyCrises(days = 7, page = 1, pageSize = 10) {
       tweets_analyzed: number;
       status: string;
       description: string;
+      sentiment?: string | null;
+      sentiment_score?: number | null;
       disaster_type: string;
       bluesky_url: string | null;
     }>;

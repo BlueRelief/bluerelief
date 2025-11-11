@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { SentimentBadge } from "@/components/sentiment-badge";
 import { ExternalLink, Calendar, MapPin, AlertTriangle, Users, Activity } from "lucide-react";
 import { apiGet } from "@/lib/api-client";
 
@@ -43,10 +44,13 @@ interface DisasterDetails {
   event_time?: string;
   extracted_at: string;
   bluesky_url?: string;
+  sentiment?: string | null;
+  sentiment_score?: number | null;
   post?: {
     text?: string;
     author_handle?: string;
     sentiment?: string;
+    sentiment_score?: number;
   };
 }
 
@@ -480,12 +484,21 @@ export default function CrisisMap({ regions, focusRegion }: CrisisMapProps) {
                 <div className="pr-8">
                   <div className="flex items-center justify-between gap-4">
                     <DialogTitle className="text-xl">Crisis Event Details</DialogTitle>
-                    <Badge
-                      variant={getSeverityBadgeVariant(selectedEvent.severity)}
-                      className="text-sm"
-                    >
-                      {getSeverityLabel(selectedEvent.severity)}
-                    </Badge>
+                    <div className="flex gap-2">
+                      <Badge
+                        variant={getSeverityBadgeVariant(selectedEvent.severity)}
+                        className="text-sm"
+                      >
+                        {getSeverityLabel(selectedEvent.severity)}
+                      </Badge>
+                      {selectedEvent.sentiment && (
+                        <SentimentBadge
+                          sentiment={selectedEvent.sentiment}
+                          sentiment_score={selectedEvent.sentiment_score}
+                          size="md"
+                        />
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
                     <MapPin className="h-4 w-4" />
