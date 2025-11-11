@@ -214,3 +214,18 @@ jobs:
           echo "  Type:     ${{ needs.setup.outputs.bump_type }}"
           echo ""
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  deploy-preview:
+    needs: [setup, build, deploy]
+    runs-on: self-hosted
+    if: always()
+    steps:
+      - name: Check deployment status
+        run: |
+          if [ "${{ needs.setup.result }}" != "success" ] || \
+             [ "${{ needs.build.result }}" != "success" ] || \
+             [ "${{ needs.deploy.result }}" != "success" ]; then
+            echo "❌ Deployment failed"
+            exit 1
+          fi
+          echo "✅ Preview deployment successful"

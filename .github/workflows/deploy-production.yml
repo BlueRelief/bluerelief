@@ -191,3 +191,18 @@ jobs:
           echo "Email Service: https://email-api.private.bluerelief.app"
           echo ""
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  deploy-production:
+    needs: [version, build, deploy]
+    runs-on: self-hosted
+    if: always()
+    steps:
+      - name: Check deployment status
+        run: |
+          if [ "${{ needs.version.result }}" != "success" ] || \
+             [ "${{ needs.build.result }}" != "success" ] || \
+             [ "${{ needs.deploy.result }}" != "success" ]; then
+            echo "❌ Deployment failed"
+            exit 1
+          fi
+          echo "✅ Production deployment successful"
