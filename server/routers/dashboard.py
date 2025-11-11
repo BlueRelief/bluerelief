@@ -223,6 +223,7 @@ def get_recent_events(time_range: str = "24h", limit: int = 10, db: Session = De
                 "description": description,
                 "location": d.location_name,
                 "time": rel,
+                "event_time": event_time.isoformat() if event_time else None,
                 "severity": label,
                 "severityColor": color,
                 "bluesky_url": bluesky_url,

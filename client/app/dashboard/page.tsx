@@ -32,6 +32,7 @@ import { AreaChart, Area } from "recharts";
 import { apiGet } from "@/lib/api-client";
 import { useAlertNotifications } from "@/hooks/use-alert-notifications";
 import { useAuth } from "@/hooks/use-auth";
+import { formatActivityTime } from "@/lib/utils";
 
 const chartConfig = {
   sentiment: {
@@ -58,6 +59,7 @@ interface RecentEvent {
   description: string;
   location: string;
   time: string;
+  event_time?: string | null;
   severity: string;
   severityColor: string;
   bluesky_url?: string;
@@ -665,7 +667,9 @@ export default function DashboardPage() {
                         {event.description}
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground whitespace-nowrap">{event.time}</div>
+                    <div className="text-xs text-muted-foreground whitespace-nowrap">
+                      {event.event_time ? formatActivityTime(event.event_time) : event.time}
+                    </div>
                   </div>
                   {event.bluesky_url && (
                     <div className="flex justify-end">
