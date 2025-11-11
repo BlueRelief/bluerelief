@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Info } from "lucide-react"
+import { Info, Loader2, CheckCircle, Clock, Calendar } from "lucide-react"
 import {
   Tooltip,
   TooltipContent,
@@ -26,7 +26,9 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import { Skeleton } from "@/components/ui/skeleton"
 import { getDataFeedStatus, getDataFeedOverview, getWeeklyCrises } from "@/lib/api-client"
+import { formatActivityTime } from "@/lib/utils"
 
 interface Feed {
   id: number
@@ -78,18 +80,26 @@ export default function DataFeedPage() {
   const [pagination, setPagination] = useState<Pagination | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadingCrises, setLoadingCrises] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [, setTick] = useState(0)
 
   useEffect(() => {
     async function fetchInitialData() {
       try {
+        setLoading(true)
         const [statusData, overviewData] = await Promise.all([
           getDataFeedStatus(),
           getDataFeedOverview()
         ])
         setFeedStatus(statusData)
         setOverview(overviewData)
+        setLastUpdated(new Date())
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
       }
     }
     fetchInitialData()
@@ -98,15 +108,27 @@ export default function DataFeedPage() {
   useEffect(() => {
     async function fetchCrises() {
       try {
+        setLoadingCrises(true)
         const crisesData = await getWeeklyCrises(7, currentPage, 10)
         setWeeklyCrises(crisesData.crises)
         setPagination(crisesData.pagination)
+        setLastUpdated(new Date())
       } catch (err) {
         console.error('Error fetching crises:', err)
+      } finally {
+        setLoadingCrises(false)
       }
     }
     fetchCrises()
   }, [currentPage])
+
+  useEffect(() => {
+    if (!lastUpdated) return
+    const interval = setInterval(() => {
+      setTick(t => t + 1)
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [lastUpdated])
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -122,6 +144,23 @@ export default function DataFeedPage() {
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  const formatTimeUntil = (dateString: string | null): string => {
+    if (!dateString) return "Not scheduled"
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = date.getTime() - now.getTime()
+    
+    if (diffMs < 0) return "Overdue"
+    
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+    
+    if (diffMins < 60) return `in ${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'}`
+    if (diffHours < 24) return `in ${diffHours} ${diffHours === 1 ? 'hour' : 'hours'}`
+    return `in ${diffDays} ${diffDays === 1 ? 'day' : 'days'}`
   }
 
   if (error) {
@@ -143,8 +182,22 @@ export default function DataFeedPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <h1 className="text-3xl font-bold text-foreground">Data Feed</h1>
+        <div className="flex flex-col space-y-1">
+          <div className="flex items-center space-x-3">
+            <h1 className="text-3xl font-bold text-foreground">Data Feed</h1>
+            {loading && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Feed is updating...</span>
+              </div>
+            )}
+          </div>
+          {lastUpdated && !loading && (
+            <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5" />
+              Last updated: {formatActivityTime(lastUpdated.toISOString())}
+            </p>
+          )}
           <Dialog>
             <DialogTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8 transition-all duration-200 hover:bg-muted hover:scale-105">
@@ -186,6 +239,18 @@ export default function DataFeedPage() {
       </div>
 
       {/* Overview Stats */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardContent className="pt-6">
+                <Skeleton className="h-8 w-32 mb-2" />
+                <Skeleton className="h-6 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-l-4 border-l-blue-500">
           <CardContent className="pt-6">
@@ -257,8 +322,24 @@ export default function DataFeedPage() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Feed Details Grid */}
+      {loading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[1, 2].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-32" />
+                <Skeleton className="h-4 w-48 mt-2" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-20 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Feed Status Table */}
         <Card>
@@ -277,18 +358,36 @@ export default function DataFeedPage() {
             <p className="text-sm text-muted-foreground">Monitor data collection feeds</p>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {feedStatus?.feeds?.map((feed) => (
-                <div key={feed.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                  <span className="font-medium text-sm">{feed.name}</span>
-                  <Badge
-                    variant={feed.status === "active" ? "default" : "secondary"}
-                    className="text-xs"
-                  >
-                    {feed.status === "active" ? "Active" : "Inactive"}
-                  </Badge>
-                </div>
-              ))}
+            <div className="space-y-3">
+              {feedStatus?.feeds && feedStatus.feeds.length > 0 ? (
+                feedStatus.feeds.map((feed) => (
+                  <div key={feed.id} className="p-4 rounded-lg border hover:bg-muted/50 transition-colors space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm">{feed.name}</span>
+                      <Badge
+                        variant={feed.status === "active" ? "default" : "secondary"}
+                        className="text-xs"
+                      >
+                        {feed.status === "active" ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                    {feed.last_run && (
+                      <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <Clock className="h-3 w-3" />
+                        Last run: {formatActivityTime(feed.last_run)}
+                      </div>
+                    )}
+                    {feed.next_run && (
+                      <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <Calendar className="h-3 w-3" />
+                        Next run: {formatTimeUntil(feed.next_run)}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No feed status available</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -336,6 +435,7 @@ export default function DataFeedPage() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Weekly Crisis Details */}
       <Card>
@@ -354,7 +454,22 @@ export default function DataFeedPage() {
           <p className="text-sm text-muted-foreground">Recent crisis events detected this week</p>
         </CardHeader>
         <CardContent>
-          {weeklyCrises.length > 0 ? (
+          {loadingCrises ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="p-4 border rounded-lg space-y-3">
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-4 w-full" />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : weeklyCrises.length > 0 ? (
             <div className="space-y-3">
               {weeklyCrises.map((crisis) => (
                 <div key={crisis.id} className="p-4 border rounded-lg hover:bg-accent/50 transition-colors space-y-3">
@@ -397,8 +512,8 @@ export default function DataFeedPage() {
                       <p className="font-medium">{formatDateTime(crisis.date)}</p>
                     </div>
                     <div className="text-sm">
-                      <span className="text-muted-foreground text-xs">📊 Posts</span>
-                      <p className="font-medium">{crisis.tweets_analyzed}</p>
+                      <span className="text-muted-foreground text-xs font-semibold">📊 Posts Analyzed</span>
+                      <p className="font-bold text-lg text-foreground">{crisis.tweets_analyzed.toLocaleString()}</p>
                     </div>
                     {crisis.bluesky_url && (
                       <div className="flex items-end">
@@ -419,7 +534,12 @@ export default function DataFeedPage() {
               ))}
             </div>
           ) : (
-            <p className="text-center text-muted-foreground py-12">No crises detected in the past week</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <CheckCircle className="h-12 w-12 text-green-500 mb-4 opacity-50" />
+              <p className="text-lg font-medium text-foreground mb-2">No crises detected in the past week</p>
+              <p className="text-sm text-muted-foreground mb-4">This is good news!</p>
+              <p className="text-xs text-muted-foreground">Try adjusting your time range or filters to see more results</p>
+            </div>
           )}
           
           {pagination && pagination.total_pages > 1 && (
