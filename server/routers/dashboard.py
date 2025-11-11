@@ -12,7 +12,7 @@ def parse_time_range(time_range: str) -> int:
     """Parse time range string to hours
 
     Args:
-        time_range: String like "6h", "12h", "24h", "48h"
+        time_range: String like "6h", "12h", "24h", "48h", "7d", "30d"
 
     Returns:
         Hours as integer
@@ -22,6 +22,8 @@ def parse_time_range(time_range: str) -> int:
         "12h": 12,
         "24h": 24,
         "48h": 48,
+        "7d": 24 * 7,  # 168 hours
+        "30d": 24 * 30,  # 720 hours
     }
     return time_map.get(time_range, 24)  # Default to 24 hours
 
@@ -92,7 +94,14 @@ def get_sentiment_trends(time_range: str = "24h", db: Session = Depends(get_db))
 
     # Parse time range and calculate bucket size
     hours = parse_time_range(time_range)
-    bucket_hours = max(1, hours // 8)  # Divide into ~8 buckets
+
+    # Use smarter bucketing for longer time ranges
+    if hours <= 48:
+        bucket_hours = max(1, hours // 8)  # ~8 buckets for short ranges
+    elif hours <= 168:  # 7 days
+        bucket_hours = 12  # 12-hour buckets
+    else:  # 30 days
+        bucket_hours = 24  # Daily buckets
 
     now = datetime.utcnow()
     start_time = now - timedelta(hours=hours)

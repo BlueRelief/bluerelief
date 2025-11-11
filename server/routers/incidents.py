@@ -20,7 +20,7 @@ def parse_time_range(time_range: str) -> int:
     """Parse time range string to hours
 
     Args:
-        time_range: String like "6h", "12h", "24h", "48h"
+        time_range: String like "6h", "12h", "24h", "48h", "7d", "30d"
 
     Returns:
         Hours as integer
@@ -30,6 +30,8 @@ def parse_time_range(time_range: str) -> int:
         "12h": 12,
         "24h": 24,
         "48h": 48,
+        "7d": 24 * 7,  # 168 hours
+        "30d": 24 * 30,  # 720 hours
     }
     return time_map.get(time_range, 24)  # Default to 24 hours
 

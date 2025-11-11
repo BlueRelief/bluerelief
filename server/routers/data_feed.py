@@ -141,6 +141,8 @@ def get_weekly_crises(
             "description": d.description or "",
             "disaster_type": disaster_type,
             "bluesky_url": bluesky_url,
+            "sentiment": d.post.sentiment if d.post else None,
+            "sentiment_score": d.post.sentiment_score if d.post else None,
         })
 
     return {
