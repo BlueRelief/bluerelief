@@ -33,7 +33,6 @@ import {
   LayoutGrid,
   Menu,
   BarChart3,
-  TrendingUp,
   Bell,
   Settings,
   LogOut,

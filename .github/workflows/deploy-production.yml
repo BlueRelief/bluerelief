@@ -15,8 +15,14 @@ env:
   EMAIL_SERVICE_IMAGE: bluerelief/email-service
 
 jobs:
-  deploy-production:
+  version:
     runs-on: self-hosted
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      current_version: ${{ steps.version.outputs.current_version }}
+      bump_type: ${{ steps.version.outputs.bump_type }}
+      commit_sha: ${{ steps.vars.outputs.commit_sha }}
+      image_tag: ${{ steps.vars.outputs.image_tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -26,11 +32,9 @@ jobs:
       - name: Auto-bump version
         id: version
         run: |
-          # Run auto-version script
           chmod +x scripts/auto-version.sh
           OUTPUT=$(./scripts/auto-version.sh)
           
-          # Extract values
           CURRENT_VERSION=$(echo "$OUTPUT" | grep "current_version=" | cut -d'=' -f2)
           NEW_VERSION=$(echo "$OUTPUT" | grep "new_version=" | cut -d'=' -f2)
           BUMP_TYPE=$(echo "$OUTPUT" | grep "bump_type=" | cut -d'=' -f2)
@@ -38,10 +42,6 @@ jobs:
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
-
-      - name: Version info
-        run: |
-          echo "Version ${{ steps.version.outputs.version }} will be used for this deployment"
 
       - name: Set up environment
         id: vars
@@ -65,44 +65,59 @@ jobs:
           echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Build and push backend
-        run: |
-          cd server
-          docker build \
-            -f Dockerfile.prod \
-            --build-arg VERSION=${{ steps.vars.outputs.version }} \
-            --build-arg COMMIT_SHA=${{ steps.vars.outputs.commit_sha }} \
-            -t ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} \
-            -t ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest \
-            .
-          docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
-          docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
+  build:
+    needs: version
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        service:
+          - name: backend
+            context: server
+            dockerfile: Dockerfile.prod
+            image: bluerelief/backend
+          - name: frontend
+            context: client
+            dockerfile: Dockerfile.prod
+            image: bluerelief/frontend
+          - name: email-service
+            context: email-service
+            dockerfile: Dockerfile
+            image: bluerelief/email-service
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Build and push frontend
+      - name: Build and push ${{ matrix.service.name }}
         run: |
-          cd client
+          cd ${{ matrix.service.context }}
+          
+          BUILD_ARGS="--build-arg VERSION=${{ needs.version.outputs.version }}"
+          
+          if [ "${{ matrix.service.name }}" = "backend" ]; then
+            BUILD_ARGS="$BUILD_ARGS --build-arg COMMIT_SHA=${{ needs.version.outputs.commit_sha }}"
+          elif [ "${{ matrix.service.name }}" = "frontend" ]; then
+            BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_API_URL=https://api.private.bluerelief.app"
+            BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_MAPBOX_TOKEN=${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}"
+          fi
+          
           docker build \
-            -f Dockerfile.prod \
-            --build-arg NEXT_PUBLIC_API_URL=https://api.private.bluerelief.app \
-            --build-arg NEXT_PUBLIC_MAPBOX_TOKEN=${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }} \
-            --build-arg VERSION=${{ steps.vars.outputs.version }} \
-            -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }} \
-            -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest \
+            -f ${{ matrix.service.dockerfile }} \
+            $BUILD_ARGS \
+            -t ${{ env.REGISTRY }}/${{ matrix.service.image }}:${{ needs.version.outputs.image_tag }} \
+            -t ${{ env.REGISTRY }}/${{ matrix.service.image }}:latest \
             .
-          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.image_tag }}
-          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
+          
+          docker push ${{ env.REGISTRY }}/${{ matrix.service.image }}:${{ needs.version.outputs.image_tag }}
+          docker push ${{ env.REGISTRY }}/${{ matrix.service.image }}:latest
 
-      - name: Build and push email-service
-        run: |
-          cd email-service
-          docker build \
-            -f Dockerfile \
-            --build-arg VERSION=${{ steps.vars.outputs.version }} \
-            -t ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:${{ steps.vars.outputs.image_tag }} \
-            -t ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:latest \
-            .
-          docker push ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:${{ steps.vars.outputs.image_tag }}
-          docker push ${{ env.REGISTRY }}/${{ env.EMAIL_SERVICE_IMAGE }}:latest
+  deploy:
+    needs: [version, build]
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Deploy to production
         run: |
@@ -111,16 +126,16 @@ jobs:
             -f /home/geeth/Development/k8s/helm/celery-app-chart/bluerelief-values.yaml \
             -n bluerelief \
             --create-namespace \
-            --set app.image.tag=${{ steps.vars.outputs.image_tag }} \
-            --set frontend.image.tag=${{ steps.vars.outputs.image_tag }} \
-            --set emailService.image.tag=${{ steps.vars.outputs.image_tag }} \
+            --set app.image.tag=${{ needs.version.outputs.image_tag }} \
+            --set frontend.image.tag=${{ needs.version.outputs.image_tag }} \
+            --set emailService.image.tag=${{ needs.version.outputs.image_tag }} \
             --set emailService.ingress.enabled=true \
             --set emailService.ingress.host="email-api.private.bluerelief.app" \
             --wait
 
       - name: Create Git Tag and Release
         run: |
-          VERSION="v${{ steps.vars.outputs.version }}"
+          VERSION="v${{ needs.version.outputs.version }}"
           
           # Create and push tag
           git tag -a "$VERSION" -m "Release $VERSION" || echo "Tag exists"
@@ -140,7 +155,7 @@ jobs:
           
           # Build release notes
           NOTES="## Release ${VERSION}\n\n"
-          NOTES="${NOTES}**Type:** ${{ steps.version.outputs.bump_type }} release\n\n"
+          NOTES="${NOTES}**Type:** ${{ needs.version.outputs.bump_type }} release\n\n"
           
           [ -n "$BREAKING" ] && NOTES="${NOTES}### 💥 Breaking Changes\n${BREAKING}\n\n"
           [ -n "$FEATURES" ] && NOTES="${NOTES}### ✨ New Features\n${FEATURES}\n\n"
@@ -154,8 +169,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.vars.outputs.version }}
-          name: Release v${{ steps.vars.outputs.version }}
+          tag_name: v${{ needs.version.outputs.version }}
+          name: Release v${{ needs.version.outputs.version }}
           body_path: release_notes.md
           draft: false
           prerelease: false
@@ -168,11 +183,26 @@ jobs:
           echo "✅ Production deployment complete!"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo ""
-          echo "Version:       v${{ steps.version.outputs.current_version }} → v${{ steps.vars.outputs.version }}"
-          echo "Type:          ${{ steps.version.outputs.bump_type }} release"
-          echo "Commit:        ${{ steps.vars.outputs.commit_sha }}"
+          echo "Version:       v${{ needs.version.outputs.current_version }} → v${{ needs.version.outputs.version }}"
+          echo "Type:          ${{ needs.version.outputs.bump_type }} release"
+          echo "Commit:        ${{ needs.version.outputs.commit_sha }}"
           echo "Backend:       https://api.private.bluerelief.app"
           echo "Frontend:      https://platform.private.bluerelief.app"
           echo "Email Service: https://email-api.private.bluerelief.app"
           echo ""
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  deploy-production:
+    needs: [version, build, deploy]
+    runs-on: self-hosted
+    if: always()
+    steps:
+      - name: Check deployment status
+        run: |
+          if [ "${{ needs.version.result }}" != "success" ] || \
+             [ "${{ needs.build.result }}" != "success" ] || \
+             [ "${{ needs.deploy.result }}" != "success" ]; then
+            echo "❌ Deployment failed"
+            exit 1
+          fi
+          echo "✅ Production deployment successful"

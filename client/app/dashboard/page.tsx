@@ -13,7 +13,13 @@ import {
 } from "@/components/ui/select";
 import {
   Search,
+  Info,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import CrisisMap from "@/components/crisis-map";
 import { useState, useEffect, useMemo } from "react";
 import {
@@ -245,45 +251,48 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4">
-      {/* Date context banner (Card for consistent UI) */}
-      <Card className="bg-slate-50">
-        <CardContent className="p-3 flex items-center justify-between">
-          <div>
-            <div className="text-sm text-muted-foreground">Showing events from</div>
-            <div className="text-base font-semibold">{formatTimeRangeLabel(timeRange || '24h')}</div>
-          </div>
-          <div className="text-right text-sm text-muted-foreground">
-            <div className="flex items-center gap-3 justify-end">
-              <div className="text-sm">
-                <span className="text-muted-foreground">Last updated:</span>{' '}
-                <span className="font-medium text-foreground">{lastUpdatedText()}</span>
-              </div>
-              {isRefreshing ? (
-                <div className="flex items-center">
-                  <div className="h-4 w-4 rounded-full border-2 border-primary/25 border-t-primary animate-spin" aria-hidden />
-                </div>
-              ) : null}
-            </div>
-            <div className="text-xs text-muted-foreground">Auto-refresh on time range change</div>
-          </div>
-        </CardContent>
-      </Card>
-
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <Select value={timeRange || "24h"} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-[220px]">
-            <SelectValue placeholder="Last 24 Hours (Current Events)" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="6h">Last 6 Hours</SelectItem>
-            <SelectItem value="12h">Last 12 Hours</SelectItem>
-            <SelectItem value="24h">Last 24 Hours (Current Events)</SelectItem>
-            <SelectItem value="48h">Last 48 Hours</SelectItem>
-            <SelectItem value="7d">Last 7 Days</SelectItem>
-            <SelectItem value="30d">Last 30 Days</SelectItem>
-          </SelectContent>
-        </Select>
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-sm text-muted-foreground">
+              {formatTimeRangeLabel(timeRange || '24h')}
+            </span>
+            <span className="text-sm text-muted-foreground">•</span>
+            <span className="text-sm text-muted-foreground">
+              Updated {lastUpdatedText()}
+            </span>
+            {isRefreshing && (
+              <>
+                <span className="text-sm text-muted-foreground">•</span>
+                <div className="h-3 w-3 rounded-full border-2 border-primary/25 border-t-primary animate-spin" aria-hidden />
+              </>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[300px]">
+              <p>Filter all dashboard data by time range. Changes affect metrics, map markers, and event lists.</p>
+            </TooltipContent>
+          </Tooltip>
+          <Select value={timeRange || "24h"} onValueChange={setTimeRange}>
+            <SelectTrigger className="w-[220px]">
+              <SelectValue placeholder="Last 24 Hours (Current Events)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="6h">Last 6 Hours</SelectItem>
+              <SelectItem value="12h">Last 12 Hours</SelectItem>
+              <SelectItem value="24h">Last 24 Hours (Current Events)</SelectItem>
+              <SelectItem value="48h">Last 48 Hours</SelectItem>
+              <SelectItem value="7d">Last 7 Days</SelectItem>
+              <SelectItem value="30d">Last 30 Days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
@@ -294,7 +303,17 @@ export default function DashboardPage() {
                 <div className="text-2xl font-bold">
                   {loading ? "-" : stats.total_crises.toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground">Total Crises</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  Total Crises
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[300px]">
+                      <p>Total number of detected crisis events in the selected time period from all monitored sources</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
                 <div className="text-primary text-xl">🌊</div>
@@ -310,7 +329,17 @@ export default function DashboardPage() {
                 <div className="text-2xl font-bold">
                   {loading ? "-" : stats.affected_people.toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground">Affected People</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  Affected People
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[300px]">
+                      <p>Estimated population affected by active crises based on location data and population density analysis</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
               <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
                 <div className="text-destructive text-xl">👥</div>
@@ -326,7 +355,17 @@ export default function DashboardPage() {
                 <div className="text-2xl font-bold">
                   {loading ? "-" : stats.urgent_alerts.toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground">Urgent Alerts</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  Urgent Alerts
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[300px]">
+                      <p>Number of high-severity (Level 4-5) alerts requiring immediate attention</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
               <div className="h-12 w-12 rounded-full bg-amber-500/10 flex items-center justify-center">
                 <div className="text-amber-500 text-xl">⚠️</div>
@@ -342,7 +381,17 @@ export default function DashboardPage() {
                 <div className="text-2xl font-bold">
                   {loading ? "-" : stats.active_regions.toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground">Active Regions</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  Active Regions
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[300px]">
+                      <p>Number of distinct geographic regions currently experiencing crisis events</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
               <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
                 <div className="text-green-500 text-xl">🌍</div>
@@ -356,7 +405,17 @@ export default function DashboardPage() {
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Global Crisis Heatmap</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                Global Crisis Heatmap
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[300px]">
+                    <p>Interactive map showing real-time crisis locations worldwide. Marker size indicates severity. Click markers for details.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </CardTitle>
               <div className="flex gap-2">
                 <Select value={locationFilter} onValueChange={setLocationFilter}>
                   <SelectTrigger className="w-[140px] h-7 text-xs">
@@ -398,7 +457,17 @@ export default function DashboardPage() {
         <div className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Sentiment Trends</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                Sentiment Trends
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[300px]">
+                    <p>Aggregate sentiment analysis of social media posts related to crisis events. Shows emotional tone (negative/neutral/positive) over time</p>
+                  </TooltipContent>
+                </Tooltip>
+              </CardTitle>
             </CardHeader>
             <CardContent className="pb-3">
               <ChartContainer config={chartConfig} className="h-[120px] w-full">
@@ -455,19 +524,59 @@ export default function DashboardPage() {
             <CardContent className="pb-3">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Active Monitors</span>
+                  <span className="text-sm text-muted-foreground flex items-center gap-1">
+                    Active Monitors
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[300px]">
+                        <p>24/7 automated monitoring systems tracking multiple data sources</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </span>
                   <span className="text-sm font-medium">24/7</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Data Sources</span>
+                  <span className="text-sm text-muted-foreground flex items-center gap-1">
+                    Data Sources
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[300px]">
+                        <p>Number of active data feeds (Bluesky, news APIs, etc.)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </span>
                   <span className="text-sm font-medium">5</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Avg Response</span>
+                  <span className="text-sm text-muted-foreground flex items-center gap-1">
+                    Avg Response
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[300px]">
+                        <p>Average time from crisis detection to alert generation</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </span>
                   <span className="text-sm font-medium">8.5 min</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">System Status</span>
+                  <span className="text-sm text-muted-foreground flex items-center gap-1">
+                    System Status
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[300px]">
+                        <p>Real-time health status of monitoring systems</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </span>
                   <Badge variant="outline" className="text-green-600 border-green-600 text-xs">
                     Operational
                   </Badge>
@@ -481,7 +590,17 @@ export default function DashboardPage() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Recent Events</CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2">
+              Recent Events
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[300px]">
+                  <p>Chronological list of detected crisis events from monitored sources. Click &quot;View on Bluesky&quot; to see original social media posts.</p>
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
             <div className="relative">
               <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
               <Input

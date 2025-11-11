@@ -22,8 +22,13 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { TrendingUp, AlertTriangle, Activity, Target, Filter, X } from "lucide-react";
+import { TrendingUp, AlertTriangle, Activity, Target, Filter, X, Info } from "lucide-react";
 import { Combobox } from "@/components/ui/combobox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { 
   getAnalysisKeyMetrics,
   getAnalysisTrends,
@@ -403,7 +408,17 @@ export default function AnalysisPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Incidents</CardTitle>
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+              Total Incidents
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[300px]">
+                  <p>Total number of crisis incidents detected and analyzed by the system across all regions and disaster types</p>
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
             <Activity className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
@@ -424,7 +439,17 @@ export default function AnalysisPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">High Priority</CardTitle>
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+              High Priority
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[300px]">
+                  <p>Number of high-severity incidents requiring immediate attention and rapid response from emergency services</p>
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
@@ -445,7 +470,17 @@ export default function AnalysisPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Response Rate</CardTitle>
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+              Response Rate
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[300px]">
+                  <p>Percentage of incidents that received a timely system response and alert generation. Higher is better.</p>
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
             <Target className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
@@ -464,7 +499,17 @@ export default function AnalysisPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+              Avg Response Time
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[300px]">
+                  <p>Average time between crisis detection and system alert generation. Lower times indicate faster response capabilities.</p>
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
@@ -485,7 +530,17 @@ export default function AnalysisPage() {
       {/* Crisis Trend Analysis */}
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Crisis Trend Analysis (2025)</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            Crisis Trend Analysis (2025)
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[300px]">
+                <p>Monthly trend chart showing total incidents and priority breakdown. Reference line indicates target response threshold.</p>
+              </TooltipContent>
+            </Tooltip>
+          </CardTitle>
           <p className="text-sm text-muted-foreground">
             Monthly crisis incidents by priority level
           </p>
@@ -553,7 +608,17 @@ export default function AnalysisPage() {
         {/* Regional Analysis Heatmap */}
         <Card>
           <CardHeader>
-            <CardTitle>Regional Analysis Heatmap</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Regional Analysis Heatmap
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[300px]">
+                  <p>Geographic visualization of crisis incidents by region with severity levels and incident counts</p>
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
             <p className="text-sm text-muted-foreground">
               Crisis distribution by geographic region
             </p>
@@ -634,7 +699,17 @@ export default function AnalysisPage() {
         {/* Pattern Recognition Cards - Bigger and Side by Side */}
         <Card>
           <CardHeader>
-            <CardTitle>Pattern Recognition</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Pattern Recognition
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[300px]">
+                  <p>Machine learning insights showing recurring crisis patterns, social media analysis, prediction accuracy, and detected anomalies</p>
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
             <p className="text-sm text-muted-foreground">
               AI-detected crisis patterns and anomalies
             </p>
@@ -667,7 +742,17 @@ export default function AnalysisPage() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-3">
                       <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
-                      <span className="font-medium">Tweets Recognized</span>
+                      <span className="font-medium flex items-center gap-1.5">
+                        Tweets Recognized
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[300px]">
+                            <p>Total number of social media posts analyzed by AI for crisis indicators and patterns</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </span>
                     </div>
                     {loading ? (
                       <Skeleton className="h-5 w-12" />
@@ -686,7 +771,17 @@ export default function AnalysisPage() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-3">
                       <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                      <span className="font-medium">Prediction Accuracy</span>
+                      <span className="font-medium flex items-center gap-1.5">
+                        Prediction Accuracy
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[300px]">
+                            <p>Machine learning model accuracy rate for correctly predicting and classifying crisis events</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </span>
                     </div>
                     {loading ? (
                       <Skeleton className="h-5 w-12" />
@@ -705,7 +800,17 @@ export default function AnalysisPage() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-3">
                       <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                      <span className="font-medium">Anomalies Detected</span>
+                      <span className="font-medium flex items-center gap-1.5">
+                        Anomalies Detected
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[300px]">
+                            <p>Unusual crisis patterns or data anomalies flagged by AI that require immediate human review and attention</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </span>
                     </div>
                     {loading ? (
                       <Skeleton className="h-5 w-12" />
