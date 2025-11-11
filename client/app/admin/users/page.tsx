@@ -41,7 +41,6 @@ import {
   Shield,
   UserCheck,
   UserX,
-  Loader2,
   AlertTriangle,
 } from "lucide-react";
 import {
@@ -233,12 +232,6 @@ export default function ManageUsersPage() {
   const openDeleteDialog = (user: User) => {
     setCurrentUser(user);
     setDeleteDialogOpen(true);
-  };
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "Never";
-    const date = new Date(dateStr);
-    return date.toLocaleDateString() + " " + date.toLocaleTimeString();
   };
 
   const formatRelativeTime = (dateStr: string | null) => {

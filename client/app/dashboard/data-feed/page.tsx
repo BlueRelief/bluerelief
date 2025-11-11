@@ -1,23 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Info } from "lucide-react"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Activity, TrendingUp, Clock, RefreshCw, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { SentimentBadge } from "@/components/sentiment-badge"
+import { BlueskyIcon } from "@/components/bluesky-icon"
 import {
   Pagination,
   PaginationContent,
@@ -26,6 +15,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import { Skeleton } from "@/components/ui/skeleton"
 import { getDataFeedStatus, getDataFeedOverview, getWeeklyCrises } from "@/lib/api-client"
 
 interface Feed {
@@ -60,9 +50,11 @@ interface Crisis {
   description: string
   disaster_type: string
   bluesky_url: string | null
+  sentiment?: string | null
+  sentiment_score?: number | null
 }
 
-interface Pagination {
+interface PaginationData {
   page: number
   page_size: number
   total_count: number
@@ -75,13 +67,15 @@ export default function DataFeedPage() {
   const [feedStatus, setFeedStatus] = useState<{ feeds: Feed[] } | null>(null)
   const [overview, setOverview] = useState<Overview | null>(null)
   const [weeklyCrises, setWeeklyCrises] = useState<Crisis[]>([])
-  const [pagination, setPagination] = useState<Pagination | null>(null)
+  const [pagination, setPagination] = useState<PaginationData | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchInitialData() {
       try {
+        setLoading(true)
         const [statusData, overviewData] = await Promise.all([
           getDataFeedStatus(),
           getDataFeedOverview()
@@ -90,6 +84,8 @@ export default function DataFeedPage() {
         setOverview(overviewData)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
       }
     }
     fetchInitialData()
@@ -108,11 +104,6 @@ export default function DataFeedPage() {
     fetchCrises()
   }, [currentPage])
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  }
-
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleString('en-US', { 
@@ -124,13 +115,28 @@ export default function DataFeedPage() {
     })
   }
 
+  const formatRelativeTime = (dateString: string | null) => {
+    if (!dateString) return 'Never'
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    const diffHours = Math.floor(diffMins / 60)
+    if (diffHours < 24) return `${diffHours}h ago`
+    const diffDays = Math.floor(diffHours / 24)
+    return `${diffDays}d ago`
+  }
+
   if (error) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-foreground">Data Feed</h1>
+      <div className="space-y-6 p-6">
+        <h1 className="text-3xl font-bold">Data Feed</h1>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-center text-red-600">
+            <div className="text-center text-destructive">
               <p className="text-lg font-semibold">Error loading data</p>
               <p className="text-sm mt-2">{error}</p>
             </div>
@@ -141,285 +147,248 @@ export default function DataFeedPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <h1 className="text-3xl font-bold text-foreground">Data Feed</h1>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 transition-all duration-200 hover:bg-muted hover:scale-105">
-                <Info className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors duration-200" />
-                <span className="sr-only">Information about data feeds</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Data Feed Information</DialogTitle>
-                <DialogDescription>
-                  Learn about our Bluesky Crisis Monitor and how it helps detect crises from Bluesky posts.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-3">
-                  <div className="border-l-4 border-blue-500 pl-4">
-                    <h3 className="font-semibold text-foreground">Bluesky Crisis Monitor</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Continuously monitors Bluesky for crisis-related content using advanced keyword filtering, 
-                      sentiment analysis, and geographical tagging. Our AI model analyzes posts to detect 
-                      earthquakes, floods, fires, and other disasters in real-time.
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="mt-6 p-4 bg-muted rounded-lg">
-                  <h4 className="font-semibold text-foreground mb-2">Real-time Monitoring</h4>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    BlueRelief continuously scrapes Bluesky every minute for crisis-related posts. Our custom AI model 
-                    extracts disaster information including location, severity, affected population, and disaster type. 
-                    This enables us to inform website users within seconds and promote better disaster response and recovery.
-                  </p>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+        <div>
+          <h1 className="text-3xl font-bold">Data Feed</h1>
+          <p className="text-muted-foreground mt-1">
+            Real-time crisis detection from Bluesky social media
+          </p>
         </div>
+        <Button variant="ghost" size="icon">
+          <RefreshCw className="h-4 w-4" onClick={() => window.location.reload()} />
+        </Button>
       </div>
 
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-l-4 border-l-blue-500">
+        <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1.5">
-                  Total Posts Analyzed
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[300px]">
-                      <p>Total number of Bluesky social media posts processed and analyzed by the system for crisis indicators</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </p>
-                <p className="text-2xl font-bold">
-                  {overview?.total_tweets_processed?.toLocaleString() || 0}
-                </p>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                  <Activity className="h-4 w-4" />
+                  <span>Posts Analyzed</span>
+                </div>
+                {loading ? (
+                  <Skeleton className="h-8 w-24" />
+                ) : (
+                  <p className="text-3xl font-bold">
+                    {overview?.total_tweets_processed?.toLocaleString() || 0}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">From Bluesky feeds</p>
               </div>
-              <div className="text-4xl opacity-30">📊</div>
+              <BlueskyIcon className="text-[#1185fe]" size={48} />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-destructive">
+        <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1.5">
-                  Crises Detected
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[300px]">
-                      <p>Total number of crisis events identified by analyzing Bluesky posts with AI-powered detection algorithms</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </p>
-                <p className="text-2xl font-bold text-destructive">
-                  {overview?.total_crises_detected || 0}
-                </p>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                  <TrendingUp className="h-4 w-4" />
+                  <span>Crises Detected</span>
+                </div>
+                {loading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="text-3xl font-bold text-destructive">
+                    {overview?.total_crises_detected || 0}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">Active events</p>
               </div>
-              <div className="text-4xl opacity-30">🚨</div>
+              <div className="text-4xl">🚨</div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-green-500">
+        <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1.5">
-                  Feed Status
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[300px]">
-                      <p>Real-time status of all data collection feeds. Active means continuously monitoring and processing new posts.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </p>
-                <Badge className="bg-green-500 text-white">Active</Badge>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                  <Clock className="h-4 w-4" />
+                  <span>System Status</span>
+                </div>
+                {loading ? (
+                  <Skeleton className="h-6 w-20" />
+                ) : (
+                  <Badge className="!bg-green-500 !text-white text-sm">
+                    ● Operational
+                  </Badge>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">All feeds running</p>
               </div>
-              <div className="text-4xl opacity-30">✅</div>
+              <div className="text-4xl">✅</div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Feed Details Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Feed Status Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              Feed Status
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[300px]">
-                  <p>Shows the operational status of each data collection feed including last run time and next scheduled run</p>
-                </TooltipContent>
-              </Tooltip>
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">Monitor data collection feeds</p>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {feedStatus?.feeds?.map((feed) => (
-                <div key={feed.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                  <span className="font-medium text-sm">{feed.name}</span>
-                  <Badge
-                    variant={feed.status === "active" ? "default" : "secondary"}
-                    className="text-xs"
-                  >
+      {/* Feed Status Section - Redesigned */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <BlueskyIcon className="text-[#1185fe]" size={20} />
+                Active Data Feeds
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Monitoring {feedStatus?.feeds?.length || 0} social media feed
+                {(feedStatus?.feeds?.length || 0) !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-6 w-16" />
+                </div>
+              ))}
+            </div>
+          ) : feedStatus?.feeds && feedStatus.feeds.length > 0 ? (
+            <div className="space-y-3">
+              {feedStatus.feeds.map((feed) => (
+                <div 
+                  key={feed.id} 
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-2 h-2 rounded-full ${
+                      feed.status === "active" ? "bg-green-500 animate-pulse" : "bg-gray-400"
+                    }`} />
+                    <div>
+                      <p className="font-medium">{feed.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Last run: {formatRelativeTime(feed.last_run)}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant={feed.status === "active" ? "default" : "secondary"}>
                     {feed.status === "active" ? "Active" : "Inactive"}
                   </Badge>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          ) : (
+            <div className="text-center py-12 border-2 border-dashed rounded-lg">
+              <BlueskyIcon className="text-muted-foreground mx-auto mb-4" size={48} />
+              <p className="text-sm font-medium text-muted-foreground">No feeds configured</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Data feeds will appear here once configured
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Most Recent Crisis */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              Latest Crisis
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[300px]">
-                  <p>The most recently detected crisis event with severity level and link to original Bluesky post</p>
-                </TooltipContent>
-              </Tooltip>
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">Most recently detected event</p>
-          </CardHeader>
-          <CardContent>
-            {overview?.most_recent_crisis ? (
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold text-foreground">{overview.most_recent_crisis.name}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{formatDate(overview.most_recent_crisis.date)}</p>
-                  <Badge className="mt-3 bg-destructive text-white">{overview.most_recent_crisis.severity}</Badge>
-                </div>
-                {overview.most_recent_crisis.bluesky_url && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => overview.most_recent_crisis?.bluesky_url && window.open(overview.most_recent_crisis.bluesky_url, '_blank')}
-                  >
-                    View on Bluesky
-                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.593-.218 1.267-.218 2.018 0 .751.08 1.425.218 2.018-.14-.017-.279-.036-.415-.056-2.67-.296-5.568.628-6.383 3.364C.378 21.729 0 26.689 0 27.377c0 .688.139 1.86.902 2.203.659.299 1.664.621 4.3-1.24C7.954 26.397 10.913 22.458 12 20.344c1.087 2.114 4.046 6.053 6.798 7.995 2.636 1.861 3.641 1.539 4.3 1.24.763-.343.902-1.515.902-2.203 0-.688-.378-5.648-.624-6.477-.815-2.736-3.713-3.66-6.383-3.364-.136.02-.275.039-.415.056.138-.593.218-1.267.218-2.018 0-.751-.08-1.425-.218-2.018.14.017.279.036.415.056 2.67.296 5.568-.628 6.383-3.364.246-.829.624-5.789.624-6.479 0-.688-.139-1.86-.902-2.203-.659-.299-1.664-.621-4.3 1.24C16.046 4.747 13.087 8.686 12 10.8z"/>
-                    </svg>
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-6">No recent crises detected</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Weekly Crisis Details */}
+      {/* Crisis Feed */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            Weekly Crisis Details
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[300px]">
-                <p>Complete list of all crisis events detected in the past week with details on location, type, severity, and analyzed tweets</p>
-              </TooltipContent>
-            </Tooltip>
+          <CardTitle className="flex items-center gap-2">
+            Recent Crisis Events
+            <Badge variant="secondary" className="ml-2">
+              {pagination?.total_count || 0} total
+            </Badge>
           </CardTitle>
-          <p className="text-sm text-muted-foreground">Recent crisis events detected this week</p>
+          <p className="text-sm text-muted-foreground">
+            Events detected in the past 7 days from Bluesky posts
+          </p>
         </CardHeader>
         <CardContent>
           {weeklyCrises.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {weeklyCrises.map((crisis) => (
-                <div key={crisis.id} className="p-4 border rounded-lg hover:bg-accent/50 transition-colors space-y-3">
-                  <div className="flex items-start justify-between gap-3">
+                <div 
+                  key={crisis.id} 
+                  className="group p-5 border rounded-lg hover:border-primary/50 hover:shadow-md transition-all duration-200"
+                >
+                  <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-foreground">{crisis.crisis_name}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">{crisis.description}</p>
+                      <div className="flex items-start gap-3 mb-2">
+                        <Badge variant="outline" className="mt-0.5 capitalize">
+                          {crisis.disaster_type}
+                        </Badge>
+                        <h3 className="font-semibold text-lg leading-tight">
+                          {crisis.crisis_name}
+                        </h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {crisis.description}
+                      </p>
                     </div>
-                    <div className="flex gap-2 flex-wrap justify-end">
+                    <div className="flex flex-col gap-2">
                       <Badge 
                         variant={
                           crisis.severity === "Critical" || crisis.severity === "High" 
                             ? "destructive" 
                             : "secondary"
                         }
-                        className="text-xs"
                       >
                         {crisis.severity}
                       </Badge>
-                      <Badge 
-                        variant={
-                          crisis.status === "Active" || crisis.status === "Ongoing"
-                            ? "default"
-                            : "outline"
-                        }
-                        className="text-xs"
-                      >
-                        {crisis.status}
-                      </Badge>
+                      {crisis.sentiment && (
+                        <SentimentBadge
+                          sentiment={crisis.sentiment}
+                          sentiment_score={crisis.sentiment_score}
+                          showLabel={false}
+                          size="sm"
+                        />
+                      )}
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t">
-                    <div className="text-sm">
-                      <span className="text-muted-foreground text-xs">📍 Location</span>
-                      <p className="font-medium">{crisis.region}</p>
-                    </div>
-                    <div className="text-sm">
-                      <span className="text-muted-foreground text-xs">📅 Date</span>
-                      <p className="font-medium">{formatDateTime(crisis.date)}</p>
-                    </div>
-                    <div className="text-sm">
-                      <span className="text-muted-foreground text-xs">📊 Posts</span>
-                      <p className="font-medium">{crisis.tweets_analyzed}</p>
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <div className="flex items-center gap-6 text-sm">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <span className="font-medium">📍</span>
+                        <span>{crisis.region}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <span className="font-medium">🕒</span>
+                        <span>{formatDateTime(crisis.date)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <span className="font-medium">📊</span>
+                        <span>{crisis.tweets_analyzed} posts</span>
+                      </div>
                     </div>
                     {crisis.bluesky_url && (
-                      <div className="flex items-end">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => crisis.bluesky_url && window.open(crisis.bluesky_url, '_blank')}
-                        >
-                          View Post
-                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.593-.218 1.267-.218 2.018 0 .751.08 1.425.218 2.018-.14-.017-.279-.036-.415-.056-2.67-.296-5.568.628-6.383 3.364C.378 21.729 0 26.689 0 27.377c0 .688.139 1.86.902 2.203.659.299 1.664.621 4.3-1.24C7.954 26.397 10.913 22.458 12 20.344c1.087 2.114 4.046 6.053 6.798 7.995 2.636 1.861 3.641 1.539 4.3 1.24.763-.343.902-1.515.902-2.203 0-.688-.378-5.648-.624-6.477-.815-2.736-3.713-3.66-6.383-3.364-.136.02-.275.039-.415.056.138-.593.218-1.267.218-2.018 0-.751-.08-1.425-.218-2.018.14.017.279.036.415.056 2.67.296 5.568-.628 6.383-3.364.246-.829.624-5.789.624-6.479 0-.688-.139-1.86-.902-2.203-.659-.299-1.664-.621-4.3 1.24C16.046 4.747 13.087 8.686 12 10.8z"/>
-                          </svg>
-                        </Button>
-                      </div>
+                      <Button 
+                        variant="ghost"
+                        size="sm"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => window.open(crisis.bluesky_url!, '_blank')}
+                      >
+                        <BlueskyIcon className="mr-2 text-[#1185fe]" size={16} />
+                        View on Bluesky
+                        <ExternalLink className="ml-2 h-3 w-3" />
+                      </Button>
                     )}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-center text-muted-foreground py-12">No crises detected in the past week</p>
+            <div className="text-center py-16 border-2 border-dashed rounded-lg">
+              <div className="text-6xl mb-4">📡</div>
+              <p className="text-lg font-medium text-muted-foreground">No crises detected</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Crisis events will appear here as they&apos;re detected from Bluesky
+              </p>
+            </div>
           )}
           
           {pagination && pagination.total_pages > 1 && (
