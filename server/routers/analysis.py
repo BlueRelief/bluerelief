@@ -17,9 +17,13 @@ def get_db():
 
 
 def apply_disaster_filters(
-    query, country: Optional[str] = None, disaster_type: Optional[str] = None
+    query,
+    country: Optional[str] = None,
+    disaster_type: Optional[str] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
 ):
-    """Apply country and disaster_type filters to a Disaster query"""
+    """Apply country, disaster_type, and date range filters to a Disaster query"""
     if country:
         country_lower = country.lower()
         query = query.filter(func.lower(Disaster.location_name).contains(country_lower))
@@ -31,6 +35,12 @@ def apply_disaster_filters(
         ]
         query = query.filter(or_(*type_filters))
 
+    if start_date:
+        query = query.filter(Disaster.extracted_at >= start_date)
+
+    if end_date:
+        query = query.filter(Disaster.extracted_at <= end_date)
+
     return query
 
 
@@ -40,12 +50,28 @@ def get_key_metrics(
     disaster_type: Optional[str] = Query(
         None, description="Filter by disaster type(s), comma-separated"
     ),
+    start_date: Optional[str] = Query(
+        None, description="Start date for filtering (ISO format: YYYY-MM-DD)"
+    ),
+    end_date: Optional[str] = Query(
+        None, description="End date for filtering (ISO format: YYYY-MM-DD)"
+    ),
     db: Session = Depends(get_db),
 ):
     """Get key metric cards for analysis dashboard"""
 
+    # Parse date strings to datetime objects
+    start_dt = datetime.fromisoformat(start_date) if start_date else None
+    end_dt = (
+        datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59)
+        if end_date
+        else None
+    )
+
     base_query = db.query(Disaster).filter(Disaster.archived == False)
-    filtered_query = apply_disaster_filters(base_query, country, disaster_type)
+    filtered_query = apply_disaster_filters(
+        base_query, country, disaster_type, start_dt, end_dt
+    )
 
     total_incidents = filtered_query.count()
 
@@ -55,7 +81,7 @@ def get_key_metrics(
         .filter(Disaster.severity >= 4)
     )
     high_priority_query = apply_disaster_filters(
-        high_priority_query, country, disaster_type
+        high_priority_query, country, disaster_type, start_dt, end_dt
     )
     high_priority = high_priority_query.scalar() or 0
 
@@ -64,7 +90,9 @@ def get_key_metrics(
     accurate_query = db.query(func.count(Disaster.id)).filter(
         Disaster.archived == False
     )
-    accurate_query = apply_disaster_filters(accurate_query, country, disaster_type)
+    accurate_query = apply_disaster_filters(
+        accurate_query, country, disaster_type, start_dt, end_dt
+    )
     accurate_predictions = accurate_query.scalar() or 0
 
     anomalies_query = (
@@ -72,7 +100,9 @@ def get_key_metrics(
         .filter(Disaster.archived == False)
         .filter(Disaster.severity == 5)
     )
-    anomalies_query = apply_disaster_filters(anomalies_query, country, disaster_type)
+    anomalies_query = apply_disaster_filters(
+        anomalies_query, country, disaster_type, start_dt, end_dt
+    )
     anomalies = anomalies_query.scalar() or 0
 
     return {
@@ -93,24 +123,35 @@ def get_crisis_trends(
     disaster_type: Optional[str] = Query(
         None, description="Filter by disaster type(s), comma-separated"
     ),
+    start_date: Optional[str] = Query(
+        None, description="Start date for filtering (ISO format: YYYY-MM-DD)"
+    ),
+    end_date: Optional[str] = Query(
+        None, description="End date for filtering (ISO format: YYYY-MM-DD)"
+    ),
     db: Session = Depends(get_db),
 ):
     """Get crisis trends by priority level over time"""
 
-    now = datetime.utcnow()
-    start_date = now - timedelta(days=days)
+    # If start_date and end_date are provided, use them; otherwise use days parameter
+    if start_date and end_date:
+        start_dt = datetime.fromisoformat(start_date)
+        end_dt = datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59)
+        days = (end_dt - start_dt).days
+    else:
+        now = datetime.utcnow()
+        start_dt = now - timedelta(days=days)
+        end_dt = now
 
-    base_query = (
-        db.query(Disaster)
-        .filter(Disaster.archived == False)
-        .filter(Disaster.extracted_at >= start_date)
+    base_query = db.query(Disaster).filter(Disaster.archived == False)
+    base_query = apply_disaster_filters(
+        base_query, country, disaster_type, start_dt, end_dt
     )
-    base_query = apply_disaster_filters(base_query, country, disaster_type)
     query = base_query.all()
 
     daily_data = {}
     for i in range(days + 1):
-        date = (start_date + timedelta(days=i)).date()
+        date = (start_dt + timedelta(days=i)).date()
         date_str = date.strftime("%b %d")
         daily_data[date_str] = {
             "high_priority": 0,
@@ -137,9 +178,23 @@ def get_regional_analysis(
     disaster_type: Optional[str] = Query(
         None, description="Filter by disaster type(s), comma-separated"
     ),
+    start_date: Optional[str] = Query(
+        None, description="Start date for filtering (ISO format: YYYY-MM-DD)"
+    ),
+    end_date: Optional[str] = Query(
+        None, description="End date for filtering (ISO format: YYYY-MM-DD)"
+    ),
     db: Session = Depends(get_db),
 ):
     """Get regional distribution of disasters"""
+
+    # Parse date strings to datetime objects
+    start_dt = datetime.fromisoformat(start_date) if start_date else None
+    end_dt = (
+        datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59)
+        if end_date
+        else None
+    )
 
     base_query = (
         db.query(
@@ -153,7 +208,9 @@ def get_regional_analysis(
         .filter(Disaster.location_name.isnot(None))
     )
 
-    base_query = apply_disaster_filters(base_query, country, disaster_type)
+    base_query = apply_disaster_filters(
+        base_query, country, disaster_type, start_dt, end_dt
+    )
 
     regions = (
         base_query.group_by(Disaster.location_name)
@@ -183,12 +240,28 @@ def get_patterns(
     disaster_type: Optional[str] = Query(
         None, description="Filter by disaster type(s), comma-separated"
     ),
+    start_date: Optional[str] = Query(
+        None, description="Start date for filtering (ISO format: YYYY-MM-DD)"
+    ),
+    end_date: Optional[str] = Query(
+        None, description="End date for filtering (ISO format: YYYY-MM-DD)"
+    ),
     db: Session = Depends(get_db),
 ):
     """Get AI-detected crisis patterns and anomalies"""
 
+    # Parse date strings to datetime objects
+    start_dt = datetime.fromisoformat(start_date) if start_date else None
+    end_dt = (
+        datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59)
+        if end_date
+        else None
+    )
+
     base_query = db.query(func.count(Disaster.id)).filter(Disaster.archived == False)
-    base_query = apply_disaster_filters(base_query, country, disaster_type)
+    base_query = apply_disaster_filters(
+        base_query, country, disaster_type, start_dt, end_dt
+    )
     total_active = base_query.scalar() or 0
 
     type_query = (
@@ -199,7 +272,9 @@ def get_patterns(
         .filter(Disaster.archived == False)
         .filter(Disaster.disaster_type.isnot(None))
     )
-    type_query = apply_disaster_filters(type_query, country, disaster_type)
+    type_query = apply_disaster_filters(
+        type_query, country, disaster_type, start_dt, end_dt
+    )
     disasters_by_type = type_query.group_by(Disaster.disaster_type).all()
 
     pattern_count = len(disasters_by_type)
@@ -222,16 +297,32 @@ def get_statistics(
     disaster_type: Optional[str] = Query(
         None, description="Filter by disaster type(s), comma-separated"
     ),
+    start_date: Optional[str] = Query(
+        None, description="Start date for filtering (ISO format: YYYY-MM-DD)"
+    ),
+    end_date: Optional[str] = Query(
+        None, description="End date for filtering (ISO format: YYYY-MM-DD)"
+    ),
     db: Session = Depends(get_db),
 ):
     """Get overall analysis statistics"""
+
+    # Parse date strings to datetime objects
+    start_dt = datetime.fromisoformat(start_date) if start_date else None
+    end_dt = (
+        datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59)
+        if end_date
+        else None
+    )
 
     total_posts = db.query(func.count(Post.id)).scalar() or 0
 
     disasters_query = db.query(func.count(Disaster.id)).filter(
         Disaster.archived == False
     )
-    disasters_query = apply_disaster_filters(disasters_query, country, disaster_type)
+    disasters_query = apply_disaster_filters(
+        disasters_query, country, disaster_type, start_dt, end_dt
+    )
     total_disasters = disasters_query.scalar() or 0
 
     critical_query = (
@@ -239,7 +330,9 @@ def get_statistics(
         .filter(Disaster.archived == False)
         .filter(Disaster.severity == 5)
     )
-    critical_query = apply_disaster_filters(critical_query, country, disaster_type)
+    critical_query = apply_disaster_filters(
+        critical_query, country, disaster_type, start_dt, end_dt
+    )
     critical_count = critical_query.scalar() or 0
 
     affected_query = (
@@ -247,7 +340,9 @@ def get_statistics(
         .filter(Disaster.archived == False)
         .filter(Disaster.affected_population.isnot(None))
     )
-    affected_query = apply_disaster_filters(affected_query, country, disaster_type)
+    affected_query = apply_disaster_filters(
+        affected_query, country, disaster_type, start_dt, end_dt
+    )
     total_affected = affected_query.scalar() or 0
 
     sentiment_breakdown = (
@@ -273,21 +368,37 @@ def get_statistics(
 
 
 @router.get("/time-series")
-def get_time_series(hours: int = 48, db: Session = Depends(get_db)):
+def get_time_series(
+    hours: int = 48,
+    start_date: Optional[str] = Query(
+        None, description="Start date for filtering (ISO format: YYYY-MM-DD)"
+    ),
+    end_date: Optional[str] = Query(
+        None, description="End date for filtering (ISO format: YYYY-MM-DD)"
+    ),
+    db: Session = Depends(get_db),
+):
     """Get incident time series data"""
-    
-    now = datetime.utcnow()
-    start_time = now - timedelta(hours=hours)
-    
+
+    # If start_date and end_date are provided, use them; otherwise use hours parameter
+    if start_date and end_date:
+        start_time = datetime.fromisoformat(start_date)
+        end_time = datetime.fromisoformat(end_date).replace(
+            hour=23, minute=59, second=59
+        )
+    else:
+        end_time = datetime.utcnow()
+        start_time = end_time - timedelta(hours=hours)
+
     bucket_hours = 4
     bucket_size = timedelta(hours=bucket_hours)
-    
+
     buckets = []
     current = start_time
-    while current < now:
+    while current < end_time:
         buckets.append(current)
         current += bucket_size
-    
+
     timeseries = []
     for b_start in buckets:
         b_end = b_start + bucket_size
@@ -298,7 +409,7 @@ def get_time_series(hours: int = 48, db: Session = Depends(get_db)):
             .filter(Disaster.archived == False)
             .scalar() or 0
         )
-        
+
         avg_severity = (
             db.query(func.avg(Disaster.severity))
             .filter(Disaster.extracted_at >= b_start)
@@ -306,21 +417,37 @@ def get_time_series(hours: int = 48, db: Session = Depends(get_db)):
             .filter(Disaster.archived == False)
             .scalar()
         )
-        
+
         timeseries.append({
             "timestamp": b_start.isoformat(),
             "incident_count": incident_count,
             "avg_severity": float(avg_severity) if avg_severity else 0,
         })
-    
+
     return {"timeseries": timeseries}
 
 
 @router.get("/disaster-types")
-def get_disaster_types(db: Session = Depends(get_db)):
+def get_disaster_types(
+    start_date: Optional[str] = Query(
+        None, description="Start date for filtering (ISO format: YYYY-MM-DD)"
+    ),
+    end_date: Optional[str] = Query(
+        None, description="End date for filtering (ISO format: YYYY-MM-DD)"
+    ),
+    db: Session = Depends(get_db),
+):
     """Get breakdown of disasters by type"""
-    
-    types = (
+
+    # Parse date strings to datetime objects
+    start_dt = datetime.fromisoformat(start_date) if start_date else None
+    end_dt = (
+        datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59)
+        if end_date
+        else None
+    )
+
+    query = (
         db.query(
             Disaster.disaster_type,
             func.count(Disaster.id).label("count"),
@@ -328,11 +455,20 @@ def get_disaster_types(db: Session = Depends(get_db)):
         )
         .filter(Disaster.archived == False)
         .filter(Disaster.disaster_type.isnot(None))
-        .group_by(Disaster.disaster_type)
+    )
+
+    # Apply date filters
+    if start_dt:
+        query = query.filter(Disaster.extracted_at >= start_dt)
+    if end_dt:
+        query = query.filter(Disaster.extracted_at <= end_dt)
+
+    types = (
+        query.group_by(Disaster.disaster_type)
         .order_by(func.count(Disaster.id).desc())
         .all()
     )
-    
+
     return {
         "disaster_types": [
             {
