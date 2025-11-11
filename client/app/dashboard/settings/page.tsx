@@ -27,7 +27,6 @@ export default function SettingsPage() {
   const [emailNotifications, setEmailNotifications] = useState(false)
   const [twoFactor, setTwoFactor] = useState(false)
   const [autoUpdates, setAutoUpdates] = useState(false)
-  const [allowTracking, setAllowTracking] = useState(true)
   const [shareUsageData, setShareUsageData] = useState(true)
 
   // Alert preferences
@@ -296,25 +295,6 @@ export default function SettingsPage() {
                 checked={autoUpdates}
                 onCheckedChange={setAutoUpdates}
               />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Privacy Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Privacy</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <Checkbox
-                id="allow-tracking"
-                checked={allowTracking}
-                onCheckedChange={(checked) => setAllowTracking(checked as boolean)}
-              />
-              <Label htmlFor="allow-tracking" className="text-base font-normal cursor-pointer">
-                Allow Tracking
-              </Label>
             </div>
             <div className="flex items-center space-x-3">
               <Checkbox
