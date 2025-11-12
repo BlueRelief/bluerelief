@@ -1,12 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Activity, TrendingUp, Clock, RefreshCw, ExternalLink, CheckCircle, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { SentimentBadge } from "@/components/sentiment-badge"
 import { BlueskyIcon } from "@/components/bluesky-icon"
+import { Lordicon } from "@/components/lordicon"
+import { LORDICON_SOURCES, LORDICON_SIZES } from "@/lib/lordicon-config"
 import {
   Pagination,
   PaginationContent,
@@ -157,7 +158,7 @@ export default function DataFeedPage() {
 
   if (error) {
     return (
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <h1 className="text-3xl font-bold">Data Feed</h1>
         <Card>
           <CardContent className="pt-6">
@@ -172,14 +173,19 @@ export default function DataFeedPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold">Data Feed</h1>
             {loading && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <RefreshCw className="h-4 w-4 animate-spin" />
+                <Lordicon 
+                  src={LORDICON_SOURCES.refresh}
+                  trigger="loop" 
+                  size={LORDICON_SIZES.md}
+                  colorize="currentColor"
+                />
                 <span>Feed is updating...</span>
               </div>
             )}
@@ -202,7 +208,12 @@ export default function DataFeedPage() {
           onClick={() => window.location.reload()}
           disabled={loading}
         >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          <Lordicon 
+            src={LORDICON_SOURCES.refresh}
+            trigger={loading ? "loop" : "hover"}
+            size={LORDICON_SIZES.md}
+            colorize="currentColor"
+          />
         </Button>
       </div>
 
@@ -225,7 +236,12 @@ export default function DataFeedPage() {
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                  <Activity className="h-4 w-4" />
+                  <Lordicon 
+                    src={LORDICON_SOURCES.activity}
+                    trigger="hover" 
+                    size={LORDICON_SIZES.md}
+                    colorize="currentColor"
+                  />
                   <span>Posts Analyzed</span>
                 </div>
                 {loading ? (
@@ -247,7 +263,12 @@ export default function DataFeedPage() {
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                  <TrendingUp className="h-4 w-4" />
+                  <Lordicon 
+                    src={LORDICON_SOURCES.trendingUp}
+                    trigger="hover" 
+                    size={LORDICON_SIZES.md}
+                    colorize="currentColor"
+                  />
                   <span>Crises Detected</span>
                 </div>
                 {loading ? (
@@ -259,7 +280,14 @@ export default function DataFeedPage() {
                 )}
                 <p className="text-xs text-muted-foreground mt-1">Active events</p>
               </div>
-              <div className="text-4xl">🚨</div>
+              <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
+                <Lordicon 
+                  src={LORDICON_SOURCES.alert}
+                  trigger="play-once-then-hover" 
+                  size={LORDICON_SIZES["2xl"]}
+                  colorize="currentColor"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -269,7 +297,12 @@ export default function DataFeedPage() {
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                  <Clock className="h-4 w-4" />
+                  <Lordicon 
+                    src={LORDICON_SOURCES.clock}
+                    trigger="hover" 
+                    size={LORDICON_SIZES.md}
+                    colorize="currentColor"
+                  />
                   <span>System Status</span>
                 </div>
                 {loading ? (
@@ -281,7 +314,14 @@ export default function DataFeedPage() {
                 )}
                 <p className="text-xs text-muted-foreground mt-1">All feeds running</p>
               </div>
-              <div className="text-4xl">✅</div>
+              <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-500">
+                <Lordicon 
+                  src={LORDICON_SOURCES.checkCircle}
+                  trigger="play-once-then-hover" 
+                  size={LORDICON_SIZES["2xl"]}
+                  colorize="currentColor"
+                />
+              </div>
             </div>
           </CardContent>  
         </Card>
@@ -337,19 +377,34 @@ export default function DataFeedPage() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <Clock className="h-3 w-3" />
+                      <Lordicon 
+                        src={LORDICON_SOURCES.clock}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.xs}
+                        colorize="currentColor"
+                      />
                       <span className="text-xs">
                         Last run: <span className="font-medium">{formatRelativeTime(feed.last_run)}</span>
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
+                      <Lordicon 
+                        src={LORDICON_SOURCES.calendar}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.xs}
+                        colorize="currentColor"
+                      />
                       <span className="text-xs">
                         Next run: <span className="font-medium">{formatCountdown(feed.next_run)}</span>
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <Activity className="h-3 w-3" />
+                      <Lordicon 
+                        src={LORDICON_SOURCES.activity}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.xs}
+                        colorize="currentColor"
+                      />
                       <span className="text-xs">
                         Processed: <span className="font-medium">{overview?.total_tweets_processed?.toLocaleString() || 0} posts</span>
                       </span>
@@ -386,7 +441,14 @@ export default function DataFeedPage() {
         <CardContent>
           {loadingCrises ? (
             <div className="text-center py-16">
-              <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+              <div className="flex justify-center mb-4 text-muted-foreground">
+                <Lordicon 
+                  src={LORDICON_SOURCES.refresh}
+                  trigger="loop" 
+                  size={LORDICON_SIZES["3xl"]}
+                  colorize="currentColor"
+                />
+              </div>
               <p className="text-sm text-muted-foreground">Feed is updating...</p>
             </div>
           ) : weeklyCrises.length > 0 ? (
@@ -434,16 +496,32 @@ export default function DataFeedPage() {
                   <div className="flex items-center justify-between pt-4 border-t">
                     <div className="flex items-center gap-6 text-sm">
                       <div className="flex items-center gap-2 text-muted-foreground">
-                        <span className="font-medium">📍</span>
+                        <Lordicon 
+                          src={LORDICON_SOURCES.location}
+                          trigger="hover" 
+                          size={LORDICON_SIZES.md}
+                          colorize="currentColor"
+                        />
                         <span>{crisis.region}</span>
                       </div>
                       <div className="flex items-center gap-2 text-muted-foreground">
-                        <span className="font-medium">🕒</span>
+                        <Lordicon 
+                          src={LORDICON_SOURCES.clock}
+                          trigger="hover" 
+                          size={LORDICON_SIZES.md}
+                          colorize="currentColor"
+                        />
                         <span>{formatDateTime(crisis.date)}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="font-semibold">
-                          📊 {crisis.tweets_analyzed} {crisis.tweets_analyzed === 1 ? 'post' : 'posts'}
+                        <Badge variant="secondary" className="flex items-center gap-1.5 font-semibold">
+                          <Lordicon 
+                            src={LORDICON_SOURCES.document}
+                            trigger="hover" 
+                            size={LORDICON_SIZES.sm}
+                            colorize="currentColor"
+                          />
+                          {crisis.tweets_analyzed} {crisis.tweets_analyzed === 1 ? 'post' : 'posts'}
                         </Badge>
                       </div>
                     </div>
@@ -456,7 +534,12 @@ export default function DataFeedPage() {
                       >
                         <BlueskyIcon className="mr-2 text-[#1185fe]" size={16} />
                         View on Bluesky
-                        <ExternalLink className="ml-2 h-3 w-3" />
+                        <Lordicon 
+                          src={LORDICON_SOURCES.externalLink}
+                          trigger="hover" 
+                          size={LORDICON_SIZES.xs}
+                          colorize="currentColor"
+                        />
                       </Button>
                     )}
                   </div>
@@ -465,7 +548,14 @@ export default function DataFeedPage() {
             </div>
           ) : (
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
-              <CheckCircle className="h-16 w-16 mx-auto mb-4 text-green-500" />
+              <div className="flex justify-center mb-4 text-green-500">
+                <Lordicon 
+                  src={LORDICON_SOURCES.checkCircle}
+                  trigger="play-once-then-hover" 
+                  size={LORDICON_SIZES["5xl"]}
+                  colorize="currentColor"
+                />
+              </div>
               <p className="text-lg font-medium text-muted-foreground">
                 No crises detected in the past week. This is good news!
               </p>

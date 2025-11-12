@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, LogOut, Users, Settings, Activity, Clock, AlertTriangle, TrendingUp, CheckCircle2, XCircle, Search, Wrench, MapPin, Sun, Moon } from "lucide-react";
+import { ThemeSwitcher } from "@/components/theme-switcher";
+import { Shield, LogOut, Users, Settings, Activity, Clock, AlertTriangle, TrendingUp, CheckCircle2, XCircle, Search, Wrench, MapPin } from "lucide-react";
 import { 
   getAdminStats, 
   getRecentCrises, 
@@ -19,6 +19,7 @@ import {
   type RecentUser
 } from "@/lib/admin-api-client";
 import { formatActivityTime } from "@/lib/utils";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 interface AdminUser {
   id: string;
@@ -27,8 +28,6 @@ interface AdminUser {
 }
 
 export default function AdminDashboard() {
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -39,10 +38,6 @@ export default function AdminDashboard() {
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -167,7 +162,7 @@ export default function AdminDashboard() {
   if (loading && !adminUser) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
+        <LoadingSpinner size={64} />
       </div>
     );
   }
@@ -186,29 +181,7 @@ export default function AdminDashboard() {
             </Badge>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => {
-                const currentTheme = theme || "system";
-                if (currentTheme === "dark") {
-                  setTheme("light");
-                } else if (currentTheme === "light") {
-                  setTheme("dark");
-                } else {
-                  // If system, toggle to opposite of current resolved theme
-                  const isDark = document.documentElement.classList.contains("dark");
-                  setTheme(isDark ? "light" : "dark");
-                }
-              }}
-              aria-label="Toggle theme"
-            >
-              {mounted && theme === "dark" ? (
-                <Sun className="h-4 w-4" aria-hidden="true" />
-              ) : (
-                <Moon className="h-4 w-4" aria-hidden="true" />
-              )}
-            </Button>
+            <ThemeSwitcher />
             <Button variant="outline" onClick={handleLogout} aria-label="Log out from admin dashboard">
               <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
               Logout

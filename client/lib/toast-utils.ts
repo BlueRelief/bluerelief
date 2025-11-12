@@ -36,23 +36,7 @@ export const showCrisisAlert = (alert: CrisisAlert, onViewDetails?: () => void) 
     return "info";
   };
 
-  // Get appropriate icon/emoji
-  const getAlertIcon = (alertType: string, severity: AlertSeverity) => {
-    if (severity >= ALERT_SEVERITY.CRITICAL) return "🚨";
-    if (severity >= ALERT_SEVERITY.HIGH) return "⚠️";
-    
-    switch (alertType.toLowerCase()) {
-      case "earthquake": return "🌍";
-      case "hurricane": return "🌀";
-      case "flood": return "🌊";
-      case "wildfire": return "🔥";
-      case "tornado": return "🌪️";
-      default: return "📢";
-    }
-  };
-
   const toastType = getToastType(alert.severity);
-  const icon = getAlertIcon(alert.alert_type, alert.severity);
   const location = alert.alert_metadata?.location || "Unknown Location";
   
   // Format timestamp
@@ -64,7 +48,7 @@ export const showCrisisAlert = (alert: CrisisAlert, onViewDetails?: () => void) 
     : alert.message;
 
   const toastConfig = {
-    description: `${icon} ${truncatedMessage}\n📍 ${location} • ${timestamp}`,
+    description: `${truncatedMessage}\nLocation: ${location} • ${timestamp}`,
     action: onViewDetails ? {
       label: "View Details",
       onClick: onViewDetails,
@@ -75,14 +59,14 @@ export const showCrisisAlert = (alert: CrisisAlert, onViewDetails?: () => void) 
   // Show appropriate toast based on severity
   switch (toastType) {
     case "error":
-      toast.error(`🚨 CRISIS ALERT: ${alert.title}`, toastConfig);
+      toast.error(`CRISIS ALERT: ${alert.title}`, toastConfig);
       break;
     case "warning":
-      toast.warning(`⚠️ ${alert.title}`, toastConfig);
+      toast.warning(alert.title, toastConfig);
       break;
     case "info":
     default:
-      toast.info(`📢 ${alert.title}`, toastConfig);
+      toast.info(alert.title, toastConfig);
       break;
   }
 };

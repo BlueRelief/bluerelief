@@ -8,7 +8,10 @@ const logoVariants = cva(
   {
     variants: {
       size: {
+        icon: "size-4",
+        xs: "size-5",
         sm: "size-6",
+        md: "size-8",
         default: "size-10", 
         lg: "size-12",
         xl: "size-16",

@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/select";
 import {
   Search,
-  Info,
 } from "lucide-react";
 import {
   Tooltip,
@@ -22,7 +21,9 @@ import {
 } from "@/components/ui/tooltip";
 import { SentimentBadge } from "@/components/sentiment-badge";
 import { BlueskyIcon } from "@/components/bluesky-icon";
-import CrisisMap from "@/components/crisis-map";
+import { Lordicon } from "@/components/lordicon";
+import { LORDICON_SOURCES, LORDICON_SIZES } from "@/lib/lordicon-config";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import { useState, useEffect, useMemo } from "react";
 import {
   ChartContainer,
@@ -33,6 +34,16 @@ import { apiGet } from "@/lib/api-client";
 import { useAlertNotifications } from "@/hooks/use-alert-notifications";
 import { useAuth } from "@/hooks/use-auth";
 import { formatActivityTime } from "@/lib/utils";
+import dynamic from "next/dynamic";
+
+const CrisisMap = dynamic(() => import("@/components/crisis-map"), {
+  loading: () => (
+    <div className="h-[400px] flex items-center justify-center">
+      <LoadingSpinner size={48} text="Loading map..." />
+    </div>
+  ),
+  ssr: false,
+});
 
 const chartConfig = {
   sentiment: {
@@ -255,10 +266,20 @@ export default function DashboardPage() {
     return `${diffHours} hours ago`;
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
+
+  const firstName = user?.name?.split(' ')[0] || "there";
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
+          <p className="text-sm text-muted-foreground mb-1">{getGreeting()}, {firstName}! 👋</p>
           <h1 className="text-3xl font-bold">Dashboard</h1>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-sm text-muted-foreground">
@@ -279,7 +300,12 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+              <Lordicon 
+                src={LORDICON_SOURCES.info}
+                trigger="hover" 
+                size={LORDICON_SIZES.md}
+                colorize="currentColor"
+              />
             </TooltipTrigger>
             <TooltipContent className="max-w-[300px]">
               <p>Filter all dashboard data by time range. Changes affect metrics, map markers, and event lists.</p>
@@ -301,7 +327,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border-l-4 border-l-primary">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -313,7 +339,12 @@ export default function DashboardPage() {
                   Total Crises
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                      <Lordicon 
+                        src={LORDICON_SOURCES.info}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.xs}
+                        colorize="currentColor"
+                      />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-[300px]">
                       <p>Total number of detected crisis events in the selected time period from all monitored sources</p>
@@ -321,9 +352,14 @@ export default function DashboardPage() {
                   </Tooltip>
                 </div>
               </div>
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <div className="text-primary text-xl">🌊</div>
-              </div>
+            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+              <Lordicon
+                src={LORDICON_SOURCES.globe}
+                trigger="play-once-then-hover"
+                size={LORDICON_SIZES["3xl"]}
+                colorize="currentColor"
+              />
+            </div>
             </div>
           </CardContent>
         </Card>
@@ -339,7 +375,12 @@ export default function DashboardPage() {
                   Affected People
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                      <Lordicon 
+                        src={LORDICON_SOURCES.info}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.xs}
+                        colorize="currentColor"
+                      />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-[300px]">
                       <p>Estimated population affected by active crises based on location data and population density analysis</p>
@@ -347,9 +388,14 @@ export default function DashboardPage() {
                   </Tooltip>
                 </div>
               </div>
-              <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
-                <div className="text-destructive text-xl">👥</div>
-              </div>
+            <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
+              <Lordicon
+                src={LORDICON_SOURCES.people}
+                trigger="play-once-then-hover"
+                size={LORDICON_SIZES["3xl"]}
+                colorize="currentColor"
+              />
+            </div>
             </div>
           </CardContent>
         </Card>
@@ -365,7 +411,12 @@ export default function DashboardPage() {
                   Urgent Alerts
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                      <Lordicon 
+                        src={LORDICON_SOURCES.info}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.xs}
+                        colorize="currentColor"
+                      />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-[300px]">
                       <p>Number of high-severity (Level 4-5) alerts requiring immediate attention</p>
@@ -373,8 +424,13 @@ export default function DashboardPage() {
                   </Tooltip>
                 </div>
               </div>
-              <div className="h-12 w-12 rounded-full bg-amber-500/10 flex items-center justify-center">
-                <div className="text-amber-500 text-xl">⚠️</div>
+              <div className="h-12 w-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
+                <Lordicon
+                  src="https://cdn.lordicon.com/vihyezfv.json"
+                  trigger="play-once-then-hover"
+                  size={32}
+                  colorize="currentColor"
+                />
               </div>
             </div>
           </CardContent>
@@ -391,7 +447,12 @@ export default function DashboardPage() {
                   Active Regions
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                      <Lordicon 
+                        src={LORDICON_SOURCES.info}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.xs}
+                        colorize="currentColor"
+                      />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-[300px]">
                       <p>Number of distinct geographic regions currently experiencing crisis events</p>
@@ -399,15 +460,20 @@ export default function DashboardPage() {
                   </Tooltip>
                 </div>
               </div>
-              <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                <div className="text-green-500 text-xl">🌍</div>
+              <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-500">
+                <Lordicon
+                  src="https://cdn.lordicon.com/zosctjws.json"
+                  trigger="play-once-then-hover"
+                  size={32}
+                  colorize="currentColor"
+                />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -415,7 +481,12 @@ export default function DashboardPage() {
                 Global Crisis Heatmap
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                    <Lordicon 
+                src={LORDICON_SOURCES.info}
+                trigger="hover" 
+                size={LORDICON_SIZES.md}
+                colorize="currentColor"
+              />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[300px]">
                     <p>Interactive map showing real-time crisis locations worldwide. Marker size indicates severity. Click markers for details.</p>
@@ -467,7 +538,12 @@ export default function DashboardPage() {
                 Sentiment Trends
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                    <Lordicon 
+                src={LORDICON_SOURCES.info}
+                trigger="hover" 
+                size={LORDICON_SIZES.md}
+                colorize="currentColor"
+              />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[300px]">
                     <p>Aggregate sentiment analysis of social media posts related to crisis events. Shows emotional tone (negative/neutral/positive) over time</p>
@@ -512,7 +588,7 @@ export default function DashboardPage() {
               </ChartContainer>
               <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                 <span>
-                  {loading ? "Loading..." : sentimentData.length > 0 ? "Recent trend" : "No data"}
+                  {loading ? <LoadingSpinner size={16} /> : sentimentData.length > 0 ? "Recent trend" : "No data"}
                 </span>
                 <span className="text-primary font-medium">
                   {sentimentData.length > 0 && sentimentData[0].sentiment !== null && sentimentData[sentimentData.length - 1].sentiment !== null 
@@ -534,7 +610,12 @@ export default function DashboardPage() {
                     Active Monitors
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                        <Lordicon 
+                        src={LORDICON_SOURCES.info}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.xs}
+                        colorize="currentColor"
+                      />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[300px]">
                         <p>24/7 automated monitoring systems tracking multiple data sources</p>
@@ -548,7 +629,12 @@ export default function DashboardPage() {
                     Data Sources
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                        <Lordicon 
+                        src={LORDICON_SOURCES.info}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.xs}
+                        colorize="currentColor"
+                      />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[300px]">
                         <p>Number of active data feeds (Bluesky, news APIs, etc.)</p>
@@ -562,7 +648,12 @@ export default function DashboardPage() {
                     Avg Response
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                        <Lordicon 
+                        src={LORDICON_SOURCES.info}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.xs}
+                        colorize="currentColor"
+                      />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[300px]">
                         <p>Average time from crisis detection to alert generation</p>
@@ -576,7 +667,12 @@ export default function DashboardPage() {
                     System Status
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                        <Lordicon 
+                        src={LORDICON_SOURCES.info}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.xs}
+                        colorize="currentColor"
+                      />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[300px]">
                         <p>Real-time health status of monitoring systems</p>
@@ -600,7 +696,12 @@ export default function DashboardPage() {
               Recent Events
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                  <Lordicon 
+                src={LORDICON_SOURCES.info}
+                trigger="hover" 
+                size={LORDICON_SIZES.md}
+                colorize="currentColor"
+              />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[300px]">
                   <p>Chronological list of detected crisis events from monitored sources. Click &quot;View on Bluesky&quot; to see original social media posts.</p>
@@ -621,8 +722,8 @@ export default function DashboardPage() {
         <CardContent className="pb-3">
           <div className="space-y-2">
             {loading ? (
-              <div className="text-center py-8 text-muted-foreground text-sm">
-                Loading events...
+              <div className="text-center py-8">
+                <LoadingSpinner size={48} text="Loading events..." />
               </div>
             ) : recentEvents.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-sm">

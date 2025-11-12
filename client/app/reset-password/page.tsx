@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Loader2, CheckCircle2 } from "lucide-react";
 import { resetPassword } from "@/lib/auth";
 import { Logo } from "@/components/logo";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -203,8 +204,7 @@ export default function ResetPasswordPage() {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-4">
           <div className="w-full max-w-md">
             <div className="bg-card border rounded-lg p-8 text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading...</p>
+              <LoadingSpinner size={64} />
             </div>
           </div>
         </div>

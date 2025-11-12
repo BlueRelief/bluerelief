@@ -1,19 +1,19 @@
-import { Clock, TrendingUp, MapPin, CheckCircle2 } from "lucide-react";
+import { Lordicon } from "@/components/lordicon";
 
 export function LandingValueProp() {
   const benefits = [
     {
-      icon: Clock,
+      iconSrc: "https://cdn.lordicon.com/ohcvbvqh.json",
       title: "Real-Time Detection",
       description: "Monitor Bluesky's social firehose to identify crises as they emerge, with automated sentiment analysis detecting urgent posts instantly."
     },
     {
-      icon: TrendingUp,
+      iconSrc: "https://cdn.lordicon.com/btfbysou.json",
       title: "Pattern Recognition",
       description: "Track recurring patterns, disaster types, and regional trends with AI-powered analytics and time-series visualization."
     },
     {
-      icon: MapPin,
+      iconSrc: "https://cdn.lordicon.com/zosctjws.json",
       title: "Geo-Aware Alerts",
       description: "Get location-based notifications within 100km radius or monitor custom regions worldwide with population impact estimates."
     }
@@ -49,8 +49,13 @@ export function LandingValueProp() {
             <div className="space-y-8">
               {benefits.map((benefit, i) => (
                 <div key={i} className="flex items-start space-x-4 group">
-                  <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl flex items-center justify-center mt-1 group-hover:scale-110 transition-transform duration-300">
-                    <benefit.icon className="h-6 w-6 text-primary" />
+                  <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl flex items-center justify-center mt-1 group-hover:scale-110 transition-transform duration-300 text-primary">
+                    <Lordicon 
+                      src={benefit.iconSrc} 
+                      trigger="hover" 
+                      size={24} 
+                      colorize="currentColor"
+                    />
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg mb-2">{benefit.title}</h3>
@@ -80,7 +85,14 @@ export function LandingValueProp() {
                     className="flex items-center justify-between p-4 rounded-xl bg-background/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300 group"
                   >
                     <span className="font-medium">{feature}</span>
-                    <CheckCircle2 className="h-5 w-5 text-primary group-hover:scale-110 transition-transform duration-300" />
+                    <div className="text-primary group-hover:scale-110 transition-transform duration-300">
+                      <Lordicon 
+                        src="https://cdn.lordicon.com/zdfcfvwu.json" 
+                        trigger="hover" 
+                        size={20} 
+                        colorize="currentColor"
+                      />
+                    </div>
                   </div>
                 ))}
               </div>

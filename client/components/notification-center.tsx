@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Bell, AlertCircle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { apiClient } from '@/lib/api-client';
 import Link from 'next/link';
+import { Lordicon } from '@/components/lordicon';
 
 interface Alert {
   id: number;
@@ -107,7 +108,12 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
-          <Bell className="w-5 h-5" />
+          <Lordicon 
+            src="https://cdn.lordicon.com/ahxaipjb.json" 
+            trigger="hover" 
+            size={20} 
+            colorize="currentColor"
+          />
           {unreadCount > 0 && (
             <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
               {unreadCount > 9 ? '9+' : unreadCount}
@@ -137,7 +143,14 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
                     onClick={() => handleMarkAsRead(alert.id)}
                   >
                     <div className="flex gap-3">
-                      <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-1 ${alert.severity >= 4 ? 'text-red-600' : alert.severity === 3 ? 'text-yellow-600' : 'text-blue-600'}`} />
+                      <div className={`flex-shrink-0 mt-1 ${alert.severity >= 4 ? 'text-red-600' : alert.severity === 3 ? 'text-yellow-600' : 'text-blue-600'}`}>
+                        <Lordicon 
+                          src="https://cdn.lordicon.com/vihyezfv.json" 
+                          trigger="hover" 
+                          size={20} 
+                          colorize="currentColor"
+                        />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <p className="font-semibold text-sm line-clamp-1 text-foreground">{alert.title}</p>

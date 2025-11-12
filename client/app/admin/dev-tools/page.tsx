@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { adminApiGet, adminApiPost } from "@/lib/admin-api-client";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 
 type TaskRecord = {
@@ -132,7 +133,7 @@ export default function DevToolsPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
+        <LoadingSpinner size={64} />
       </div>
     );
   }

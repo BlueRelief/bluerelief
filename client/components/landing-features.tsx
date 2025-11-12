@@ -1,46 +1,39 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  AlertTriangle, 
-  Globe, 
-  Zap, 
-  Shield, 
-  Users, 
-  Brain
-} from "lucide-react";
+import { Lordicon } from "@/components/lordicon";
 
 const features = [
   {
-    icon: Brain,
+    iconSrc: "https://cdn.lordicon.com/ohcvbvqh.json",
     title: "AI Sentiment Analysis",
     description: "Gemini-powered AI analyzes Bluesky posts in real-time, categorizing sentiment as urgent, fearful, negative, neutral, or positive to identify emerging crises.",
     gradient: "from-primary/10 to-accent/10"
   },
   {
-    icon: Globe,
+    iconSrc: "https://cdn.lordicon.com/zosctjws.json",
     title: "Location-Based Alerts",
     description: "Receive alerts for crises within 100km of your location, or monitor specific regions globally with custom preferences.",
     gradient: "from-accent/10 to-primary/10"
   },
   {
-    icon: Zap,
+    iconSrc: "https://cdn.lordicon.com/ahxaipjb.json",
     title: "Real-Time Notifications",
     description: "Get instant alerts for new crises, severity changes, and updates via platform and email notifications based on your preferences.",
     gradient: "from-primary/10 to-accent/10"
   },
   {
-    icon: AlertTriangle,
+    iconSrc: "https://cdn.lordicon.com/vihyezfv.json",
     title: "5-Level Severity System",
     description: "Track disasters by severity from Info to Critical with population impact estimates and time-series analysis for each event.",
     gradient: "from-accent/10 to-primary/10"
   },
   {
-    icon: Shield,
+    iconSrc: "https://cdn.lordicon.com/zosctjws.json",
     title: "Interactive Maps",
     description: "Visualize crisis locations on Mapbox-powered maps with regional breakdowns and affected area visualization.",
     gradient: "from-primary/10 to-accent/10"
   },
   {
-    icon: Users,
+    iconSrc: "https://cdn.lordicon.com/kphwxuxr.json",
     title: "Custom Alert Preferences",
     description: "Personalize your experience with custom regions, disaster types, severity thresholds, and notification preferences.",
     gradient: "from-accent/10 to-primary/10"
@@ -71,8 +64,13 @@ export function LandingFeatures() {
             >
               <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
               <CardHeader className="relative z-10">
-                <div className="w-14 h-14 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500 shadow-md">
-                  <feature.icon className="h-7 w-7 text-primary-foreground" />
+                <div className="w-14 h-14 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500 shadow-md text-primary-foreground">
+                  <Lordicon 
+                    src={feature.iconSrc} 
+                    trigger="hover" 
+                    size={28} 
+                    colorize="currentColor"
+                  />
                 </div>
                 <CardTitle className="text-xl">{feature.title}</CardTitle>
               </CardHeader>
