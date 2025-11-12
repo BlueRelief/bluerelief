@@ -27,9 +27,9 @@ export function useAuth() {
     loadUser();
 
     const unsubscribe = onAuthError(() => {
-      console.log('Session expired, redirecting to login');
+      console.log('Session expired, redirecting to home');
       setUser(null);
-      router.push('/login');
+      router.push('/');
     });
 
     return () => {

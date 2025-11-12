@@ -56,9 +56,9 @@ function ResetPasswordForm() {
       await resetPassword(token, password);
       setSuccess(true);
       
-      // Redirect to login after 3 seconds
+      // Redirect to home after 3 seconds
       setTimeout(() => {
-        router.push("/login");
+        router.push("/");
       }, 3000);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to reset password");
@@ -79,10 +79,10 @@ function ResetPasswordForm() {
             </div>
             <h1 className="text-2xl font-bold">Password Reset Successful!</h1>
             <p className="text-muted-foreground">
-              Your password has been updated. Redirecting you to login...
+              Your password has been updated. Redirecting you to home...
             </p>
-            <Button onClick={() => router.push("/login")} className="w-full">
-              Go to Login Now
+            <Button onClick={() => router.push("/")} className="w-full">
+              Go to Home Now
             </Button>
           </div>
         </div>

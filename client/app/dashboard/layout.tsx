@@ -54,9 +54,11 @@ type NavigationItem = {
   href: string;
   showBadge?: boolean;
   lordiconSrc?: string;
+  tooltip?: string;
 };
 
 const DashboardIcon = () => <Lordicon src="https://cdn.lordicon.com/oeotfwsx.json" trigger="hover" size={18} colorize="currentColor" />;
+const MapIcon = () => <Lordicon src="https://cdn.lordicon.com/oypudwea.json" trigger="hover" size={18} colorize="currentColor" />;
 const DataFeedIcon = () => <Lordicon src="https://cdn.lordicon.com/ulcgigyi.json" trigger="hover" size={18} colorize="currentColor" />;
 const AnalysisIcon = () => <Lordicon src="https://cdn.lordicon.com/btfbysou.json" trigger="hover" size={18} colorize="currentColor" />;
 const AlertsIcon = () => <Lordicon src="https://cdn.lordicon.com/ahxaipjb.json" trigger="hover" size={18} colorize="currentColor" />;
@@ -67,11 +69,19 @@ const mainNavigation: NavigationItem[] = [
     title: "Dashboard",
     icon: DashboardIcon,
     href: "/dashboard",
+    tooltip: "View overview of all crisis data and metrics",
+  },
+  {
+    title: "Crisis Map",
+    icon: MapIcon,
+    href: "/dashboard/map",
+    tooltip: "Interactive global map of crisis locations",
   },
   {
     title: "Data Feed",
     icon: DataFeedIcon,
     href: "/dashboard/data-feed",
+    tooltip: "Real-time feed of crisis events and updates",
   },
 ];
 
@@ -80,12 +90,14 @@ const monitoringNavigation: NavigationItem[] = [
     title: "Analysis",
     icon: AnalysisIcon,
     href: "/dashboard/analysis",
+    tooltip: "Advanced analytics and crisis trends",
   },
   {
     title: "Alerts",
     icon: AlertsIcon,
     href: "/dashboard/alerts",
     showBadge: true,
+    tooltip: "Manage notifications and alert preferences",
   },
 ];
 
@@ -94,6 +106,7 @@ const systemNavigation: NavigationItem[] = [
     title: "Settings",
     icon: SettingsIcon,
     href: "/dashboard/settings",
+    tooltip: "Configure your account and preferences",
   },
 ];
 
@@ -148,7 +161,7 @@ function AppSidebar({ user }: AppSidebarProps) {
             
             return (
               <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
+                <SidebarMenuButton asChild isActive={isActive} tooltip={item.tooltip || item.title}>
                   <Link href={item.href}>
                     <item.icon />
                     <span>{item.title}</span>
@@ -293,7 +306,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push("/login");
+      router.push("/");
     }
   }, [isAuthenticated, loading, router]);
 
