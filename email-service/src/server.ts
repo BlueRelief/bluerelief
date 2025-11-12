@@ -32,7 +32,7 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   console.error('Unhandled error:', err);
   res.status(500).json({
     success: false,
-    error: 'Internal server error'
+    error: 'Internal server error',
   });
 });
 
@@ -43,4 +43,3 @@ app.listen(PORT, () => {
 });
 
 export default app;
-

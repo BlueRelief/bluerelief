@@ -102,7 +102,8 @@ app.include_router(admin_tasks.router)
 app.include_router(analysis.router)
 app.include_router(archive.router)
 
-@app.get("/")
+
+@app.get("/", tags=["System"])
 async def root():
     return {
         "message": "Welcome to BlueRelief API",
@@ -110,12 +111,13 @@ async def root():
         "commit": COMMIT_SHA,
     }
 
-@app.get("/health")
+
+@app.get("/health", tags=["System"])
 async def health_check():
     return {"status": "healthy", "version": APP_VERSION, "commit": COMMIT_SHA}
 
 
-@app.get("/api/version")
+@app.get("/api/version", tags=["System"])
 async def version_info():
     return {
         "version": APP_VERSION,
@@ -124,12 +126,12 @@ async def version_info():
     }
 
 
-@app.get("/api/test")
+@app.get("/api/test", tags=["System"])
 async def test_endpoint():
     return {"message": "API is working!", "data": {"test": True}}
 
 
-@app.get("/api/debug/config")
+@app.get("/api/debug/config", tags=["System"])
 async def debug_config():
     return {
         "environment": os.getenv("ENVIRONMENT", "not_set"),

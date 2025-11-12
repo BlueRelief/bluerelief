@@ -6,7 +6,10 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,mjs,json,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,json,css}\""
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",
@@ -19,6 +22,7 @@
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-switch": "^1.2.6",
+    "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
     "chart.js": "^4.5.0",
     "class-variance-authority": "^0.7.1",

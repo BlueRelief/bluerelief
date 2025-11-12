@@ -13,28 +13,27 @@ router.post('/send', validateEmailRequest, async (req, res) => {
       subject,
       template,
       data: data || {},
-      metadata: metadata || {}
+      metadata: metadata || {},
     });
 
     if (result.success) {
       res.json({
         success: true,
-        messageId: result.messageId
+        messageId: result.messageId,
       });
     } else {
       res.status(500).json({
         success: false,
-        error: result.error
+        error: result.error,
       });
     }
   } catch (error) {
     console.error('Error in /send endpoint:', error);
     res.status(500).json({
       success: false,
-      error: 'Internal server error'
+      error: 'Internal server error',
     });
   }
 });
 
 export default router;
-

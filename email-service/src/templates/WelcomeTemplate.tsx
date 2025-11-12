@@ -21,12 +21,7 @@ interface WelcomeTemplateProps {
 }
 
 const Logo = () => (
-  <svg
-    width="56"
-    height="56"
-    viewBox="0 0 100 100"
-    style={{ margin: '0 auto', display: 'block' }}
-  >
+  <svg width="56" height="56" viewBox="0 0 100 100" style={{ margin: '0 auto', display: 'block' }}>
     <defs>
       <mask id="logo-mask">
         <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
@@ -62,34 +57,34 @@ export const WelcomeTemplate = ({
           <Section style={logoContainer}>
             <Logo />
           </Section>
-          
+
           <Section style={headerSection}>
             <Text style={welcomeIcon}>🎉</Text>
             <Heading style={titleText}>Welcome to BlueRelief!</Heading>
-            <Text style={subtitleText}>
-              Your emergency response platform is ready
-            </Text>
+            <Text style={subtitleText}>Your emergency response platform is ready</Text>
           </Section>
-          
+
           <Section style={contentSection}>
             <Text style={greetingText}>Hello {userName},</Text>
             <Text style={bodyText}>
-              Thank you for joining BlueRelief! We're excited to have you as part of our 
-              emergency response community. You're now connected to real-time crisis 
-              information and can help make a difference in emergency situations.
+              Thank you for joining BlueRelief! We're excited to have you as part of our emergency
+              response community. You're now connected to real-time crisis information and can help
+              make a difference in emergency situations.
             </Text>
-            
+
             <Section style={featuresSection}>
               <Text style={featuresTitle}>What you can do with BlueRelief</Text>
-              
+
               <Section style={featureItem}>
                 <Text style={featureIcon}>📊</Text>
                 <Section style={featureContent}>
                   <Text style={featureLabel}>Monitor Real-Time Data</Text>
-                  <Text style={featureDescription}>Track crisis data and alerts as they happen</Text>
+                  <Text style={featureDescription}>
+                    Track crisis data and alerts as they happen
+                  </Text>
                 </Section>
               </Section>
-              
+
               <Section style={featureItem}>
                 <Text style={featureIcon}>🌍</Text>
                 <Section style={featureContent}>
@@ -97,7 +92,7 @@ export const WelcomeTemplate = ({
                   <Text style={featureDescription}>Track disasters and emergencies worldwide</Text>
                 </Section>
               </Section>
-              
+
               <Section style={featureItem}>
                 <Text style={featureIcon}>📱</Text>
                 <Section style={featureContent}>
@@ -105,7 +100,7 @@ export const WelcomeTemplate = ({
                   <Text style={featureDescription}>Get alerts for emergencies in your area</Text>
                 </Section>
               </Section>
-              
+
               <Section style={featureItem}>
                 <Text style={featureIcon}>📈</Text>
                 <Section style={featureContent}>
@@ -114,7 +109,7 @@ export const WelcomeTemplate = ({
                 </Section>
               </Section>
             </Section>
-            
+
             <Section style={actionSection}>
               <Link style={primaryButton} href={dashboardUrl}>
                 Go to Dashboard
@@ -123,26 +118,27 @@ export const WelcomeTemplate = ({
                 Account Settings
               </Link>
             </Section>
-            
+
             <Section style={helpSection}>
               <Text style={helpText}>
                 Need help getting started? Check out our{' '}
-                <Link href={helpUrl} style={helpLink}>help center</Link>{' '}
+                <Link href={helpUrl} style={helpLink}>
+                  help center
+                </Link>{' '}
                 for guides and tutorials.
               </Text>
             </Section>
           </Section>
-          
+
           <Hr style={divider} />
-          
+
           <Section style={footerSection}>
-            <Text style={footerText}>
-              Welcome to the BlueRelief community!
-            </Text>
+            <Text style={footerText}>Welcome to the BlueRelief community!</Text>
             <Text style={footerText}>
               <Link href="https://bluerelief.com/support" style={linkText}>
                 Contact Support
-              </Link> •{' '}
+              </Link>{' '}
+              •{' '}
               <Link href="https://bluerelief.com/privacy" style={linkText}>
                 Privacy Policy
               </Link>

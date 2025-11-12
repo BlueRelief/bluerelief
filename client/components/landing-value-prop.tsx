@@ -31,7 +31,7 @@ export function LandingValueProp() {
   ];
 
   return (
-    <section className="py-24 px-4">
+    <section id="about" className="py-24 px-4">
       <div className="container mx-auto max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div>

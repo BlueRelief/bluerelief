@@ -11,12 +11,16 @@ import uuid
 import os
 from dotenv import load_dotenv
 from typing import Optional
+from pydantic import BaseModel
 from google.oauth2 import service_account
 import google.auth.transport.requests
 from google.oauth2.id_token import verify_oauth2_token
-from db_utils.db import upsert_user, get_user_by_email
+from db_utils.db import upsert_user, get_user_by_email, SessionLocal, User
+from services.password_service import hash_password, verify_password
+from services.email_service import send_password_reset_email
 import logging as logger
 from services.logging_service import logging_service
+import secrets
 
 load_dotenv(override=True)
 
@@ -46,6 +50,27 @@ BACKEND_URL = config("BACKEND_URL", default="http://localhost:8000")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 IS_PREVIEW = os.getenv("IS_PREVIEW", "false").lower() == "true"
 PREVIEW_AUTH_BYPASS = os.getenv("PREVIEW_AUTH_BYPASS", "false").lower() == "true"
+
+
+class EmailLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class EmailRegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
@@ -176,7 +201,7 @@ async def demo_login(request: Request):
     # Log demo login
     client_ip = request.client.host if request.client else None
     user_agent = request.headers.get("User-Agent")
-    
+
     await logging_service.log_auth_event(
         user_id=demo_user["id"],
         action="DEMO_LOGIN_SUCCESS",
@@ -198,6 +223,310 @@ async def demo_login(request: Request):
     )
 
     return response
+
+
+@router.post("/register")
+async def register(request: EmailRegisterRequest, req: Request):
+    """Register a new user with email and password"""
+    db = SessionLocal()
+    client_ip = req.client.host if req.client else None
+    user_agent = req.headers.get("User-Agent")
+
+    try:
+        existing_user = db.query(User).filter(User.email == request.email).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+
+        if len(request.password) < 8:
+            raise HTTPException(
+                status_code=400, detail="Password must be at least 8 characters"
+            )
+
+        password_hash = hash_password(request.password)
+        user_id = f"user-{uuid.uuid4()}"
+
+        new_user = User(
+            id=user_id,
+            email=request.email,
+            name=request.name,
+            password=password_hash,
+            role="user",
+            is_admin=False,
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+
+        access_token_expires = timedelta(days=7)
+        access_token = create_access_token(
+            data={"email": new_user.email}, expires_delta=access_token_expires
+        )
+
+        await logging_service.log_auth_event(
+            user_id=user_id,
+            action="REGISTER_SUCCESS",
+            status="success",
+            details={
+                "email": request.email,
+                "name": request.name,
+                "auth_method": "email_password",
+            },
+            ip_address=client_ip,
+            user_agent=user_agent,
+        )
+
+        response = JSONResponse(
+            content={
+                "message": "Registration successful",
+                "user": {
+                    "user_id": new_user.id,
+                    "user_email": new_user.email,
+                    "name": new_user.name,
+                },
+            }
+        )
+
+        is_production = os.getenv("ENVIRONMENT", "development") == "production"
+        response.set_cookie(
+            key="token",
+            value=access_token,
+            httponly=True,
+            secure=is_production,
+            samesite="lax",
+            max_age=604800,
+            path="/",
+        )
+
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Registration error: {str(e)}")
+        await logging_service.log_auth_event(
+            user_id=None,
+            action="REGISTER_FAILED",
+            status="failure",
+            details={"email": request.email, "error": str(e)},
+            ip_address=client_ip,
+            user_agent=user_agent,
+            error_message=str(e),
+        )
+        raise HTTPException(status_code=500, detail="Registration failed")
+    finally:
+        db.close()
+
+
+@router.post("/login")
+async def login(request: EmailLoginRequest, req: Request):
+    """Login with email and password"""
+    db = SessionLocal()
+    client_ip = req.client.host if req.client else None
+    user_agent = req.headers.get("User-Agent")
+
+    try:
+        user = db.query(User).filter(User.email == request.email).first()
+
+        if not user or not user.password:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+
+        if not verify_password(request.password, user.password):
+            user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+            db.commit()
+
+            await logging_service.log_auth_event(
+                user_id=user.id,
+                action="LOGIN_FAILED",
+                status="failure",
+                details={"email": request.email, "reason": "invalid_password"},
+                ip_address=client_ip,
+                user_agent=user_agent,
+            )
+
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="Account is inactive")
+
+        if user.account_locked_until and user.account_locked_until > datetime.utcnow():
+            raise HTTPException(status_code=423, detail="Account is locked")
+
+        user.failed_login_attempts = 0
+        user.last_login = datetime.utcnow()
+        db.commit()
+
+        access_token_expires = timedelta(days=7)
+        access_token = create_access_token(
+            data={"email": user.email}, expires_delta=access_token_expires
+        )
+
+        await logging_service.log_auth_event(
+            user_id=user.id,
+            action="LOGIN_SUCCESS",
+            status="success",
+            details={
+                "email": request.email,
+                "auth_method": "email_password",
+            },
+            ip_address=client_ip,
+            user_agent=user_agent,
+        )
+
+        response = JSONResponse(
+            content={
+                "message": "Login successful",
+                "user": {
+                    "user_id": user.id,
+                    "user_email": user.email,
+                    "name": user.name,
+                },
+            }
+        )
+
+        is_production = os.getenv("ENVIRONMENT", "development") == "production"
+        response.set_cookie(
+            key="token",
+            value=access_token,
+            httponly=True,
+            secure=is_production,
+            samesite="lax",
+            max_age=604800,
+            path="/",
+        )
+
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Login error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Login failed")
+    finally:
+        db.close()
+
+
+@router.post("/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest, req: Request):
+    """Send password reset email"""
+    db = SessionLocal()
+    client_ip = req.client.host if req.client else None
+
+    try:
+        user = db.query(User).filter(User.email == request.email).first()
+
+        # Don't reveal if user exists or not for security
+        if not user or not user.password:
+            # Return success even if user doesn't exist
+            return {
+                "message": "If an account exists with this email, you will receive a password reset link."
+            }
+
+        # Generate reset token
+        reset_token = secrets.token_urlsafe(32)
+        user.password_reset_token = reset_token
+        user.password_reset_expires = datetime.utcnow() + timedelta(hours=1)
+        db.commit()
+
+        # Send reset email
+        try:
+            reset_link = f"{FRONTEND_URL}/reset-password?token={reset_token}"
+            send_password_reset_email(
+                to_email=user.email,
+                user_name=user.name,
+                reset_link=reset_link,
+                expires_in="1 hour",
+                user_id=user.id,
+            )
+        except Exception as e:
+            logger.error(f"Error sending reset email: {str(e)}")
+            # Don't fail the request even if email fails
+            pass
+
+        await logging_service.log_auth_event(
+            user_id=user.id,
+            action="PASSWORD_RESET_REQUESTED",
+            status="success",
+            details={"email": user.email},
+            ip_address=client_ip,
+            user_agent=req.headers.get("User-Agent"),
+        )
+
+        return {
+            "message": "If an account exists with this email, you will receive a password reset link."
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Forgot password error: {str(e)}")
+        return {
+            "message": "If an account exists with this email, you will receive a password reset link."
+        }
+    finally:
+        db.close()
+
+
+@router.post("/reset-password")
+async def reset_password(request: ResetPasswordRequest, req: Request):
+    """Reset password using token"""
+    db = SessionLocal()
+    client_ip = req.client.host if req.client else None
+
+    try:
+        user = db.query(User).filter(User.password_reset_token == request.token).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=400, detail="Invalid or expired reset token"
+            )
+
+        if (
+            not user.password_reset_expires
+            or user.password_reset_expires < datetime.utcnow()
+        ):
+            user.password_reset_token = None
+            user.password_reset_expires = None
+            db.commit()
+            raise HTTPException(status_code=400, detail="Reset token has expired")
+
+        if len(request.new_password) < 8:
+            raise HTTPException(
+                status_code=400, detail="Password must be at least 8 characters"
+            )
+
+        # Update password
+        user.password = hash_password(request.new_password)
+        user.password_reset_token = None
+        user.password_reset_expires = None
+        user.failed_login_attempts = 0
+        user.account_locked_until = None
+        user.updated_at = datetime.utcnow()
+        db.commit()
+
+        await logging_service.log_auth_event(
+            user_id=user.id,
+            action="PASSWORD_RESET_SUCCESS",
+            status="success",
+            details={"email": user.email},
+            ip_address=client_ip,
+            user_agent=req.headers.get("User-Agent"),
+        )
+
+        return {
+            "message": "Password reset successful. You can now log in with your new password."
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Reset password error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to reset password")
+    finally:
+        db.close()
 
 
 @router.get("/google/callback")

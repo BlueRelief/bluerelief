@@ -240,6 +240,30 @@ def send_welcome_email(
     return send_email_via_microservice(to_email, subject, template, data, metadata)
 
 
+def send_password_reset_email(
+    to_email: str,
+    user_name: str,
+    reset_link: str,
+    expires_in: str = "1 hour",
+    user_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """Send a password reset email."""
+    template = 'password-reset'
+    data = {
+        'userName': user_name,
+        'resetLink': reset_link,
+        'expiresIn': expires_in
+    }
+    subject = "Reset Your BlueRelief Password"
+    
+    metadata = {
+        'user_id': user_id,
+        'type': 'password_reset'
+    }
+    
+    return send_email_via_microservice(to_email, subject, template, data, metadata)
+
+
 def send_alert_email(
     to_email: str,
     recipient_name: str,

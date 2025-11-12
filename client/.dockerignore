@@ -11,3 +11,8 @@ dist
 .env.production.local
 .DS_Store
 *.log
+.git
+.gitignore
+README.md
+.vscode
+.idea

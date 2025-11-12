@@ -5,10 +5,10 @@ from services.admin_logger import log_admin_activity
 from db_utils.db import SessionLocal, User
 from models.admin import EmailValidationRequest, DomainConfigResponse
 
-router = APIRouter()
+router = APIRouter(prefix="/api/admin", tags=["Admin - Settings"])
 
 
-@router.get('/api/admin/domain-config')
+@router.get('/domain-config')
 async def get_domain_config(current_admin: User = Depends(get_current_admin)):
     await get_current_super_admin(current_admin)
     return {
@@ -19,7 +19,7 @@ async def get_domain_config(current_admin: User = Depends(get_current_admin)):
     }
 
 
-@router.post('/api/admin/domain-config/validate-email')
+@router.post('/domain-config/validate-email')
 async def validate_admin_email(request: EmailValidationRequest, current_admin: User = Depends(get_current_admin)):
     is_valid = domain_validator.is_valid_admin_email(request.email)
     return {
@@ -29,7 +29,7 @@ async def validate_admin_email(request: EmailValidationRequest, current_admin: U
     }
 
 
-@router.post('/api/admin/domain-config/reload')
+@router.post('/domain-config/reload')
 async def reload_domain_config(current_admin: User = Depends(get_current_admin)):
     await get_current_super_admin(current_admin)
     global domain_validator

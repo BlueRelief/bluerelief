@@ -7,7 +7,8 @@ import {
   MentionNotificationTemplate,
   WelcomeTemplate,
   AlertTemplate,
-  NotificationTemplate
+  NotificationTemplate,
+  PasswordResetTemplate,
 } from '../templates';
 
 interface EmailData {
@@ -55,32 +56,35 @@ class EmailService {
         tags: [
           { name: 'service', value: 'bluerelief' },
           { name: 'template', value: template },
-          ...(metadata ? Object.entries(metadata).map(([key, value]) => ({ 
-            name: key.replace(/[^a-zA-Z0-9_-]/g, '-'),
-            value: String(value).replace(/[^a-zA-Z0-9_-]/g, '-').substring(0, 100)
-          })) : [])
-        ]
+          ...(metadata
+            ? Object.entries(metadata).map(([key, value]) => ({
+                name: key.replace(/[^a-zA-Z0-9_-]/g, '-'),
+                value: String(value)
+                  .replace(/[^a-zA-Z0-9_-]/g, '-')
+                  .substring(0, 100),
+              }))
+            : []),
+        ],
       });
 
       if (result.error) {
         console.error('Resend API error:', result.error);
         return {
           success: false,
-          error: `Email sending failed: ${result.error.message}`
+          error: `Email sending failed: ${result.error.message}`,
         };
       }
 
       console.log(`Email sent successfully to ${to}, message ID: ${result.data?.id}`);
       return {
         success: true,
-        messageId: result.data?.id
+        messageId: result.data?.id,
       };
-
     } catch (error) {
       console.error('Error sending email:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
   }
@@ -88,7 +92,7 @@ class EmailService {
   private async renderTemplate(templateName: string, data: Record<string, any>): Promise<string> {
     try {
       let template;
-      
+
       switch (templateName.toLowerCase()) {
         case 'crisis-alert':
           template = CrisisAlertTemplate(data as any);
@@ -108,12 +112,15 @@ class EmailService {
         case 'notification':
           template = NotificationTemplate(data as any);
           break;
+        case 'password-reset':
+          template = PasswordResetTemplate(data as any);
+          break;
         case 'email':
         default:
           template = EmailTemplate(data as any);
           break;
       }
-      
+
       return render(template);
     } catch (error) {
       console.error('Error rendering template:', error);
@@ -133,7 +140,7 @@ class EmailService {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       const result = await this.sendEmail(emailData);
-      
+
       if (result.success) {
         return result;
       }
@@ -144,13 +151,13 @@ class EmailService {
       if (attempt < maxRetries) {
         // Exponential backoff: wait 2^attempt seconds
         const delay = Math.pow(2, attempt) * 1000;
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
 
     return {
       success: false,
-      error: `Email sending failed after ${maxRetries} attempts. Last error: ${lastError}`
+      error: `Email sending failed after ${maxRetries} attempts. Last error: ${lastError}`,
     };
   }
 }

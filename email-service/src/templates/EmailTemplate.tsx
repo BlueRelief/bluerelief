@@ -21,12 +21,7 @@ interface EmailTemplateProps {
 }
 
 const Logo = () => (
-  <svg
-    width="48"
-    height="48"
-    viewBox="0 0 100 100"
-    style={{ margin: '0 auto', display: 'block' }}
-  >
+  <svg width="48" height="48" viewBox="0 0 100 100" style={{ margin: '0 auto', display: 'block' }}>
     <defs>
       <mask id="logo-mask">
         <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
@@ -63,11 +58,11 @@ export const EmailTemplate = ({
           <Section style={logoContainer}>
             <Logo />
           </Section>
-          
+
           <Heading style={h1}>{title}</Heading>
-          
+
           <Text style={text}>{content}</Text>
-          
+
           {buttonText && buttonUrl && (
             <Section style={buttonContainer}>
               <Link style={button} href={buttonUrl}>
@@ -75,10 +70,8 @@ export const EmailTemplate = ({
               </Link>
             </Section>
           )}
-          
-          <Text style={footer}>
-            {footerText}
-          </Text>
+
+          <Text style={footer}>{footerText}</Text>
         </Container>
       </Body>
     </Html>

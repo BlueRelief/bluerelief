@@ -24,12 +24,7 @@ interface MentionNotificationProps {
 }
 
 const Logo = () => (
-  <svg
-    width="48"
-    height="48"
-    viewBox="0 0 100 100"
-    style={{ margin: '0 auto', display: 'block' }}
-  >
+  <svg width="48" height="48" viewBox="0 0 100 100" style={{ margin: '0 auto', display: 'block' }}>
     <defs>
       <mask id="logo-mask">
         <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
@@ -68,39 +63,35 @@ export const MentionNotificationTemplate = ({
           <Section style={logoContainer}>
             <Logo />
           </Section>
-          
+
           <Section style={headerSection}>
             <Section style={iconCircle}>
               <Text style={mentionIcon}>💬</Text>
             </Section>
             <Heading style={titleText}>You've been mentioned!</Heading>
           </Section>
-          
+
           <Section style={contentSection}>
             <Text style={greetingText}>Hello {userName},</Text>
-            
+
             <Section style={mentionBox}>
               <Text style={mentionText}>
                 <span style={mentionedByText}>{mentionedBy}</span> {context}
               </Text>
-              <Text style={timestampText}>
-                🕐 {new Date(timestamp).toLocaleString()}
-              </Text>
+              <Text style={timestampText}>🕐 {new Date(timestamp).toLocaleString()}</Text>
             </Section>
-            
+
             {postTitle && (
               <Section style={postSection}>
                 <Section style={postHeader}>
                   <Text style={postLabel}>Related Post</Text>
                 </Section>
                 <Text style={postTitleText}>"{postTitle}"</Text>
-                {postContent && (
-                  <Text style={postContentText}>{postContent}</Text>
-                )}
+                {postContent && <Text style={postContentText}>{postContent}</Text>}
               </Section>
             )}
           </Section>
-          
+
           {actionText && actionUrl && (
             <Section style={buttonContainer}>
               <Link style={actionButton} href={actionUrl}>
@@ -108,13 +99,11 @@ export const MentionNotificationTemplate = ({
               </Link>
             </Section>
           )}
-          
+
           <Hr style={divider} />
-          
+
           <Section style={footerSection}>
-            <Text style={footerText}>
-              This notification was sent by BlueRelief.
-            </Text>
+            <Text style={footerText}>This notification was sent by BlueRelief.</Text>
             <Text style={footerText}>
               <Link href="https://bluerelief.com/settings" style={linkText}>
                 Manage your notification preferences

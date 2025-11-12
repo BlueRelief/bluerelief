@@ -1,7 +1,7 @@
 /**
  * Simple test script for the email service
  * Run with: node test-email-service.js
- * 
+ *
  * Make sure the email service is running via Docker:
  * docker-compose up email-service
  */
@@ -19,12 +19,12 @@ const testEmail = {
     title: 'Test Email',
     content: 'This is a test email from the BlueRelief email service.',
     buttonText: 'Visit BlueRelief',
-    buttonUrl: 'https://bluerelief.com'
+    buttonUrl: 'https://bluerelief.com',
   },
   metadata: {
     test: true,
-    timestamp: new Date().toISOString()
-  }
+    timestamp: new Date().toISOString(),
+  },
 };
 
 const testAlert = {
@@ -37,12 +37,12 @@ const testAlert = {
     location: 'Test City, CA',
     description: 'This is a test emergency alert from BlueRelief.',
     actionText: 'View Details',
-    actionUrl: 'https://bluerelief.com/test'
+    actionUrl: 'https://bluerelief.com/test',
   },
   metadata: {
     test: true,
-    alertId: 'test-123'
-  }
+    alertId: 'test-123',
+  },
 };
 
 const testNotification = {
@@ -54,12 +54,12 @@ const testNotification = {
     message: 'This is a test notification from BlueRelief.',
     type: 'info',
     actionText: 'View Dashboard',
-    actionUrl: 'https://bluerelief.com/dashboard'
+    actionUrl: 'https://bluerelief.com/dashboard',
   },
   metadata: {
     test: true,
-    type: 'info'
-  }
+    type: 'info',
+  },
 };
 
 function makeRequest(path, method = 'GET', data = null) {
@@ -70,8 +70,8 @@ function makeRequest(path, method = 'GET', data = null) {
       path: path,
       method: method,
       headers: {
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
     };
 
     const req = http.request(options, (res) => {
@@ -153,7 +153,6 @@ async function runTests() {
     console.log('   ✅ Error handling test passed\n');
 
     console.log('🎉 All tests completed!');
-
   } catch (error) {
     console.error('❌ Test failed with error:', error.message);
     console.log('\n💡 Make sure the email service is running:');

@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from celery_app import celery_app
 import traceback
 
-router = APIRouter()
+router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 
 
 class EmailSendRequest(BaseModel):
@@ -74,7 +74,7 @@ def get_db():
         db.close()
 
 
-@router.post("/api/notifications/email/send")
+@router.post("/email/send")
 def send_email(req: EmailSendRequest):
     """Send an individual crisis alert email (DEV only)."""
     # Check user preferences if user_id provided
@@ -119,7 +119,7 @@ def send_batch_emails_task(recipients: List[Dict[str, Any]]):
     return results
 
 
-@router.post("/api/notifications/email/crisis-alert")
+@router.post("/email/crisis-alert")
 def send_crisis_alert(req: CrisisAlertRequest):
     """Send a crisis alert email using template."""
     try:
@@ -147,7 +147,7 @@ def send_crisis_alert(req: CrisisAlertRequest):
         raise HTTPException(status_code=500, detail={"error": str(e), "log_id": log_id})
 
 
-@router.post("/api/notifications/email/weekly-digest")
+@router.post("/email/weekly-digest")
 def send_weekly_digest(req: WeeklyDigestRequest):
     """Send a weekly digest email using template."""
     try:
@@ -175,7 +175,7 @@ def send_weekly_digest(req: WeeklyDigestRequest):
         raise HTTPException(status_code=500, detail={"error": str(e), "log_id": log_id})
 
 
-@router.post("/api/notifications/email/mention")
+@router.post("/email/mention")
 def send_mention_notification(req: MentionNotificationRequest):
     """Send a mention notification email using template."""
     try:
@@ -203,7 +203,7 @@ def send_mention_notification(req: MentionNotificationRequest):
         raise HTTPException(status_code=500, detail={"error": str(e), "log_id": log_id})
 
 
-@router.post("/api/notifications/email/welcome")
+@router.post("/email/welcome")
 def send_welcome(req: WelcomeEmailRequest):
     """Send a welcome email using template."""
     try:
@@ -221,7 +221,7 @@ def send_welcome(req: WelcomeEmailRequest):
         raise HTTPException(status_code=500, detail={"error": str(e), "log_id": log_id})
 
 
-@router.post("/api/notifications/email/batch")
+@router.post("/email/batch")
 def send_batch(req: BatchEmailRequest):
     """Enqueue a batch email job (async)."""
     try:
@@ -247,7 +247,7 @@ def send_batch(req: BatchEmailRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/notifications/email/status/{log_id}")
+@router.get("/email/status/{log_id}")
 def email_status(log_id: int):
     db = SessionLocal()
     try:

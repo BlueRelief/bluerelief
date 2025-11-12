@@ -33,7 +33,7 @@ export function LandingHowItWorks() {
   ];
 
   return (
-    <section className="py-24 px-4 relative overflow-hidden">
+    <section id="how-it-works" className="py-24 px-4 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-muted/20 to-transparent" />
       
       <div className="container mx-auto max-w-6xl relative z-10">
