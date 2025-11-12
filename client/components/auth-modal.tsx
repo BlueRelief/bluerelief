@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Lordicon } from "@/components/lordicon";
+import { LORDICON_SOURCES, LORDICON_SIZES } from "@/lib/lordicon-config";
 import { loginWithGoogle, loginWithDemo, isDemoAuthAvailable, loginWithEmail, registerWithEmail, forgotPassword } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -191,8 +192,13 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
               >
                 {isDemoLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Loading demo...
+                    <Lordicon 
+                      src={LORDICON_SOURCES.loader}
+                      trigger="loop" 
+                      size={LORDICON_SIZES.md}
+                      colorize="currentColor"
+                    />
+                    <span className="ml-2">Loading demo...</span>
                   </>
                 ) : (
                   <>
@@ -246,11 +252,12 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8"
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    <Lordicon 
+                      src={LORDICON_SOURCES.eye}
+                      trigger="hover" 
+                      size={LORDICON_SIZES.md}
+                      colorize="currentColor"
+                    />
                   </Button>
                 </div>
                 <div className="flex justify-end">
@@ -271,8 +278,13 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
+                    <Lordicon 
+                      src={LORDICON_SOURCES.loader}
+                      trigger="loop" 
+                      size={LORDICON_SIZES.md}
+                      colorize="currentColor"
+                    />
+                    <span className="ml-2">Signing in...</span>
                   </>
                 ) : (
                   "Log In"
@@ -365,11 +377,12 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8"
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    <Lordicon 
+                      src={LORDICON_SOURCES.eye}
+                      trigger="hover" 
+                      size={LORDICON_SIZES.md}
+                      colorize="currentColor"
+                    />
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -396,11 +409,12 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8"
                   >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    <Lordicon 
+                      src={LORDICON_SOURCES.eye}
+                      trigger="hover" 
+                      size={LORDICON_SIZES.md}
+                      colorize="currentColor"
+                    />
                   </Button>
                 </div>
               </div>
@@ -408,8 +422,13 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating account...
+                    <Lordicon 
+                      src={LORDICON_SOURCES.loader}
+                      trigger="loop" 
+                      size={LORDICON_SIZES.md}
+                      colorize="currentColor"
+                    />
+                    <span className="ml-2">Creating account...</span>
                   </>
                 ) : (
                   "Create Account"
@@ -450,8 +469,13 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
           <Button type="submit" className="w-full" disabled={isForgotLoading}>
             {isForgotLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Sending...
+                <Lordicon 
+                  src={LORDICON_SOURCES.loader}
+                  trigger="loop" 
+                  size={LORDICON_SIZES.md}
+                  colorize="currentColor"
+                />
+                <span className="ml-2">Sending...</span>
               </>
             ) : (
               "Send Reset Link"

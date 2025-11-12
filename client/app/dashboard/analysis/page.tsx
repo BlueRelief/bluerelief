@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import { Lordicon } from "@/components/lordicon";
+import { LORDICON_SOURCES, LORDICON_SIZES } from "@/lib/lordicon-config";
 import {
   Select,
   SelectContent,
@@ -30,7 +33,7 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { TrendingUp, AlertTriangle, Activity, Target, Filter, X, Info, ArrowUpRight, ArrowDownRight } from "lucide-react";
+// Lordicon icons now used from config instead of lucide-react
 import { Combobox } from "@/components/ui/combobox";
 import {
   Tooltip,
@@ -50,7 +53,7 @@ const CrisisMap = dynamic(() => import("@/components/crisis-map"), {
   ssr: false,
   loading: () => (
     <div className="h-full w-full flex items-center justify-center bg-muted/20">
-      <div className="text-sm text-muted-foreground">Loading map...</div>
+      <LoadingSpinner size={48} text="Loading map..." />
     </div>
   ),
 });
@@ -110,9 +113,19 @@ const ComparisonIndicator = ({
   return (
     <div className={`flex items-center gap-1 text-xs ${isImprovement ? 'text-green-600' : 'text-red-600'}`}>
       {isPositive ? (
-        <ArrowUpRight className="h-3 w-3" />
+        <Lordicon 
+          src={LORDICON_SOURCES.arrowUpRight}
+          trigger="hover" 
+          size={LORDICON_SIZES.xs}
+          colorize="currentColor"
+        />
       ) : (
-        <ArrowDownRight className="h-3 w-3" />
+        <Lordicon 
+          src={LORDICON_SOURCES.arrowDownRight}
+          trigger="hover" 
+          size={LORDICON_SIZES.xs}
+          colorize="currentColor"
+        />
       )}
       <span className="font-medium">{Math.abs(change).toFixed(1)}%</span>
       <span className="text-muted-foreground">vs previous</span>
@@ -430,7 +443,7 @@ export default function AnalysisPage() {
 
   if (error) {
     return (
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Analysis</h1>
           <p className="text-muted-foreground">
@@ -454,7 +467,7 @@ export default function AnalysisPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Analysis</h1>
         <p className="text-muted-foreground">
@@ -472,13 +485,23 @@ export default function AnalysisPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Filter className="h-5 w-5 text-primary" />
+              <Lordicon 
+                src={LORDICON_SOURCES.filter}
+                trigger="hover" 
+                size={LORDICON_SIZES.xl}
+                colorize="currentColor"
+              />
               <CardTitle className="text-lg">Filters & Comparison</CardTitle>
             </div>
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
-                <X className="h-4 w-4 mr-1" />
-                Clear Filters
+                <Lordicon 
+                  src={LORDICON_SOURCES.close}
+                  trigger="hover" 
+                  size={LORDICON_SIZES.md}
+                  colorize="currentColor"
+                />
+                <span className="ml-1">Clear Filters</span>
               </Button>
             )}
           </div>
@@ -560,19 +583,27 @@ export default function AnalysisPage() {
                 {selectedCountry && (
                   <Badge variant="secondary" className="gap-1">
                     {selectedCountry}
-                    <X 
-                      className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                      onClick={() => setSelectedCountry("")}
-                    />
+                    <span onClick={() => setSelectedCountry("")} className="cursor-pointer hover:text-destructive">
+                      <Lordicon 
+                        src={LORDICON_SOURCES.close}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.xs}
+                        colorize="currentColor"
+                      />
+                    </span>
                   </Badge>
                 )}
                 {selectedDisasterTypes.map((type) => (
                   <Badge key={type} variant="secondary" className="gap-1 capitalize">
                     {type}
-                    <X 
-                      className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                      onClick={() => toggleDisasterType(type)}
-                    />
+                    <span onClick={() => toggleDisasterType(type)} className="cursor-pointer hover:text-destructive">
+                      <Lordicon 
+                        src={LORDICON_SOURCES.close}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.xs}
+                        colorize="currentColor"
+                      />
+                    </span>
                   </Badge>
                 ))}
               </div>
@@ -589,14 +620,24 @@ export default function AnalysisPage() {
               Total Incidents
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                  <Lordicon 
+                    src={LORDICON_SOURCES.info}
+                    trigger="hover" 
+                    size={LORDICON_SIZES.sm}
+                    colorize="currentColor"
+                  />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[300px]">
                   <p>Total number of crisis incidents detected and analyzed by the system across all regions and disaster types</p>
                 </TooltipContent>
               </Tooltip>
             </CardTitle>
-            <Activity className="h-4 w-4 text-primary" />
+            <Lordicon 
+              src={LORDICON_SOURCES.activity}
+              trigger="hover" 
+              size={LORDICON_SIZES.md}
+              colorize="currentColor"
+            />
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -607,11 +648,11 @@ export default function AnalysisPage() {
               </div>
             )}
             <div className="flex flex-col gap-1">
-              <p className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {keyMetrics
                   ? `${(keyMetrics.total_incidents === 0 ? 0 : (keyMetrics.high_priority / keyMetrics.total_incidents) * 100).toFixed(1)}% high priority`
-                  : 'Loading...'}
-              </p>
+                  : <LoadingSpinner size={12} />}
+              </span>
               {comparisonEnabled && previousMetrics && keyMetrics && (
                 <ComparisonIndicator 
                   current={keyMetrics.total_incidents} 
@@ -629,14 +670,24 @@ export default function AnalysisPage() {
               High Priority
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                  <Lordicon 
+                    src={LORDICON_SOURCES.info}
+                    trigger="hover" 
+                    size={LORDICON_SIZES.sm}
+                    colorize="currentColor"
+                  />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[300px]">
                   <p>Number of high-severity incidents requiring immediate attention and rapid response from emergency services</p>
                 </TooltipContent>
               </Tooltip>
             </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
+            <Lordicon 
+              src={LORDICON_SOURCES.alert}
+              trigger="play-once-then-hover" 
+              size={LORDICON_SIZES.md}
+              colorize="currentColor"
+            />
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -647,11 +698,11 @@ export default function AnalysisPage() {
               </div>
             )}
             <div className="flex flex-col gap-1">
-              <p className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {keyMetrics
                   ? `${(keyMetrics.total_incidents === 0 ? 0 : (keyMetrics.high_priority / keyMetrics.total_incidents) * 100).toFixed(1)}% of total incidents`
-                  : 'Loading...'}
-              </p>
+                  : <LoadingSpinner size={12} />}
+              </span>
               {comparisonEnabled && previousMetrics && keyMetrics && (
                 <ComparisonIndicator 
                   current={keyMetrics.high_priority} 
@@ -669,14 +720,24 @@ export default function AnalysisPage() {
               Response Rate
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                  <Lordicon 
+                    src={LORDICON_SOURCES.info}
+                    trigger="hover" 
+                    size={LORDICON_SIZES.sm}
+                    colorize="currentColor"
+                  />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[300px]">
                   <p>Percentage of incidents that received a timely system response and alert generation. Higher is better.</p>
                 </TooltipContent>
               </Tooltip>
             </CardTitle>
-            <Target className="h-4 w-4 text-green-600" />
+            <Lordicon 
+              src={LORDICON_SOURCES.target}
+              trigger="hover" 
+              size={LORDICON_SIZES.md}
+              colorize="currentColor"
+            />
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -707,14 +768,24 @@ export default function AnalysisPage() {
               Avg Response Time
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                  <Lordicon 
+                    src={LORDICON_SOURCES.info}
+                    trigger="hover" 
+                    size={LORDICON_SIZES.sm}
+                    colorize="currentColor"
+                  />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[300px]">
                   <p>Average time between crisis detection and system alert generation. Lower times indicate faster response capabilities.</p>
                 </TooltipContent>
               </Tooltip>
             </CardTitle>
-            <TrendingUp className="h-4 w-4 text-amber-600" />
+            <Lordicon 
+              src={LORDICON_SOURCES.trendingUp}
+              trigger="hover" 
+              size={LORDICON_SIZES.md}
+              colorize="currentColor"
+            />
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -747,7 +818,12 @@ export default function AnalysisPage() {
             Crisis Trend Analysis (2025)
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                <Lordicon 
+                  src="https://cdn.lordicon.com/yhtmwrae.json" 
+                  trigger="hover" 
+                  size={16} 
+                  colorize="currentColor"
+                />
               </TooltipTrigger>
               <TooltipContent className="max-w-[300px]">
                 <p>Monthly trend chart showing total incidents and priority breakdown. Reference line indicates target response threshold.</p>
@@ -825,7 +901,12 @@ export default function AnalysisPage() {
               Regional Analysis Heatmap
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                  <Lordicon 
+                    src={LORDICON_SOURCES.info}
+                    trigger="hover" 
+                    size={LORDICON_SIZES.md}
+                    colorize="currentColor"
+                  />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[300px]">
                   <p>Geographic visualization of crisis incidents by region with severity levels and incident counts</p>
@@ -841,10 +922,7 @@ export default function AnalysisPage() {
               <div className="h-80 w-full rounded-lg overflow-hidden mb-4 relative">
                 {loading ? (
                   <div className="h-full w-full flex items-center justify-center bg-muted/20">
-                    <div className="text-center">
-                      <Skeleton className="h-8 w-8 rounded-full mx-auto mb-2" />
-                      <div className="text-sm text-muted-foreground">Loading map...</div>
-                    </div>
+                    <LoadingSpinner size={48} text="Loading map..." />
                   </div>
                 ) : (
                   <CrisisMap regions={regions} />
@@ -916,7 +994,12 @@ export default function AnalysisPage() {
               Pattern Recognition
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                  <Lordicon 
+                    src={LORDICON_SOURCES.info}
+                    trigger="hover" 
+                    size={LORDICON_SIZES.md}
+                    colorize="currentColor"
+                  />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[300px]">
                   <p>Machine learning insights showing recurring crisis patterns, social media analysis, prediction accuracy, and detected anomalies</p>
@@ -959,7 +1042,12 @@ export default function AnalysisPage() {
                         Tweets Recognized
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                            <Lordicon 
+                    src={LORDICON_SOURCES.info}
+                    trigger="hover" 
+                    size={LORDICON_SIZES.sm}
+                    colorize="currentColor"
+                  />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-[300px]">
                             <p>Total number of social media posts analyzed by AI for crisis indicators and patterns</p>
@@ -988,7 +1076,12 @@ export default function AnalysisPage() {
                         Prediction Accuracy
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                            <Lordicon 
+                    src={LORDICON_SOURCES.info}
+                    trigger="hover" 
+                    size={LORDICON_SIZES.sm}
+                    colorize="currentColor"
+                  />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-[300px]">
                             <p>Machine learning model accuracy rate for correctly predicting and classifying crisis events</p>
@@ -1017,7 +1110,12 @@ export default function AnalysisPage() {
                         Anomalies Detected
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                            <Lordicon 
+                    src={LORDICON_SOURCES.info}
+                    trigger="hover" 
+                    size={LORDICON_SIZES.sm}
+                    colorize="currentColor"
+                  />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-[300px]">
                             <p>Unusual crisis patterns or data anomalies flagged by AI that require immediate human review and attention</p>

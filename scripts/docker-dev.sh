@@ -22,10 +22,16 @@ case "$1" in
         echo "✅ Services restarted!"
         ;;
     "rebuild")
-        echo "🔨 Rebuilding BlueRelief development environment..."
-        docker-compose down
-        docker-compose up --build -d
-        echo "✅ Services rebuilt and started!"
+        if [ -z "$2" ]; then
+            echo "🔨 Rebuilding all services..."
+            docker-compose down
+            docker-compose up --build -d
+            echo "✅ All services rebuilt and started!"
+        else
+            echo "🔨 Rebuilding $2 service..."
+            docker-compose up --build -d $2
+            echo "✅ $2 service rebuilt and started!"
+        fi
         ;;
     "logs")
         if [ -z "$2" ]; then
@@ -116,8 +122,8 @@ case "$1" in
         echo "  start              - Start all services"
         echo "  stop               - Stop all services"
         echo "  restart            - Restart all services"
-        echo "  rebuild            - Rebuild and start all services"
-        echo "  logs               - Show logs (optionally specify service)"
+        echo "  rebuild [service]  - Rebuild all services or specific service (frontend|backend|email)"
+        echo "  logs [service]     - Show logs (optionally specify service)"
         echo "  reset              - Reset database (deletes all data)"
         echo "  reset-rebuild      - Reset database and rebuild all services"
         echo "  migrate            - Run pending migrations"
@@ -129,6 +135,8 @@ case "$1" in
         echo ""
         echo "Examples:"
         echo "  $0 start"
+        echo "  $0 rebuild"
+        echo "  $0 rebuild frontend"
         echo "  $0 logs backend"
         echo "  $0 shell postgres"
         echo "  $0 migrate-generate \"add users table\""

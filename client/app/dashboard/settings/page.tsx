@@ -118,10 +118,12 @@ export default function SettingsPage() {
               <Avatar className="h-20 w-20" onClick={() => {
                     console.log("Avatar clicked:", user?.picture);
                   }}>
-                <AvatarImage 
-                  src={user?.picture} 
-                  alt={user?.name || "User"} 
-                />
+                {user?.picture && (
+                  <AvatarImage 
+                    src={user.picture} 
+                    alt={user.name || "User"} 
+                  />
+                )}
                 <AvatarFallback className="bg-muted text-2xl">
                   {user?.name 
                     ? user.name.split(' ').map(n => n[0]).join('').toUpperCase()

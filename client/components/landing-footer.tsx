@@ -6,6 +6,7 @@ import { Logo } from "@/components/logo";
 import { AuthModal } from "@/components/auth-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { Mail, Github, Twitter } from "lucide-react";
+import { Gemini } from "@lobehub/icons";
 
 export function LandingFooter() {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -71,7 +72,7 @@ export function LandingFooter() {
               </span>
             </div>
             <p className="text-muted-foreground mb-6 max-w-sm leading-relaxed">
-              Real-time crisis monitoring and management platform. Powered by Bluesky social monitoring and Gemini AI.
+              Real-time crisis monitoring and management platform. Powered by Bluesky social monitoring and <span className="inline-flex items-center gap-1"><Gemini size={14} className="inline-block" />Gemini AI</span>.
             </p>
             <div className="flex items-center space-x-4">
               <a 

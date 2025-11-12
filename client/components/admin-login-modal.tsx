@@ -5,7 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
+import { Lordicon } from "@/components/lordicon";
+import { LORDICON_SOURCES, LORDICON_SIZES } from "@/lib/lordicon-config";
 import { useToast } from "@/hooks/use-toast";
 
 interface AdminLoginModalProps {
@@ -81,8 +82,13 @@ export function AdminLoginModal({ open, onOpenChange }: AdminLoginModalProps) {
       <DialogContent className="sm:max-w-md bg-card border">
         <DialogHeader>
           <div className="flex items-center justify-center mb-2">
-            <div className="h-12 w-12 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
-              <ShieldCheck className="h-6 w-6 text-primary" />
+            <div className="h-12 w-12 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
+              <Lordicon 
+                src={LORDICON_SOURCES.shieldCheck}
+                trigger="play-once-then-hover" 
+                size={LORDICON_SIZES["2xl"]}
+                colorize="currentColor"
+              />
             </div>
           </div>
           <DialogTitle className="text-2xl font-semibold text-center">
@@ -127,11 +133,12 @@ export function AdminLoginModal({ open, onOpenChange }: AdminLoginModalProps) {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8"
               >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
+                <Lordicon 
+                  src={LORDICON_SOURCES.eye}
+                  trigger="hover" 
+                  size={LORDICON_SIZES.md}
+                  colorize="currentColor"
+                />
               </Button>
             </div>
           </div>
@@ -139,13 +146,23 @@ export function AdminLoginModal({ open, onOpenChange }: AdminLoginModalProps) {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Authenticating...
+                <Lordicon 
+                  src={LORDICON_SOURCES.loader}
+                  trigger="loop" 
+                  size={LORDICON_SIZES.md}
+                  colorize="currentColor"
+                />
+                <span className="ml-2">Authenticating...</span>
               </>
             ) : (
               <>
-                <ShieldCheck className="mr-2 h-4 w-4" />
-                Sign In as Admin
+                <Lordicon 
+                  src={LORDICON_SOURCES.shieldCheck}
+                  trigger="hover" 
+                  size={LORDICON_SIZES.md}
+                  colorize="currentColor"
+                />
+                <span className="ml-2">Sign In as Admin</span>
               </>
             )}
           </Button>

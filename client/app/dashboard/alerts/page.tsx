@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, Calendar, Loader2, Settings, CheckCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
 import { showSuccessToast, showErrorToast } from "@/lib/toast-utils";
 import Link from "next/link";
+import { Lordicon } from "@/components/lordicon";
 
 interface Alert {
   id: number;
@@ -186,7 +187,7 @@ export default function AlertsPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           <p className="text-muted-foreground">Loading alerts...</p>
@@ -197,7 +198,7 @@ export default function AlertsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="space-y-6">
         <div className="flex items-center justify-center py-16">
           <div className="text-center">
             <h3 className="text-lg font-semibold text-foreground mb-2">Error loading alerts</h3>
@@ -209,16 +210,23 @@ export default function AlertsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Alerts</h1>
           <p className="text-muted-foreground mt-1">Real-time crisis alerts for your location</p>
         </div>
         <div className="flex items-center gap-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground flex items-center justify-center">
+              <Lordicon 
+                src="https://cdn.lordicon.com/xaekjsls.json" 
+                trigger="hover" 
+                size={16} 
+                colorize="currentColor"
+              />
+            </div>
             <Input
               placeholder="Search alerts..."
               value={searchQuery}
@@ -233,12 +241,22 @@ export default function AlertsPage() {
             className="gap-2"
             disabled={alerts.filter(alert => !alert.is_read).length === 0}
           >
-            <CheckCircle className="w-4 h-4" />
+            <Lordicon 
+              src="https://cdn.lordicon.com/zdfcfvwu.json" 
+              trigger="hover" 
+              size={16} 
+              colorize="currentColor"
+            />
             Mark All Read
           </Button>
           <Link href="/dashboard/settings">
             <Button variant="outline" size="sm" className="gap-2">
-              <Settings className="w-4 h-4" />
+              <Lordicon 
+                src="https://cdn.lordicon.com/lcawqajy.json" 
+                trigger="hover" 
+                size={16} 
+                colorize="currentColor"
+              />
               Manage Preferences
             </Button>
           </Link>
@@ -304,7 +322,12 @@ export default function AlertsPage() {
                           onClick={() => markAlertAsRead(alert.id)}
                           className="h-6 px-2 text-xs gap-1"
                         >
-                          <CheckCircle className="h-3 w-3" />
+                          <Lordicon 
+                            src="https://cdn.lordicon.com/zdfcfvwu.json" 
+                            trigger="hover" 
+                            size={12} 
+                            colorize="currentColor"
+                          />
                           Mark Read
                         </Button>
                       )}
@@ -312,7 +335,12 @@ export default function AlertsPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <Lordicon 
+                        src="https://cdn.lordicon.com/azemaxsk.json" 
+                        trigger="hover" 
+                        size={16} 
+                        colorize="currentColor"
+                      />
                       <span className="text-sm text-muted-foreground">
                         {formatTimestamp(alert.created_at)}
                       </span>
@@ -327,8 +355,13 @@ export default function AlertsPage() {
 
       {filteredAlerts.length === 0 && !loading && (
         <div className="text-center py-16">
-          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-            <Search className="h-8 w-8 text-muted-foreground" />
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground">
+            <Lordicon 
+              src="https://cdn.lordicon.com/xaekjsls.json" 
+              trigger="hover" 
+              size={32} 
+              colorize="currentColor"
+            />
           </div>
           <h3 className="text-lg font-semibold text-foreground mb-2">
             {alerts.length === 0 ? "No alerts yet" : "No alerts found"}
