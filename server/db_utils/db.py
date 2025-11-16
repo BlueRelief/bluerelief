@@ -384,6 +384,12 @@ def upsert_user(user_id: str, email: str, name: str, picture: str) -> Optional[D
         existing_user = db.query(User).filter(User.email == email).first()
 
         if existing_user:
+            # If user was deleted, restore them (clear deleted_at and set is_active)
+            if existing_user.deleted_at is not None:
+                existing_user.deleted_at = None
+                existing_user.is_active = True
+                logger.info(f"Restored previously deleted user: {email}")
+            
             # Update existing user
             existing_user.id = user_id  # Update ID in case it changed
             existing_user.name = name
@@ -392,7 +398,7 @@ def upsert_user(user_id: str, email: str, name: str, picture: str) -> Optional[D
             user = existing_user
             logger.info(f"Updated existing user: {email}")
         else:
-            # Create new user
+            # No user exists at all - create brand new user
             user = User(
                 id=user_id,
                 email=email,
@@ -434,7 +440,10 @@ def get_user_by_email(email: str) -> Optional[Dict]:
             logger.error("Could not establish database session")
             return None
 
-        user = db.query(User).filter(User.email == email).first()
+        user = db.query(User).filter(
+            User.email == email,
+            User.deleted_at == None
+        ).first()
 
         if user:
             return {
@@ -445,6 +454,7 @@ def get_user_by_email(email: str) -> Optional[Dict]:
                 "location": user.location,
                 "latitude": user.latitude,
                 "longitude": user.longitude,
+                "role": user.role,
                 "created_at": user.created_at,
                 "updated_at": user.updated_at,
             }
