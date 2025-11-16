@@ -113,15 +113,15 @@ const ComparisonIndicator = ({
   return (
     <div className={`flex items-center gap-1 text-xs ${isImprovement ? 'text-green-600' : 'text-red-600'}`}>
       {isPositive ? (
-        <Lordicon 
-          src={LORDICON_SOURCES.arrowUpRight}
+      <Lordicon 
+        src={LORDICON_SOURCES.trendingUp}
           trigger="hover" 
           size={LORDICON_SIZES.xs}
           colorize="currentColor"
         />
       ) : (
         <Lordicon 
-          src={LORDICON_SOURCES.arrowDownRight}
+          src={LORDICON_SOURCES.trendingUp}
           trigger="hover" 
           size={LORDICON_SIZES.xs}
           colorize="currentColor"

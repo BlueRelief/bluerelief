@@ -30,7 +30,7 @@ export function MapStyleSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [initialPreferences, setInitialPreferences] = useState<MapPreferences | null>(null);
+  const [_initialPreferences, setInitialPreferences] = useState<MapPreferences | null>(null);
 
   useEffect(() => {
     loadPreferences();

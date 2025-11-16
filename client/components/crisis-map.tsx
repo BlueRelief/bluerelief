@@ -69,6 +69,22 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = memo(({ data, regions, mapboxT
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const isMapLoaded = useRef<boolean>(false);
   const [userMapPreferences, setUserMapPreferences] = useState<{ light_style: string; dark_style: string } | null>(null);
+  const [userCountryCenter, setUserCountryCenter] = useState<[number, number] | null>(() => {
+    try {
+      const cached = localStorage.getItem('user_country_center');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        console.log('Loaded cached country center:', parsed);
+        return parsed;
+      }
+    } catch (error) {
+      console.error('Failed to parse cached country center:', error);
+    }
+    return null;
+  });
+  const [isLocationReady, setIsLocationReady] = useState(() => {
+    return !!localStorage.getItem('user_country_center');
+  });
 
   useEffect(() => {
     const loadMapPreferences = async () => {
@@ -84,24 +100,84 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = memo(({ data, regions, mapboxT
   }, []);
 
   useEffect(() => {
-    if (!mapContainer.current || !userMapPreferences) return;
+    const detectCountryLocation = async () => {
+      try {
+        const cached = localStorage.getItem('user_country_center');
+        if (cached) {
+          setIsLocationReady(true);
+          return;
+        }
+
+        const ipResponse = await fetch('https://ip.radsoft.cloud/ip');
+        if (!ipResponse.ok) {
+          setIsLocationReady(true);
+          return;
+        }
+
+        const ipData = await ipResponse.json();
+        const country = ipData.details?.country;
+
+        if (!country) {
+          setIsLocationReady(true);
+          return;
+        }
+
+        const geoResponse = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(country)}.json?access_token=${mapboxToken}&types=country&limit=1`
+        );
+
+        if (!geoResponse.ok) {
+          setIsLocationReady(true);
+          return;
+        }
+
+        const geoData = await geoResponse.json();
+        if (geoData.features && geoData.features.length > 0) {
+          const feature = geoData.features[0];
+          const [longitude, latitude] = feature.center;
+          const center: [number, number] = [longitude, latitude];
+          console.log('Detected country center from IP:', center, 'Country:', country);
+          setUserCountryCenter(center);
+          localStorage.setItem('user_country_center', JSON.stringify(center));
+        }
+        setIsLocationReady(true);
+      } catch (error) {
+        console.error('Failed to detect country location:', error);
+        setIsLocationReady(true);
+      }
+    };
+    detectCountryLocation();
+  }, [mapboxToken]);
+
+  useEffect(() => {
+    if (!mapContainer.current || !userMapPreferences || !isLocationReady) return;
 
     mapboxgl.accessToken = mapboxToken;
     const mapStyle = resolvedTheme === 'dark'
       ? `mapbox://styles/mapbox/${userMapPreferences.dark_style}`
       : `mapbox://styles/mapbox/${userMapPreferences.light_style}`;
 
+    const initialCenter = userCountryCenter || [-98.5795, 39.8283];
+    console.log('Initializing map with center:', initialCenter, 'userCountryCenter:', userCountryCenter);
+    
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: mapStyle,
-      center: [-98.5795, 39.8283],
-      zoom: 3
+      center: initialCenter,
+      zoom: 0
     });
 
      map.current.on('load', () => {
        if (!map.current) return;
 
        isMapLoaded.current = true;
+
+       // Animate zoom from 0 to 3, maintaining the center
+       map.current.flyTo({
+         center: initialCenter,
+         zoom: 3,
+         duration: 3000
+       });
 
        const geojsonData: GeoJSON.FeatureCollection = {
          type: 'FeatureCollection',
@@ -268,7 +344,7 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = memo(({ data, regions, mapboxT
       isMapLoaded.current = false;
       map.current?.remove();
     };
-  }, [data, regions, mapboxToken, resolvedTheme, onViewDetails, userMapPreferences]);
+  }, [data, regions, mapboxToken, resolvedTheme, onViewDetails, userMapPreferences, isLocationReady, userCountryCenter]);
 
   useEffect(() => {
     if (!map.current || !resolvedTheme || !isMapLoaded.current || !userMapPreferences) return;
@@ -358,6 +434,7 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = memo(({ data, regions, mapboxT
     });
   }, [resolvedTheme, data, userMapPreferences]);
 
+
   useEffect(() => {
     if (!map.current || !focusRegion || focusRegion === 'all') return;
 
@@ -381,11 +458,25 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = memo(({ data, regions, mapboxT
     } else {
       map.current.flyTo({
         center: [-98.5795, 39.8283],
-        zoom: 3,
+        zoom: 2,
         duration: 1500
       });
     }
   }, [focusRegion]);
+
+  if (!isLocationReady) {
+    return (
+      <div
+        style={{ width: '100%', height: '600px' }}
+        className="flex items-center justify-center bg-muted/50 rounded-lg border"
+      >
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+          <div className="text-sm text-muted-foreground">Loading map...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

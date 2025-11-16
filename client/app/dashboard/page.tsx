@@ -15,6 +15,7 @@ import { Combobox } from "@/components/ui/combobox";
 import {
   Search,
   ExternalLink,
+  ArrowUpRight,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -30,9 +31,13 @@ import { LoadingSpinner } from "@/components/loading-spinner";
 import { useState, useEffect, useMemo } from "react";
 import {
   ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
   type ChartConfig
 } from "@/components/ui/chart";
-import { AreaChart, Area } from "recharts";
+import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { apiGet } from "@/lib/api-client";
 import { useAlertNotifications } from "@/hooks/use-alert-notifications";
 import { useAuth } from "@/hooks/use-auth";
@@ -50,8 +55,19 @@ const CrisisMap = dynamic(() => import("@/components/crisis-map"), {
 
 const chartConfig = {
   sentiment: {
-    label: "Sentiment",
-    color: "var(--primary)",
+    label: "Sentiment Score",
+    color: "oklch(0.6368 0.2078 25.3313)",
+  },
+} satisfies ChartConfig;
+
+const timeSeriesChartConfig = {
+  incident_count: {
+    label: "Incident Count",
+    color: "oklch(0.6368 0.2078 25.3313)",
+  },
+  avg_severity: {
+    label: "Avg Severity",
+    color: "oklch(0.5593 0.1942 258.4556)",
   },
 } satisfies ChartConfig;
 
@@ -81,6 +97,16 @@ interface RecentEvent {
   sentiment_score?: number | null;
 }
 
+interface TimeSeriesData {
+  timestamp: string;
+  incident_count: number;
+  avg_severity: number;
+}
+
+interface DisasterTypesData {
+  disaster_types: Record<string, number>;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const [timeRange, setTimeRange] = useState("");
@@ -104,11 +130,13 @@ export default function DashboardPage() {
   });
   const [sentimentData, setSentimentData] = useState<SentimentTrend[]>([]);
   const [recentEvents, setRecentEvents] = useState<RecentEvent[]>([]);
+  const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
+  const [disasterTypes, setDisasterTypes] = useState<Array<{name: string; count: number}>>([]);
   const [loading, setLoading] = useState(true);
   const [lastFetch, setLastFetch] = useState<Date | null>(null);
   const [now, setNow] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showAllEvents, setShowAllEvents] = useState(false);
+  const [showAllEvents, _setShowAllEvents] = useState(false);
 
   // Enable real-time alert notifications and get user-specific alerts
   const { alerts: userAlerts } = useAlertNotifications({
@@ -129,7 +157,7 @@ export default function DashboardPage() {
         setLoading(true);
 
         const timeParam = timeRange || '24h';
-        const [statsData, sentimentResponse, eventsResponse, incidentsData] = await Promise.all([
+        const [statsData, sentimentResponse, eventsResponse, incidentsData, timeSeriesResponse, disasterTypesResponse] = await Promise.all([
           apiGet<DashboardStats>(`/api/dashboard/stats?time_range=${timeParam}`),
           apiGet<{ trends: SentimentTrend[] }>(`/api/dashboard/sentiment-trends?time_range=${timeParam}`),
           apiGet<{ events: RecentEvent[] }>(`/api/dashboard/recent-events?time_range=${timeParam}`),
@@ -140,6 +168,8 @@ export default function DashboardPage() {
             coordinates: [number, number];
             crisis_description?: string;
           }>>(`/api/incidents?time_range=${timeParam}`),
+          apiGet<{ timeseries: TimeSeriesData[] }>(`/api/dashboard/time-series?hours=48`),
+          apiGet<DisasterTypesData>(`/api/dashboard/disaster-types?time_range=${timeParam}`),
         ]);
 
         if (cancelled) return;
@@ -148,6 +178,15 @@ export default function DashboardPage() {
         setSentimentData(sentimentResponse.trends);
         setRecentEvents(eventsResponse.events);
         setRegions(incidentsData);
+        setTimeSeriesData(timeSeriesResponse.timeseries);
+        
+        // Transform disaster types into array format
+        const disasterTypesArray = Object.entries(disasterTypesResponse.disaster_types).map(([name, count]) => ({
+          name,
+          count
+        })).sort((a, b) => b.count - a.count);
+        setDisasterTypes(disasterTypesArray);
+        
         setLastFetch(new Date());
       } catch (e) {
         console.warn('Failed to fetch dashboard data:', e);
@@ -248,7 +287,7 @@ export default function DashboardPage() {
         
         locationMatch = nameMatch || coordRegion === locationFilter;
       }
-
+      
       // Country filter
       const countryMatch = !countryFilter || region.region.toLowerCase().includes(countryFilter.toLowerCase());
 
@@ -307,15 +346,6 @@ export default function DashboardPage() {
 
   const firstName = user?.name?.split(' ')[0] || "there";
 
-  const toggleDisasterType = (type: string) => {
-    setDisasterTypeFilters(prev =>
-      prev.includes(type)
-        ? prev.filter(t => t !== type)
-        : [...prev, type]
-    );
-  };
-
-  const availableDisasterTypes = ["earthquake", "flood", "fire", "storm", "tsunami", "other"];
   const hasActiveMapFilters = countryFilter !== "" || disasterTypeFilters.length > 0;
 
   const availableCountries = useMemo(() => {
@@ -469,12 +499,7 @@ export default function DashboardPage() {
             <Link href="/dashboard/alerts">
               <Button variant="destructive" size="sm">
                 View Alerts
-                <Lordicon 
-                  src={LORDICON_SOURCES.externalLink}
-                  trigger="hover"
-                  size={LORDICON_SIZES.sm}
-                  colorize="currentColor"
-                />
+                <ArrowUpRight className="h-4 w-4" />
               </Button>
             </Link>
           </CardContent>
@@ -489,17 +514,34 @@ export default function DashboardPage() {
               <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
                 <Lordicon
                   src={LORDICON_SOURCES.globe}
-                  trigger="hover"
+                  trigger="play-once-then-hover"
                   size={24}
                   colorize="rgb(59, 130, 246)"
                 />
               </div>
               <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
                 <div className="text-2xl font-bold">
                   {loading ? "-" : stats.total_crises.toLocaleString()}
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="cursor-help">
+                        <Lordicon 
+                          src={LORDICON_SOURCES.info}
+                          trigger="hover" 
+                          size={14}
+                          colorize="rgb(156, 163, 175)"
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Total number of active crisis events detected in the selected time range</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
                 <div className="text-xs text-muted-foreground">Total Crises</div>
-              </div>
+            </div>
             </div>
           </CardContent>
         </Card>
@@ -510,17 +552,34 @@ export default function DashboardPage() {
               <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
                 <Lordicon
                   src={LORDICON_SOURCES.people}
-                  trigger="hover"
+                  trigger="play-once-then-hover"
                   size={24}
                   colorize="rgb(239, 68, 68)"
                 />
               </div>
               <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
                 <div className="text-2xl font-bold">
                   {loading ? "-" : stats.affected_people.toLocaleString()}
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="cursor-help">
+                        <Lordicon 
+                          src={LORDICON_SOURCES.info}
+                          trigger="hover" 
+                          size={14}
+                          colorize="rgb(156, 163, 175)"
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Estimated total population affected by active crisis events</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
                 <div className="text-xs text-muted-foreground">Affected People</div>
-              </div>
+            </div>
             </div>
           </CardContent>
         </Card>
@@ -531,14 +590,31 @@ export default function DashboardPage() {
               <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
                 <Lordicon
                   src={LORDICON_SOURCES.alert}
-                  trigger="hover"
+                  trigger="play-once-then-hover"
                   size={24}
                   colorize="rgb(245, 158, 11)"
                 />
               </div>
               <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
                 <div className="text-2xl font-bold">
                   {loading ? "-" : stats.urgent_alerts.toLocaleString()}
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="cursor-help">
+                        <Lordicon 
+                          src={LORDICON_SOURCES.info}
+                          trigger="hover" 
+                          size={14}
+                          colorize="rgb(156, 163, 175)"
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Number of posts with urgent sentiment requiring immediate attention</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
                 <div className="text-xs text-muted-foreground">Urgent Alerts</div>
               </div>
@@ -552,14 +628,31 @@ export default function DashboardPage() {
               <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
                 <Lordicon
                   src={LORDICON_SOURCES.location}
-                  trigger="hover"
+                  trigger="play-once-then-hover"
                   size={24}
                   colorize="rgb(34, 197, 94)"
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-2xl font-bold">
-                  {loading ? "-" : stats.active_regions.toLocaleString()}
+                <div className="flex items-center gap-1.5">
+                  <div className="text-2xl font-bold">
+                    {loading ? "-" : stats.active_regions.toLocaleString()}
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="cursor-help">
+                        <Lordicon 
+                          src={LORDICON_SOURCES.info}
+                          trigger="hover" 
+                          size={14}
+                          colorize="rgb(156, 163, 175)"
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Number of distinct geographic regions with active crisis events</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
                 <div className="text-xs text-muted-foreground">Active Regions</div>
               </div>
@@ -568,116 +661,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Recent Events - MAIN FOCUS */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Lordicon 
-                src={LORDICON_SOURCES.activity}
-                trigger="hover" 
-                size={LORDICON_SIZES.lg}
-                colorize="currentColor"
-              />
-              Latest Crisis Events
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Search..."
-                  className="pl-8 h-7 w-[160px] text-xs"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <Link href="/dashboard/data-feed">
-                <Button variant="ghost" size="sm" className="gap-1 h-7">
-                  View All
-                  <Lordicon 
-                    src={LORDICON_SOURCES.externalLink}
-                    trigger="hover" 
-                    size={LORDICON_SIZES.xs}
-                    colorize="currentColor"
-                  />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pb-3">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            {loading ? (
-              <div className="col-span-full text-center py-12">
-                <LoadingSpinner size={48} text="Loading events..." />
-              </div>
-            ) : displayedEvents.length === 0 ? (
-              <div className="col-span-full text-center py-12 text-muted-foreground">
-                No events found
-              </div>
-            ) : (
-              displayedEvents.slice(0, 6).map((event) => (
-                  <div
-                    key={event.id}
-                    className="flex flex-col gap-2 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex gap-1.5 mt-0.5">
-                        <Badge 
-                          className={`text-xs px-2 py-0.5 border ${
-                            event.severity.toLowerCase() === "critical" 
-                              ? "!bg-red-500/10 !text-red-700 dark:!bg-red-950/50 dark:!text-red-300"
-                              : event.severity.toLowerCase() === "high"
-                              ? "!bg-orange-500/10 !text-orange-700 dark:!bg-orange-950/50 dark:!text-orange-300"
-                              : event.severity.toLowerCase() === "medium"
-                              ? "!bg-yellow-500/10 !text-yellow-700 dark:!bg-yellow-950/50 dark:!text-yellow-300"
-                              : event.severity.toLowerCase() === "low"
-                              ? "!bg-green-500/10 !text-green-700 dark:!bg-green-950/50 dark:!text-green-300"
-                              : "!bg-blue-500/10 !text-blue-700 dark:!bg-blue-950/50 dark:!text-blue-300"
-                          }`}
-                        >
-                          {event.severity}
-                        </Badge>
-                        {event.sentiment && (
-                          <SentimentBadge
-                            sentiment={event.sentiment}
-                            sentiment_score={event.sentiment_score}
-                            showLabel={false}
-                            size="sm"
-                          />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{event.title}</div>
-                        <div className="text-xs text-muted-foreground mb-1">{event.location}</div>
-                        <div className="text-xs text-muted-foreground italic leading-relaxed line-clamp-2">
-                          {event.description}
-                        </div>
-                      </div>
-                      <div className="text-xs text-muted-foreground whitespace-nowrap">
-                        {event.event_time ? formatActivityTime(event.event_time) : event.time}
-                      </div>
-                    </div>
-                    {event.bluesky_url && (
-                      <div className="flex justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => window.open(event.bluesky_url, '_blank')}
-                        >
-                          <BlueskyIcon className="text-[#1185fe]" size={12} />
-                          View on Bluesky
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Map + Sentiment Row */}
+      {/* Map + Sidebar Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Crisis Map */}
         <Card className="lg:col-span-2">
@@ -691,25 +675,97 @@ export default function DashboardPage() {
                   colorize="currentColor"
                 />
                 Global Crisis Map
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="cursor-help">
+                      <Lordicon 
+                        src={LORDICON_SOURCES.info}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.md}
+                        colorize="currentColor"
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[300px]">
+                    <p>Interactive map showing crisis locations. Filter by region, severity, country, or disaster type.</p>
+                  </TooltipContent>
+                </Tooltip>
               </CardTitle>
               <Link href="/dashboard/map">
                 <Button variant="ghost" size="sm" className="gap-1">
                   View Full Map
-                  <Lordicon 
-                    src={LORDICON_SOURCES.externalLink}
-                    trigger="hover" 
-                    size={LORDICON_SIZES.xs}
-                    colorize="currentColor"
-                  />
+                  <Badge variant="secondary" className="ml-1 text-xs">+ More Filters</Badge>
                 </Button>
               </Link>
             </div>
           </CardHeader>
-          <CardContent className="pb-3">
-            <div className="h-[400px] rounded-md overflow-hidden border">
+          <CardContent className="pb-3 space-y-3">
+            {/* Filters Row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select value={locationFilter} onValueChange={setLocationFilter}>
+                <SelectTrigger className="h-8 w-[140px] text-xs">
+                  <SelectValue placeholder="All Regions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Regions</SelectItem>
+                  <SelectItem value="north-america">North America</SelectItem>
+                  <SelectItem value="south-america">South America</SelectItem>
+                  <SelectItem value="europe">Europe</SelectItem>
+                  <SelectItem value="africa">Africa</SelectItem>
+                  <SelectItem value="asia">Asia</SelectItem>
+                  <SelectItem value="oceania">Oceania</SelectItem>
+                  <SelectItem value="middle-east">Middle East</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={severityFilter} onValueChange={setSeverityFilter}>
+                <SelectTrigger className="h-8 w-[140px] text-xs">
+                  <SelectValue placeholder="All Severities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Severities</SelectItem>
+                  <SelectItem value="critical">Critical Only</SelectItem>
+                  <SelectItem value="high">High & Above</SelectItem>
+                  <SelectItem value="medium">Medium & Above</SelectItem>
+                  <SelectItem value="low">All Including Low</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Combobox
+                options={availableCountries.map(country => ({
+                  value: country,
+                  label: country
+                }))}
+                value={countryFilter}
+                onValueChange={setCountryFilter}
+                placeholder="Search country..."
+                searchPlaceholder="Type to search..."
+                emptyText="No country found."
+                className="h-8 w-[160px] text-xs"
+              />
+
+              {hasActiveMapFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs px-2"
+                  onClick={() => {
+                    setCountryFilter("");
+                    setDisasterTypeFilters([]);
+                    setLocationFilter("all");
+                    setSeverityFilter("all");
+                  }}
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+
+            <div className="h-[500px] rounded-md overflow-hidden border">
               <CrisisMap regions={filteredRegions} focusRegion={locationFilter} />
             </div>
-            <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+            
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1">
                   <div className="h-2 w-2 rounded-full bg-red-500"></div>
@@ -730,168 +786,465 @@ export default function DashboardPage() {
               </div>
               <span>{filteredRegions.length} locations</span>
             </div>
+
+            {/* Disaster Type Breakdown */}
+            <div className="mt-4 pt-4 border-t">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold">Disaster Type Breakdown</h3>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="cursor-help">
+                        <Lordicon 
+                          src={LORDICON_SOURCES.info}
+                          trigger="hover" 
+                          size={LORDICON_SIZES.sm}
+                          colorize="currentColor"
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[300px]">
+                      <p>Distribution of different types of disasters detected in the selected time range</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                {!loading && disasterTypes.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {disasterTypes.reduce((sum, t) => sum + t.count, 0)} total
+                  </span>
+                )}
+              </div>
+              {loading ? (
+                <div className="flex items-center gap-2 py-2">
+                  <LoadingSpinner size={16} />
+                  <span className="text-sm text-muted-foreground">Loading...</span>
+                </div>
+              ) : disasterTypes.length === 0 ? (
+                <div className="text-sm text-muted-foreground py-2">
+                  No disaster type data available
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {disasterTypes.map((type, index) => {
+                    const colors = [
+                      '#dc2626',
+                      '#ea580c',
+                      '#f59e0b',
+                      '#10b981',
+                      '#6366f1',
+                    ];
+                    const color = colors[index % colors.length];
+                    
+                    return (
+                      <div
+                        key={type.name}
+                        className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md"
+                        style={{ 
+                          backgroundColor: `${color}15`,
+                        }}
+                      >
+                        <div
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ backgroundColor: color }}
+                        />
+                        <span className="text-xs capitalize" style={{ color }}>
+                          {type.name}
+                        </span>
+                        <span className="text-xs font-semibold" style={{ color }}>
+                          {type.count}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Sidebar - Sentiment + Stats */}
+        {/* Sidebar - Severity & Sentiment */}
         <div className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                Severity Trends
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="cursor-help">
+                      <Lordicon 
+                        src={LORDICON_SOURCES.info}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.md}
+                        colorize="currentColor"
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[300px]">
+                    <p>Time series showing incident count and average severity over the last 48 hours</p>
+                  </TooltipContent>
+                </Tooltip>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pb-3">
+              {loading ? (
+                <div className="h-[280px] flex items-center justify-center">
+                  <LoadingSpinner size={48} text="Loading chart..." />
+                </div>
+              ) : timeSeriesData.length === 0 ? (
+                <div className="h-[280px] flex items-center justify-center text-muted-foreground text-sm">
+                  No time series data available
+                </div>
+              ) : (
+                <ChartContainer config={timeSeriesChartConfig} className="h-[280px] w-full">
+                  <LineChart data={timeSeriesData} accessibilityLayer>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="timestamp" 
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                      tickFormatter={(value) => {
+                        const date = new Date(value);
+                        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                      }}
+                    />
+                    <YAxis 
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <Line 
+                    type="monotone" 
+                      dataKey="incident_count" 
+                      stroke="var(--color-incident_count)" 
+                      strokeWidth={3}
+                      dot={{ fill: "var(--color-incident_count)", strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="avg_severity" 
+                      stroke="var(--color-avg_severity)" 
+                      strokeWidth={3}
+                      dot={{ fill: "var(--color-avg_severity)", strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+              </ChartContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Sentiment Trends */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 Sentiment Trends
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Lordicon 
-                src={LORDICON_SOURCES.info}
-                trigger="hover" 
-                size={LORDICON_SIZES.md}
-                colorize="currentColor"
-              />
+                    <div className="cursor-help">
+                      <Lordicon 
+                        src={LORDICON_SOURCES.info}
+                        trigger="hover" 
+                        size={LORDICON_SIZES.md}
+                        colorize="currentColor"
+                      />
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[300px]">
-                    <p>Aggregate sentiment analysis of social media posts related to crisis events. Shows emotional tone (negative/neutral/positive) over time</p>
+                    <p>Average sentiment score of crisis-related social media posts. Higher scores indicate more positive sentiment, lower scores indicate more negative/urgent sentiment.</p>
                   </TooltipContent>
                 </Tooltip>
               </CardTitle>
             </CardHeader>
             <CardContent className="pb-3">
-              <ChartContainer config={chartConfig} className="h-[120px] w-full">
-                <AreaChart 
-                  data={sentimentData.map(d => ({
-                    time: new Date(d.time).toLocaleTimeString('en-US', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    }),
-                    sentiment: d.sentiment ?? 0
-                  }))} 
-                  accessibilityLayer
-                >
-                  <defs>
-                    <linearGradient id="fillSentiment" x1="0" y1="0" x2="0" y2="1">
-                      <stop
-                        offset="5%"
-                        stopColor="var(--color-sentiment)"
-                        stopOpacity={0.8}
+              {loading ? (
+                <div className="h-[180px] flex items-center justify-center">
+                  <LoadingSpinner size={32} text="Loading..." />
+                </div>
+              ) : sentimentData.length === 0 ? (
+                <div className="h-[180px] flex items-center justify-center text-muted-foreground text-sm">
+                  No sentiment data available
+                </div>
+              ) : (
+                <>
+                  <ChartContainer config={chartConfig} className="h-[180px] w-full">
+                    <AreaChart 
+                      data={sentimentData.map(d => ({
+                        time: new Date(d.time).toLocaleTimeString('en-US', { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        }),
+                        sentiment: d.sentiment ?? 0
+                      }))} 
+                      accessibilityLayer
+                    >
+                      <defs>
+                        <linearGradient id="fillSentiment" x1="0" y1="0" x2="0" y2="1">
+                          <stop
+                            offset="5%"
+                            stopColor="var(--color-sentiment)"
+                            stopOpacity={0.8}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="var(--color-sentiment)"
+                            stopOpacity={0.1}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <XAxis 
+                        dataKey="time" 
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        tick={{ fontSize: 10 }}
                       />
-                      <stop
-                        offset="95%"
-                        stopColor="var(--color-sentiment)"
-                        stopOpacity={0.1}
+                      <YAxis 
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        tick={{ fontSize: 10 }}
+                        domain={[0, 100]}
                       />
-                    </linearGradient>
-                  </defs>
-                  <Area 
-                    type="monotone" 
-                    dataKey="sentiment" 
-                    stroke="var(--color-sentiment)" 
-                    fill="url(#fillSentiment)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ChartContainer>
-              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                <span>
-                  {loading ? <LoadingSpinner size={16} /> : sentimentData.length > 0 ? "Recent trend" : "No data"}
-                </span>
-                <span className="text-primary font-medium">
-                  {sentimentData.length > 0 && sentimentData[0].sentiment !== null && sentimentData[sentimentData.length - 1].sentiment !== null 
-                    ? `${((sentimentData[sentimentData.length - 1].sentiment! - sentimentData[0].sentiment!) / sentimentData[0].sentiment! * 100).toFixed(1)}%`
-                    : "-"}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Area 
+                        type="monotone" 
+                        dataKey="sentiment" 
+                        stroke="var(--color-sentiment)" 
+                        fill="url(#fillSentiment)"
+                        strokeWidth={2}
+                      />
+                    </AreaChart>
+                  </ChartContainer>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                    {(() => {
+                      const validData = sentimentData.filter(d => d.sentiment !== null);
+                      const currentValue = validData[validData.length - 1]?.sentiment ?? null;
+                      const firstValue = validData[0]?.sentiment ?? null;
+                      const avgValue = validData.length > 0 
+                        ? validData.reduce((sum, d) => sum + (d.sentiment || 0), 0) / validData.length
+                        : null;
+                      const changeValue = currentValue !== null && firstValue !== null 
+                        ? currentValue - firstValue 
+                        : null;
 
-        {/* System Stats */}
-        <Card className="lg:col-span-3">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">System Stats</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-3">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground flex items-center gap-1">
-                    Active Monitors
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Lordicon 
-                        src={LORDICON_SOURCES.info}
-                        trigger="hover" 
-                        size={LORDICON_SIZES.xs}
-                        colorize="currentColor"
-                      />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-[300px]">
-                        <p>24/7 automated monitoring systems tracking multiple data sources</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </span>
-                  <span className="text-sm font-medium">24/7</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground flex items-center gap-1">
-                    Data Sources
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Lordicon 
-                        src={LORDICON_SOURCES.info}
-                        trigger="hover" 
-                        size={LORDICON_SIZES.xs}
-                        colorize="currentColor"
-                      />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-[300px]">
-                        <p>Number of active data feeds (Bluesky, news APIs, etc.)</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </span>
-                  <span className="text-sm font-medium">5</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground flex items-center gap-1">
-                    Avg Response
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Lordicon 
-                        src={LORDICON_SOURCES.info}
-                        trigger="hover" 
-                        size={LORDICON_SIZES.xs}
-                        colorize="currentColor"
-                      />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-[300px]">
-                        <p>Average time from crisis detection to alert generation</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </span>
-                  <span className="text-sm font-medium">8.5 min</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground flex items-center gap-1">
-                    System Status
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Lordicon 
-                        src={LORDICON_SOURCES.info}
-                        trigger="hover" 
-                        size={LORDICON_SIZES.xs}
-                        colorize="currentColor"
-                      />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-[300px]">
-                        <p>Real-time health status of monitoring systems</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </span>
-                  <Badge variant="outline" className="text-green-600 border-green-600 text-xs">
-                    Operational
-                  </Badge>
-                </div>
-              </div>
+                      return (
+                        <>
+                          <div className="p-2 rounded-lg bg-muted/30">
+                            <div className="text-lg font-bold">
+                              {currentValue !== null ? currentValue.toFixed(0) : "-"}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Current</div>
+                          </div>
+                          <div className="p-2 rounded-lg bg-muted/30">
+                            <div className="text-lg font-bold">
+                              {avgValue !== null ? avgValue.toFixed(0) : "-"}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Average</div>
+                          </div>
+                          <div className="p-2 rounded-lg bg-muted/30">
+                            <div className={`text-lg font-bold ${
+                              changeValue !== null && changeValue > 0
+                                ? "text-green-600 dark:text-green-400" 
+                                : changeValue !== null && changeValue < 0
+                                ? "text-red-600 dark:text-red-400"
+                                : ""
+                            }`}>
+                              {changeValue !== null 
+                                ? `${changeValue > 0 ? "+" : ""}${changeValue.toFixed(0)}`
+                                : "-"}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Change</div>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Latest Crisis Events - List View */}
+      <Card>
+        <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+                        <Lordicon 
+                src={LORDICON_SOURCES.dataFeed}
+                        trigger="hover" 
+                size={LORDICON_SIZES.lg}
+                        colorize="currentColor"
+                      />
+              Latest Crisis Events
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="cursor-help">
+                          <Lordicon 
+                            src={LORDICON_SOURCES.info}
+                            trigger="hover" 
+                            size={LORDICON_SIZES.md}
+                            colorize="currentColor"
+                          />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[300px]">
+                  <p>Real-time crisis events detected from social media and other sources, sorted by most recent</p>
+                      </TooltipContent>
+                    </Tooltip>
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search..."
+                  className="pl-8 h-7 w-[160px] text-xs"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                </div>
+              <Link href="/dashboard/data-feed">
+                <Button variant="ghost" size="sm" className="gap-1 h-7">
+                  View All
+                  <ArrowUpRight className="h-3 w-3" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+          
+          {/* Legend */}
+          <div className="mt-3 p-3 bg-muted/30 rounded-lg border">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-4 flex-wrap">
+                <span className="text-xs font-medium text-muted-foreground">Severity:</span>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                  <span className="text-xs">Critical</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-orange-500"></div>
+                  <span className="text-xs">High</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
+                  <span className="text-xs">Medium</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                  <span className="text-xs">Low</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 flex-wrap">
+                <span className="text-xs font-medium text-muted-foreground">Sentiment:</span>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-red-600"></div>
+                  <span className="text-xs">Urgent/Fearful</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-gray-500"></div>
+                  <span className="text-xs">Neutral</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-green-600"></div>
+                  <span className="text-xs">Positive</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pb-3">
+          {loading ? (
+            <div className="text-center py-8">
+              <LoadingSpinner size={48} text="Loading events..." />
+            </div>
+          ) : displayedEvents.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No events found
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {displayedEvents.slice(0, 8).map((event) => (
+                <div
+                  key={event.id}
+                  className="p-4 rounded-lg border hover:bg-accent/50 transition-colors space-y-2"
+                >
+                  {/* Header Row */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge 
+                        className={`text-xs px-2 py-0.5 border ${
+                          event.severity.toLowerCase() === "critical" 
+                            ? "!bg-red-500/10 !text-red-700 dark:!bg-red-950/50 dark:!text-red-300"
+                            : event.severity.toLowerCase() === "high"
+                            ? "!bg-orange-500/10 !text-orange-700 dark:!bg-orange-950/50 dark:!text-orange-300"
+                            : event.severity.toLowerCase() === "medium"
+                            ? "!bg-yellow-500/10 !text-yellow-700 dark:!bg-yellow-950/50 dark:!text-yellow-300"
+                            : event.severity.toLowerCase() === "low"
+                            ? "!bg-green-500/10 !text-green-700 dark:!bg-green-950/50 dark:!text-green-300"
+                            : "!bg-blue-500/10 !text-blue-700 dark:!bg-blue-950/50 dark:!text-blue-300"
+                        }`}
+                      >
+                        {event.severity}
+                      </Badge>
+                      {event.sentiment && (
+                        <SentimentBadge
+                          sentiment={event.sentiment}
+                          sentiment_score={event.sentiment_score}
+                          showLabel={true}
+                          size="sm"
+                        />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs text-muted-foreground whitespace-nowrap">
+                        {event.event_time ? formatActivityTime(event.event_time) : event.time}
+                      </div>
+                      {event.bluesky_url && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(event.bluesky_url, '_blank')}
+                          className="h-7 gap-1 text-xs"
+                        >
+                          <BlueskyIcon className="text-[#1185fe]" size={14} />
+                          <span className="hidden sm:inline">View Post</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Title and Location */}
+                  <div>
+                    <div className="font-semibold text-base mb-1">{event.title}</div>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Lordicon 
+                        src={LORDICON_SOURCES.location}
+                        trigger="hover" 
+                        size={14}
+                        colorize="currentColor"
+                      />
+                      {event.location}
+                </div>
+              </div>
+
+                  {/* Description */}
+                  {event.description && (
+                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+                      {event.description}
+                    </p>
+                  )}
+        </div>
+              ))}
+      </div>
+          )}
+        </CardContent>
+      </Card>
 
     </div>
   );

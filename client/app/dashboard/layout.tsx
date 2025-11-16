@@ -352,31 +352,31 @@ export default function DashboardLayout({
 
   return (
     <TooltipProvider>
-      <SidebarProvider>
-        <AppSidebar user={user} />
-        <SidebarInset>
-          <header className="flex h-16 shrink-0 items-center gap-2 border-b px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-16">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="-ml-1" />
-              <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
-                <span>Toggle sidebar</span>
-                <Kbd>{typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</Kbd>
-                <span>+</span>
-                <Kbd>B</Kbd>
-              </div>
+    <SidebarProvider>
+      <AppSidebar user={user} />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-16">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1" />
+            <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Toggle sidebar</span>
+              <Kbd>{typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</Kbd>
+              <span>+</span>
+              <Kbd>B</Kbd>
             </div>
-            <div className="ml-auto flex items-center gap-4">
-              {user?.user_id && <NotificationCenter userId={user.user_id} />}
-              <span className="text-sm text-muted-foreground hidden md:inline">
-                Crisis Detection Platform
-              </span>
-            </div>
-          </header>
-          <div className="flex flex-1 flex-col gap-6 p-6 pt-6">
-            {children}
           </div>
-        </SidebarInset>
-      </SidebarProvider>
+          <div className="ml-auto flex items-center gap-4">
+            {user?.user_id && <NotificationCenter userId={user.user_id} />}
+            <span className="text-sm text-muted-foreground hidden md:inline">
+              Crisis Detection Platform
+            </span>
+          </div>
+        </header>
+        <div className="flex flex-1 flex-col gap-6 p-6 pt-6">
+          {children}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
     </TooltipProvider>
   );
 }

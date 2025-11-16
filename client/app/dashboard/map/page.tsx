@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,13 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Lordicon } from "@/components/lordicon";
-import { LORDICON_SOURCES, LORDICON_SIZES } from "@/lib/lordicon-config";
+import { LORDICON_SOURCES } from "@/lib/lordicon-config";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useState, useEffect, useMemo } from "react";
 import { apiGet } from "@/lib/api-client";
@@ -45,10 +39,9 @@ export default function MapPage() {
     coordinates: [number, number];
     crisis_description?: string;
   }>>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [lastFetch, setLastFetch] = useState<Date | null>(null);
   const [now, setNow] = useState<Date>(new Date());
-  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,7 +88,7 @@ export default function MapPage() {
   };
 
   const availableDisasterTypes = ["earthquake", "flood", "fire", "storm", "tsunami", "other"];
-  const hasActiveMapFilters = countryFilter !== "" || disasterTypeFilters.length > 0;
+  const hasActiveFilters = countryFilter !== "" || disasterTypeFilters.length > 0 || locationFilter !== "all" || severityFilter !== "all";
 
   const availableCountries = useMemo(() => {
     const countries = [...new Set(regions.map(r => r.region))].sort();
@@ -176,18 +169,6 @@ export default function MapPage() {
     });
   }, [regions, severityFilter, locationFilter, countryFilter, disasterTypeFilters]);
 
-  const formatTimeRangeLabel = (val: string) => {
-    switch (val) {
-      case '6h': return 'Last 6 Hours';
-      case '12h': return 'Last 12 Hours';
-      case '24h': return 'Last 24 Hours';
-      case '48h': return 'Last 48 Hours';
-      case '7d': return 'Last 7 Days';
-      case '30d': return 'Last 30 Days';
-      default: return 'Last 24 Hours';
-    }
-  };
-
   const lastUpdatedText = () => {
     if (!lastFetch) return 'Never updated';
     const diffMs = now.getTime() - lastFetch.getTime();
@@ -201,132 +182,130 @@ export default function MapPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-80px)]">
-      {/* Left Sidebar - Filters & Info */}
-      <div className="w-80 bg-background border-r flex flex-col">
+    <div className="flex h-[calc(100vh-100px)]">
+      {/* Map Container */}
+      <div className="relative flex-1 w-full h-full">
+        {/* Map Background */}
+        <div className="absolute inset-0 w-full h-full">
+          <CrisisMap regions={filteredRegions} focusRegion={locationFilter} />
+        </div>
+      </div>
+
+      {/* Sidebar - Everything Integrated */}
+      <div className="w-[320px] border-l bg-background/95 backdrop-blur-lg flex-shrink-0 flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b space-y-3">
-          <div>
-            <h1 className="text-xl font-bold mb-1">Global Crisis Map</h1>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Live data</span>
-              <span>•</span>
-              <span>{lastUpdatedText()}</span>
+        <div className="p-4 border-b">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Lordicon 
+                src={LORDICON_SOURCES.globe}
+                trigger="play-once-then-hover"
+                size={24}
+                colorize="currentColor"
+              />
+            </div>
+            <div>
+              <div className="font-bold text-base">Global Crisis Map</div>
+              <div className="text-xs text-muted-foreground">{lastUpdatedText()}</div>
             </div>
           </div>
           
-          {/* Stats */}
-          <div className="bg-muted/50 rounded-lg p-3">
-            <div className="text-center mb-2">
-              <div className="text-3xl font-bold">{filteredRegions.length}</div>
-              <div className="text-xs text-muted-foreground">Active Locations</div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex items-center gap-1.5">
-                <div className="h-2.5 w-2.5 rounded-full bg-red-500"></div>
-                <span className="text-xs">Critical</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="h-2.5 w-2.5 rounded-full bg-orange-500"></div>
-                <span className="text-xs">High</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="h-2.5 w-2.5 rounded-full bg-yellow-500"></div>
-                <span className="text-xs">Medium</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="h-2.5 w-2.5 rounded-full bg-green-500"></div>
-                <span className="text-xs">Low</span>
-              </div>
-            </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Time Range</label>
+            <Select value={timeRange || "24h"} onValueChange={setTimeRange}>
+              <SelectTrigger className="h-9 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="6h">Last 6 Hours</SelectItem>
+                <SelectItem value="12h">Last 12 Hours</SelectItem>
+                <SelectItem value="24h">Last 24 Hours</SelectItem>
+                <SelectItem value="48h">Last 48 Hours</SelectItem>
+                <SelectItem value="7d">Last 7 Days</SelectItem>
+                <SelectItem value="30d">Last 30 Days</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        {/* Filters - Compact */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          <div className="flex gap-2">
-            <Select value={timeRange || "24h"} onValueChange={setTimeRange}>
-              <SelectTrigger className="flex-1 h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="6h">6h</SelectItem>
-                <SelectItem value="12h">12h</SelectItem>
-                <SelectItem value="24h">24h</SelectItem>
-                <SelectItem value="48h">48h</SelectItem>
-                <SelectItem value="7d">7d</SelectItem>
-                <SelectItem value="30d">30d</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Select value={severityFilter} onValueChange={setSeverityFilter}>
-              <SelectTrigger className="flex-1 h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="critical">Critical</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Select value={locationFilter} onValueChange={setLocationFilter}>
-            <SelectTrigger className="w-full h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Regions</SelectItem>
-              <SelectItem value="north-america">North America</SelectItem>
-              <SelectItem value="south-america">South America</SelectItem>
-              <SelectItem value="europe">Europe</SelectItem>
-              <SelectItem value="africa">Africa</SelectItem>
-              <SelectItem value="asia">Asia</SelectItem>
-              <SelectItem value="oceania">Oceania</SelectItem>
-              <SelectItem value="middle-east">Middle East</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Combobox
-            options={availableCountries.map(country => ({
-              value: country,
-              label: country
-            }))}
-            value={countryFilter}
-            onValueChange={setCountryFilter}
-            placeholder="Search country..."
-            searchPlaceholder="Type to search..."
-            emptyText="No country found."
-            className="h-9"
-          />
-
-          <div>
-            <div className="text-xs text-muted-foreground mb-2">Crisis Type</div>
-            <div className="grid grid-cols-2 gap-2">
-              {availableDisasterTypes.map((type) => (
-                <Button
-                  key={type}
-                  variant={disasterTypeFilters.includes(type) ? "default" : "outline"}
-                  size="sm"
-                  className="capitalize h-8"
-                  onClick={() => toggleDisasterType(type)}
-                >
-                  {type}
-                </Button>
-              ))}
+        {/* Filters Section */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Region</label>
+              <Select value={locationFilter} onValueChange={setLocationFilter}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Regions</SelectItem>
+                  <SelectItem value="north-america">North America</SelectItem>
+                  <SelectItem value="south-america">South America</SelectItem>
+                  <SelectItem value="europe">Europe</SelectItem>
+                  <SelectItem value="africa">Africa</SelectItem>
+                  <SelectItem value="asia">Asia</SelectItem>
+                  <SelectItem value="oceania">Oceania</SelectItem>
+                  <SelectItem value="middle-east">Middle East</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </div>
 
-          {hasActiveMapFilters && (
-            <>
-              <div className="flex items-center justify-between pt-2 border-t">
-                <span className="text-xs text-muted-foreground">Filters Active</span>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Severity</label>
+              <Select value={severityFilter} onValueChange={setSeverityFilter}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Severities</SelectItem>
+                  <SelectItem value="critical">Critical Only</SelectItem>
+                  <SelectItem value="high">High & Above</SelectItem>
+                  <SelectItem value="medium">Medium & Above</SelectItem>
+                  <SelectItem value="low">All Including Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Country</label>
+              <Combobox
+                options={availableCountries.map(country => ({
+                  value: country,
+                  label: country
+                }))}
+                value={countryFilter}
+                onValueChange={setCountryFilter}
+                placeholder="Search country..."
+                searchPlaceholder="Type to search..."
+                emptyText="No country found."
+                className="h-9"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Crisis Type</label>
+              <div className="grid grid-cols-2 gap-2">
+                {availableDisasterTypes.map((type) => (
+                  <Button
+                    key={type}
+                    variant={disasterTypeFilters.includes(type) ? "default" : "outline"}
+                    size="sm"
+                    className="capitalize h-8 text-xs"
+                    onClick={() => toggleDisasterType(type)}
+                  >
+                    {type}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+          {hasActiveFilters && (
+            <div className="pt-3 border-t space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Active Filters</span>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7"
+                  className="h-6 text-xs px-2"
                   onClick={() => {
                     setCountryFilter("");
                     setDisasterTypeFilters([]);
@@ -339,41 +318,67 @@ export default function MapPage() {
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {locationFilter !== "all" && (
-                  <Badge variant="secondary" className="text-xs">
-                    {locationFilter}
-                    <button onClick={() => setLocationFilter("all")} className="ml-1">×</button>
+                  <Badge variant="secondary" className="text-xs capitalize">
+                    {locationFilter.replace('-', ' ')}
+                    <button onClick={() => setLocationFilter("all")} className="ml-1.5">×</button>
                   </Badge>
                 )}
                 {severityFilter !== "all" && (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs capitalize">
                     {severityFilter}
-                    <button onClick={() => setSeverityFilter("all")} className="ml-1">×</button>
+                    <button onClick={() => setSeverityFilter("all")} className="ml-1.5">×</button>
                   </Badge>
                 )}
                 {countryFilter && (
                   <Badge variant="secondary" className="text-xs">
                     {countryFilter}
-                    <button onClick={() => setCountryFilter("")} className="ml-1">×</button>
+                    <button onClick={() => setCountryFilter("")} className="ml-1.5">×</button>
                   </Badge>
                 )}
                 {disasterTypeFilters.map((type) => (
                   <Badge key={type} variant="secondary" className="text-xs capitalize">
                     {type}
-                    <button onClick={() => toggleDisasterType(type)} className="ml-1">×</button>
+                    <button onClick={() => toggleDisasterType(type)} className="ml-1.5">×</button>
                   </Badge>
                 ))}
               </div>
-            </>
+            </div>
           )}
         </div>
 
-      </div>
-
-      {/* Map Area */}
-      <div className="flex-1 relative">
-        <CrisisMap regions={filteredRegions} focusRegion={locationFilter} />
+        {/* Footer - Legend & Stats */}
+        <div className="p-4 border-t space-y-4">
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Severity Legend</div>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <div className="h-2.5 w-2.5 rounded-full bg-red-500"></div>
+                <span className="text-xs font-medium">Critical</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2.5 w-2.5 rounded-full bg-orange-500"></div>
+                <span className="text-xs font-medium">High</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2.5 w-2.5 rounded-full bg-yellow-500"></div>
+                <span className="text-xs font-medium">Medium</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2.5 w-2.5 rounded-full bg-green-500"></div>
+                <span className="text-xs font-medium">Low</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="pt-3 border-t">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Statistics</div>
+            <div className="text-lg font-bold">
+              <span className="text-3xl">{filteredRegions.length}</span>
+              <div className="text-muted-foreground text-xs mt-0.5">crisis location{filteredRegions.length !== 1 ? 's' : ''}</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-

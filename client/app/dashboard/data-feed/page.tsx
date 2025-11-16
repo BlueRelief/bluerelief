@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { ArrowUpRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -534,12 +535,7 @@ export default function DataFeedPage() {
                       >
                         <BlueskyIcon className="mr-2 text-[#1185fe]" size={16} />
                         View on Bluesky
-                        <Lordicon 
-                          src={LORDICON_SOURCES.externalLink}
-                          trigger="hover" 
-                          size={LORDICON_SIZES.xs}
-                          colorize="currentColor"
-                        />
+                        <ArrowUpRight className="h-3 w-3 ml-1" />
                       </Button>
                     )}
                   </div>

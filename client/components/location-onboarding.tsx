@@ -57,6 +57,70 @@ export function LocationOnboarding({ onLocationSet }: LocationOnboardingProps) {
     }
   };
 
+  const handleIPLocation = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const cached = localStorage.getItem('user_country_center');
+      let longitude: number;
+      let latitude: number;
+      let locationName: string;
+
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        [longitude, latitude] = parsed;
+        const cachedCountry = localStorage.getItem('user_country_name');
+        locationName = cachedCountry || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+        await handleLocationSet(locationName, latitude, longitude);
+        return;
+      }
+
+      const ipResponse = await fetch('https://ip.radsoft.cloud/ip');
+      if (!ipResponse.ok) {
+        throw new Error('Failed to get IP location');
+      }
+
+      const ipData = await ipResponse.json();
+      const country = ipData.details?.country;
+
+      if (!country) {
+        throw new Error('Could not determine country from IP');
+      }
+
+      const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+      if (!mapboxToken) {
+        setError('Geocoding service not configured');
+        setLoading(false);
+        return;
+      }
+
+      const geoResponse = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(country)}.json?access_token=${mapboxToken}&types=country&limit=1`
+      );
+
+      if (!geoResponse.ok) {
+        throw new Error('Failed to geocode country');
+      }
+
+      const geoData = await geoResponse.json();
+      if (geoData.features && geoData.features.length > 0) {
+        const feature = geoData.features[0];
+        [longitude, latitude] = feature.center;
+        locationName = feature.place_name || country;
+        localStorage.setItem('user_country_center', JSON.stringify([longitude, latitude]));
+        localStorage.setItem('user_country_name', locationName);
+        await handleLocationSet(locationName, latitude, longitude);
+      } else {
+        throw new Error('Country location not found');
+      }
+    } catch (err) {
+      setError('Failed to detect location from IP. Please try another method.');
+      console.error(err);
+      setLoading(false);
+    }
+  };
+
   const handleBrowserLocation = async () => {
     setLoading(true);
     setError(null);
@@ -162,7 +226,7 @@ export function LocationOnboarding({ onLocationSet }: LocationOnboardingProps) {
           <div className="text-center space-y-2">
             <MapPin className="w-12 h-12 mx-auto text-blue-600" />
             <h2 className="text-2xl font-bold">Set Your Location</h2>
-            <p className="text-gray-600">Choose how to set your location</p>
+            <p className="text-muted-foreground">Choose how to set your location for personalized alerts</p>
           </div>
 
           {error && (
@@ -173,9 +237,28 @@ export function LocationOnboarding({ onLocationSet }: LocationOnboardingProps) {
 
           <div className="space-y-3">
             <Button
-              onClick={handleBrowserLocation}
+              onClick={handleIPLocation}
               disabled={loading}
               variant="default"
+              className="w-full h-12 text-base"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Detecting location...
+                </>
+              ) : (
+                <>
+                  <Globe className="w-4 h-4 mr-2" />
+                  Auto-Detect Country (via IP)
+                </>
+              )}
+            </Button>
+
+            <Button
+              onClick={handleBrowserLocation}
+              disabled={loading}
+              variant="outline"
               className="w-full h-12 text-base"
             >
               {loading ? (
@@ -186,7 +269,7 @@ export function LocationOnboarding({ onLocationSet }: LocationOnboardingProps) {
               ) : (
                 <>
                   <MapPin className="w-4 h-4 mr-2" />
-                  Use Device Location
+                  Use Precise Device Location
                 </>
               )}
             </Button>
