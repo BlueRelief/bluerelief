@@ -2,10 +2,19 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MapPin, CheckCircle2, Loader2, Search, Globe } from 'lucide-react';
+import { MapPin, CheckCircle2, Loader2, Search, Globe, Bell, AlertCircle, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -17,15 +26,23 @@ import {
 import { apiClient } from '@/lib/api-client';
 import { Logo } from '@/components/logo';
 import { checkAuthStatus } from '@/lib/auth';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function OnboardingPage() {
-  const [step, setStep] = useState<'welcome' | 'location' | 'success'>('welcome');
+  const [step, setStep] = useState<'welcome' | 'location' | 'alerts' | 'success'>('welcome');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [manualLocation, setManualLocation] = useState('');
   const [showSkipDialog, setShowSkipDialog] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  
+  // Alert preferences state
+  const [minSeverity, setMinSeverity] = useState(3);
+  const [alertTypes, setAlertTypes] = useState(['new_crisis', 'severity_change', 'update']);
+  const [savingAlerts, setSavingAlerts] = useState(false);
+  
   const router = useRouter();
+  const { user } = useAuth();
 
   const handleBrowserLocation = async () => {
     setLoading(true);
@@ -113,16 +130,8 @@ export default function OnboardingPage() {
       });
 
       if (response.ok) {
-        setSuccessMessage('You\'ll receive alerts for all global disasters');
-        setStep('success');
-        
-        setTimeout(async () => {
-          await checkAuthStatus();
-          router.push('/dashboard');
-          setTimeout(() => {
-            window.location.href = '/dashboard';
-          }, 500);
-        }, 1500);
+        setStep('alerts');
+        setLoading(false);
       } else {
         setError('Failed to skip location setup');
         setLoading(false);
@@ -146,8 +155,44 @@ export default function OnboardingPage() {
       });
 
       if (response.ok) {
-        const methodText = method === 'device' ? 'device location' : 'manual entry';
-        setSuccessMessage(`Location set using ${methodText}`);
+        setStep('alerts');
+        setLoading(false);
+      } else {
+        setError('Failed to save location');
+        setLoading(false);
+      }
+    } catch (err) {
+      setError('Error saving location');
+      console.error(err);
+      setLoading(false);
+    }
+  };
+
+  const toggleAlertType = (type: string) => {
+    setAlertTypes(prev =>
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    );
+  };
+
+  const saveAlertPreferences = async () => {
+    if (!user?.user_id) return;
+
+    setSavingAlerts(true);
+    try {
+      const response = await apiClient(`/api/alerts/preferences?user_id=${user.user_id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          min_severity: minSeverity,
+          email_min_severity: 3,
+          alert_types: alertTypes,
+          regions: null,
+          disaster_types: null,
+          email_enabled: true,
+        }),
+      });
+
+      if (response.ok) {
+        setSuccessMessage('Your preferences have been saved!');
         setStep('success');
         
         setTimeout(async () => {
@@ -158,14 +203,18 @@ export default function OnboardingPage() {
           }, 500);
         }, 1500);
       } else {
-        setError('Failed to save location');
-        setLoading(false);
+        setError('Failed to save alert preferences');
+        setSavingAlerts(false);
       }
     } catch (err) {
-      setError('Error saving location');
+      setError('Error saving alert preferences');
       console.error(err);
-      setLoading(false);
+      setSavingAlerts(false);
     }
+  };
+
+  const skipAlertPreferences = async () => {
+    await saveAlertPreferences();
   };
 
   return (
@@ -327,6 +376,109 @@ export default function OnboardingPage() {
 
             <p className="text-xs text-center text-muted-foreground">
               You can always update your location later in Settings
+            </p>
+          </Card>
+        )}
+
+        {step === 'alerts' && (
+          <Card className="p-8 space-y-6 shadow-xl">
+            <div className="text-center space-y-2">
+              <Bell className="w-12 h-12 mx-auto text-blue-600" />
+              <h2 className="text-2xl font-bold text-foreground">Set Alert Preferences</h2>
+              <p className="text-muted-foreground">Customize what alerts you want to receive</p>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800 space-y-3">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm space-y-1">
+                    <p className="font-semibold text-foreground">How alerts work</p>
+                    <p className="text-muted-foreground">
+                      You&apos;ll receive alerts based on your location (within 100km) and severity preferences. 
+                      You can customize these settings anytime in Settings.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-base font-semibold mb-3 block">Minimum Alert Severity</Label>
+                <Select value={String(minSeverity)} onValueChange={(value) => setMinSeverity(Number(value))}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Low (1) - All alerts</SelectItem>
+                    <SelectItem value="2">Medium (2) - Moderate and above</SelectItem>
+                    <SelectItem value="3">High (3) - Serious alerts only</SelectItem>
+                    <SelectItem value="4">Very High (4) - Critical only</SelectItem>
+                    <SelectItem value="5">Critical (5) - Most severe only</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Only show alerts at this severity level or higher in your dashboard
+                </p>
+              </div>
+
+              <div>
+                <Label className="text-base font-semibold mb-3 block">Alert Types</Label>
+                <div className="space-y-3">
+                  {[
+                    { value: 'new_crisis', label: 'New Crisis', desc: 'When a new disaster is detected' },
+                    { value: 'severity_change', label: 'Severity Changes', desc: 'When disaster severity increases' },
+                    { value: 'update', label: 'Updates', desc: 'General updates about ongoing crises' }
+                  ].map(type => (
+                    <div key={type.value} className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                      <Checkbox
+                        id={type.value}
+                        checked={alertTypes.includes(type.value)}
+                        onCheckedChange={() => toggleAlertType(type.value)}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <Label htmlFor={type.value} className="font-medium cursor-pointer text-sm">
+                          {type.label}
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">{type.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2 space-y-3">
+                <Button
+                  onClick={saveAlertPreferences}
+                  disabled={savingAlerts || alertTypes.length === 0}
+                  size="lg"
+                  className="w-full h-12 text-base"
+                >
+                  {savingAlerts ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      Continue to Dashboard
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={skipAlertPreferences}
+                  disabled={savingAlerts}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Use Default Settings
+                </Button>
+              </div>
+            </div>
+
+            <p className="text-xs text-center text-muted-foreground">
+              You can change these preferences anytime in Settings
             </p>
           </Card>
         )}
