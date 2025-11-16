@@ -17,13 +17,10 @@ export const LORDICON_SOURCES = {
   clock: "https://cdn.lordicon.com/kiqyrejq.json",
   refresh: "https://cdn.lordicon.com/oxzvhhtl.json",
   trendingUp: "https://cdn.lordicon.com/erxuunyq.json",
-  externalLink: "https://cdn.lordicon.com/qnjrwzzi.json",
   document: "https://cdn.lordicon.com/xuoapdes.json",
   search: "https://cdn.lordicon.com/xaekjsls.json",
   filter: "https://cdn.lordicon.com/hvfxzpfu.json",
   close: "https://cdn.lordicon.com/vgpkjbvw.json",
-  arrowUpRight: "https://cdn.lordicon.com/excswhey.json",
-  arrowDownRight: "https://cdn.lordicon.com/zwtssiaj.json",
   target: "https://cdn.lordicon.com/btfbysou.json", // Using activity/loading icon
   eye: "https://cdn.lordicon.com/xzxvucii.json",
   shieldCheck: "https://cdn.lordicon.com/akawqnfr.json",

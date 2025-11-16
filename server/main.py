@@ -17,6 +17,7 @@ from routers import admin_tasks
 from routers import analysis
 from routers import archive
 from routers import admin_relevancy
+from routers import map_preferences
 from db_utils.db import init_db
 import os
 from dotenv import load_dotenv
@@ -101,6 +102,7 @@ app.include_router(admin_relevancy.router)
 app.include_router(admin_tasks.router)
 app.include_router(analysis.router)
 app.include_router(archive.router)
+app.include_router(map_preferences.router)
 
 
 @app.get("/", tags=["System"])

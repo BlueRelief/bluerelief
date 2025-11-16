@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select"
 import { Search, Check, AlertCircle, Loader2, Sun, Moon, Monitor } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
+import { MapStyleSettings } from "@/components/map-style-settings"
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
@@ -364,6 +365,9 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Map Style Settings */}
+        <MapStyleSettings />
       </div>
     </div>
   )

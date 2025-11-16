@@ -64,6 +64,27 @@ class UserNotificationPreference(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class UserMapPreferences(Base):
+    __tablename__ = "user_map_preferences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        String,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    light_style = Column(String(100), nullable=False, default="standard")
+    dark_style = Column(String(100), nullable=False, default="standard-satellite")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+    user = relationship("User")
+
+
 class EmailLog(Base):
     __tablename__ = "email_logs"
 

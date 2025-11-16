@@ -184,9 +184,9 @@ async def demo_login(request: Request):
 
     demo_user = {
         "id": "demo-user-001",
-        "email": "demo@bluerelief.test",
+        "email": "demo@bluerelief.app",
         "name": "Demo User",
-        "picture": "https://api.dicebear.com/7.x/avataaars/svg?seed=demo",
+        "picture": "https://api.dicebear.com/9.x/micah/svg?seed=Destiny&facialHairProbability=0&glassesColor=000000&glassesProbability=0&hairColor=000000&mouth=laughing&shirt=collared&shirtColor=000000",
     }
 
     upsert_user(

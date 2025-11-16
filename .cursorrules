@@ -31,11 +31,16 @@
 
 ### Database Migrations
 - ALWAYS use Alembic for database migrations
-- Command: `alembic revision --autogenerate -m "description"`
-- Apply migrations: `alembic upgrade head`
-- View history: `alembic history`
-- Current status: `alembic current`
-- Downgrade: `alembic downgrade <revision>`
+- **CRITICAL WORKFLOW:**
+  1. FIRST: Update the SQLAlchemy models in `server/db_utils/db.py`
+  2. SECOND: Use `./scripts/docker-dev.sh migrate-generate "description"` to auto-generate migration
+  3. THIRD: Review the generated migration file
+  4. FOURTH: Apply with `./scripts/docker-dev.sh migrate`
+- **NEVER manually create migration files** - always auto-generate them
+- Apply migrations: `./scripts/docker-dev.sh migrate`
+- View history: `./scripts/docker-dev.sh migrate-status`
+- Validate schema: `./scripts/docker-dev.sh migrate-validate`
+- Downgrade: `./scripts/docker-dev.sh migrate-downgrade <revision>`
 
 ### Development Setup
 - Use the provided `./scripts/docker-dev.sh` script for all development tasks
@@ -102,3 +107,4 @@
 - Do NOT suggest manual Docker commands instead of the script
 - Do NOT add bloated comments or placeholder TODOs
 - Do NOT create duplicates without evaluating existing code first
+- Do NOT manually create Alembic migration files - always auto-generate them using the docker-dev.sh script

@@ -233,3 +233,76 @@ def get_recent_events(time_range: str = "24h", limit: int = 10, db: Session = De
         )
 
     return {"events": events}
+
+
+@router.get("/disaster-types")
+def get_disaster_types(time_range: str = "24h", db: Session = Depends(get_db)):
+    """Return breakdown of disaster types"""
+    from sqlalchemy import func
+
+    hours = parse_time_range(time_range)
+    cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+
+    disaster_types = (
+        db.query(Disaster.disaster_type, func.count(Disaster.id).label("count"))
+        .filter(Disaster.archived == False)
+        .filter(Disaster.extracted_at >= cutoff_time)
+        .filter(Disaster.disaster_type.isnot(None))
+        .group_by(Disaster.disaster_type)
+        .order_by(func.count(Disaster.id).desc())
+        .all()
+    )
+
+    return {
+        "disaster_types": {
+            disaster_type: count for disaster_type, count in disaster_types
+        }
+    }
+
+
+@router.get("/time-series")
+def get_time_series(hours: int = 48, db: Session = Depends(get_db)):
+    """Return time series data for incident count and severity"""
+    from sqlalchemy import func
+
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(hours=hours)
+
+    bucket_hours = 4  # 4-hour buckets
+    bucket_size = timedelta(hours=bucket_hours)
+
+    buckets = []
+    current = start_time
+    while current < end_time:
+        buckets.append(current)
+        current += bucket_size
+
+    timeseries = []
+    for b_start in buckets:
+        b_end = b_start + bucket_size
+        incident_count = (
+            db.query(func.count(Disaster.id))
+            .filter(Disaster.extracted_at >= b_start)
+            .filter(Disaster.extracted_at < b_end)
+            .filter(Disaster.archived == False)
+            .scalar()
+            or 0
+        )
+
+        avg_severity = (
+            db.query(func.avg(Disaster.severity))
+            .filter(Disaster.extracted_at >= b_start)
+            .filter(Disaster.extracted_at < b_end)
+            .filter(Disaster.archived == False)
+            .scalar()
+        )
+
+        timeseries.append(
+            {
+                "timestamp": b_start.isoformat(),
+                "incident_count": incident_count,
+                "avg_severity": float(avg_severity) if avg_severity else 0,
+            }
+        )
+
+    return {"timeseries": timeseries}
