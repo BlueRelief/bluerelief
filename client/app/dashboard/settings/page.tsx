@@ -231,7 +231,7 @@ export default function SettingsPage() {
                     <Checkbox
                       id={type.value}
                       checked={alertTypes.includes(type.value)}
-                      onCheckedChange={() => toggleAlertType(type)}
+                      onCheckedChange={() => toggleAlertType(type.value)}
                       className="mt-1"
                     />
                     <div className="flex-1">
