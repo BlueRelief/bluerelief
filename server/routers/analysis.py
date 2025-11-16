@@ -68,17 +68,16 @@ def get_key_metrics(
         else None
     )
 
-    base_query = db.query(Disaster).filter(Disaster.archived == False)
+    # Include both active and archived disasters for historical analysis
+    base_query = db.query(Disaster)
     filtered_query = apply_disaster_filters(
         base_query, country, disaster_type, start_dt, end_dt
     )
 
     total_incidents = filtered_query.count()
 
-    high_priority_query = (
-        db.query(func.count(Disaster.id))
-        .filter(Disaster.archived == False)
-        .filter(Disaster.severity >= 4)
+    high_priority_query = db.query(func.count(Disaster.id)).filter(
+        Disaster.severity >= 4
     )
     high_priority_query = apply_disaster_filters(
         high_priority_query, country, disaster_type, start_dt, end_dt
@@ -87,19 +86,13 @@ def get_key_metrics(
 
     total_posts = db.query(Post).count()
 
-    accurate_query = db.query(func.count(Disaster.id)).filter(
-        Disaster.archived == False
-    )
+    accurate_query = db.query(func.count(Disaster.id))
     accurate_query = apply_disaster_filters(
         accurate_query, country, disaster_type, start_dt, end_dt
     )
     accurate_predictions = accurate_query.scalar() or 0
 
-    anomalies_query = (
-        db.query(func.count(Disaster.id))
-        .filter(Disaster.archived == False)
-        .filter(Disaster.severity == 5)
-    )
+    anomalies_query = db.query(func.count(Disaster.id)).filter(Disaster.severity == 5)
     anomalies_query = apply_disaster_filters(
         anomalies_query, country, disaster_type, start_dt, end_dt
     )
@@ -143,7 +136,8 @@ def get_crisis_trends(
         start_dt = now - timedelta(days=days)
         end_dt = now
 
-    base_query = db.query(Disaster).filter(Disaster.archived == False)
+    # Include both active and archived disasters for historical analysis
+    base_query = db.query(Disaster)
     base_query = apply_disaster_filters(
         base_query, country, disaster_type, start_dt, end_dt
     )
@@ -196,17 +190,14 @@ def get_regional_analysis(
         else None
     )
 
-    base_query = (
-        db.query(
-            Disaster.location_name,
-            func.count(Disaster.id).label("incident_count"),
-            func.avg(Disaster.severity).label("avg_severity"),
-            func.avg(Disaster.latitude).label("lat"),
-            func.avg(Disaster.longitude).label("lon"),
-        )
-        .filter(Disaster.archived == False)
-        .filter(Disaster.location_name.isnot(None))
-    )
+    # Include both active and archived disasters for historical analysis
+    base_query = db.query(
+        Disaster.location_name,
+        func.count(Disaster.id).label("incident_count"),
+        func.avg(Disaster.severity).label("avg_severity"),
+        func.avg(Disaster.latitude).label("lat"),
+        func.avg(Disaster.longitude).label("lon"),
+    ).filter(Disaster.location_name.isnot(None))
 
     base_query = apply_disaster_filters(
         base_query, country, disaster_type, start_dt, end_dt
@@ -258,20 +249,17 @@ def get_patterns(
         else None
     )
 
-    base_query = db.query(func.count(Disaster.id)).filter(Disaster.archived == False)
+    # Include both active and archived disasters for historical analysis
+    base_query = db.query(func.count(Disaster.id))
     base_query = apply_disaster_filters(
         base_query, country, disaster_type, start_dt, end_dt
     )
     total_active = base_query.scalar() or 0
 
-    type_query = (
-        db.query(
-            Disaster.disaster_type,
-            func.count(Disaster.id).label("count"),
-        )
-        .filter(Disaster.archived == False)
-        .filter(Disaster.disaster_type.isnot(None))
-    )
+    type_query = db.query(
+        Disaster.disaster_type,
+        func.count(Disaster.id).label("count"),
+    ).filter(Disaster.disaster_type.isnot(None))
     type_query = apply_disaster_filters(
         type_query, country, disaster_type, start_dt, end_dt
     )
@@ -317,28 +305,21 @@ def get_statistics(
 
     total_posts = db.query(func.count(Post.id)).scalar() or 0
 
-    disasters_query = db.query(func.count(Disaster.id)).filter(
-        Disaster.archived == False
-    )
+    # Include both active and archived disasters for historical analysis
+    disasters_query = db.query(func.count(Disaster.id))
     disasters_query = apply_disaster_filters(
         disasters_query, country, disaster_type, start_dt, end_dt
     )
     total_disasters = disasters_query.scalar() or 0
 
-    critical_query = (
-        db.query(func.count(Disaster.id))
-        .filter(Disaster.archived == False)
-        .filter(Disaster.severity == 5)
-    )
+    critical_query = db.query(func.count(Disaster.id)).filter(Disaster.severity == 5)
     critical_query = apply_disaster_filters(
         critical_query, country, disaster_type, start_dt, end_dt
     )
     critical_count = critical_query.scalar() or 0
 
-    affected_query = (
-        db.query(func.sum(Disaster.affected_population))
-        .filter(Disaster.archived == False)
-        .filter(Disaster.affected_population.isnot(None))
+    affected_query = db.query(func.sum(Disaster.affected_population)).filter(
+        Disaster.affected_population.isnot(None)
     )
     affected_query = apply_disaster_filters(
         affected_query, country, disaster_type, start_dt, end_dt
@@ -402,19 +383,19 @@ def get_time_series(
     timeseries = []
     for b_start in buckets:
         b_end = b_start + bucket_size
+        # Include both active and archived disasters for historical analysis
         incident_count = (
             db.query(func.count(Disaster.id))
             .filter(Disaster.extracted_at >= b_start)
             .filter(Disaster.extracted_at < b_end)
-            .filter(Disaster.archived == False)
-            .scalar() or 0
+            .scalar()
+            or 0
         )
 
         avg_severity = (
             db.query(func.avg(Disaster.severity))
             .filter(Disaster.extracted_at >= b_start)
             .filter(Disaster.extracted_at < b_end)
-            .filter(Disaster.archived == False)
             .scalar()
         )
 
@@ -447,15 +428,12 @@ def get_disaster_types(
         else None
     )
 
-    query = (
-        db.query(
-            Disaster.disaster_type,
-            func.count(Disaster.id).label("count"),
-            func.avg(Disaster.severity).label("avg_severity"),
-        )
-        .filter(Disaster.archived == False)
-        .filter(Disaster.disaster_type.isnot(None))
-    )
+    # Include both active and archived disasters for historical analysis
+    query = db.query(
+        Disaster.disaster_type,
+        func.count(Disaster.id).label("count"),
+        func.avg(Disaster.severity).label("avg_severity"),
+    ).filter(Disaster.disaster_type.isnot(None))
 
     # Apply date filters
     if start_dt:
@@ -484,26 +462,24 @@ def get_disaster_types(
 @router.get("/filter-options")
 def get_filter_options(db: Session = Depends(get_db)):
     """Get available filter options for countries and disaster types"""
-    
-    # Get unique disaster types
+
+    # Include both active and archived disasters for filter options
     disaster_types = (
         db.query(Disaster.disaster_type)
-        .filter(Disaster.archived == False)
         .filter(Disaster.disaster_type.isnot(None))
         .distinct()
         .order_by(Disaster.disaster_type)
         .all()
     )
-    
+
     # Get unique location names and extract countries
     locations = (
         db.query(Disaster.location_name)
-        .filter(Disaster.archived == False)
         .filter(Disaster.location_name.isnot(None))
         .distinct()
         .all()
     )
-    
+
     # Extract countries from location names (usually the last part after comma)
     countries = set()
     for (location,) in locations:
@@ -514,7 +490,7 @@ def get_filter_options(db: Session = Depends(get_db)):
                 # The last part is usually the country
                 country = parts[-1]
                 countries.add(country)
-    
+
     return {
         "countries": sorted(list(countries)),
         "disaster_types": sorted([dt[0] for dt in disaster_types if dt[0]])

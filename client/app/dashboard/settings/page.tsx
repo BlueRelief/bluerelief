@@ -502,59 +502,95 @@ export default function SettingsPage() {
           <CardContent className="flex flex-col gap-4 flex-1">
             <div>
               <Label className="text-base font-semibold mb-3 block">Dashboard Alert Severity</Label>
+          <CardContent className="space-y-6">
+            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm space-y-2">
+                  <p className="font-semibold text-foreground">How notifications work</p>
+                  <div className="space-y-1.5 text-muted-foreground">
+                    <p>• <strong>Location-based:</strong> You&apos;ll receive alerts for disasters within 100km of your location</p>
+                    <p>• <strong>Severity filter:</strong> Only alerts at or above your minimum severity will appear</p>
+                    <p>• <strong>Alert types:</strong> Choose which types of alerts you want to see</p>
+                    <p>• <strong>Regions:</strong> Optionally specify regions to receive alerts from anywhere</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-base font-semibold mb-3 block">Step 1: Dashboard Alert Severity</Label>
               <Select value={String(minSeverity)} onValueChange={(value) => setMinSeverity(Number(value))}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Low (1)</SelectItem>
-                  <SelectItem value="2">Medium (2)</SelectItem>
-                  <SelectItem value="3">High (3)</SelectItem>
-                  <SelectItem value="4">Very High (4)</SelectItem>
-                  <SelectItem value="5">Critical (5)</SelectItem>
+                  <SelectItem value="1">Low (1) - All alerts</SelectItem>
+                  <SelectItem value="2">Medium (2) - Moderate and above</SelectItem>
+                  <SelectItem value="3">High (3) - Serious alerts only</SelectItem>
+                  <SelectItem value="4">Very High (4) - Critical only</SelectItem>
+                  <SelectItem value="5">Critical (5) - Most severe only</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground mt-2">Show alerts in dashboard at this severity level or higher</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Only alerts at this severity level or higher will appear in your dashboard. Lower severity = more alerts.
+              </p>
             </div>
 
-            <div>
-              <Label className="text-base font-semibold mb-3 block">Email Alert Severity</Label>
+            <div className="space-y-1">
+              <Label className="text-base font-semibold mb-3 block">Step 2: Email Alert Severity</Label>
               <Select value={String(emailMinSeverity)} onValueChange={(value) => setEmailMinSeverity(Number(value))}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Low (1)</SelectItem>
-                  <SelectItem value="2">Medium (2)</SelectItem>
-                  <SelectItem value="3">High (3)</SelectItem>
-                  <SelectItem value="4">Very High (4)</SelectItem>
-                  <SelectItem value="5">Critical (5)</SelectItem>
+                  <SelectItem value="1">Low (1) - All alerts</SelectItem>
+                  <SelectItem value="2">Medium (2) - Moderate and above</SelectItem>
+                  <SelectItem value="3">High (3) - Serious alerts only</SelectItem>
+                  <SelectItem value="4">Very High (4) - Critical only</SelectItem>
+                  <SelectItem value="5">Critical (5) - Most severe only</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground mt-2">Only send emails for alerts at this severity level or higher</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Only emails will be sent for alerts at this severity level or higher. This is separate from dashboard alerts.
+              </p>
             </div>
 
-            <div>
-              <Label className="text-base font-semibold mb-3 block">Alert Types</Label>
-              <div className="space-y-2">
-                {['new_crisis', 'severity_change', 'update'].map(type => (
-                  <div key={type} className="flex items-center space-x-2">
+            <div className="space-y-1">
+              <Label className="text-base font-semibold mb-3 block">Step 3: Alert Types</Label>
+              <p className="text-xs text-muted-foreground mb-3">Select which types of alerts you want to receive:</p>
+              <div className="space-y-3">
+                {[
+                  { value: 'new_crisis', label: 'New Crisis', desc: 'When a new disaster is first detected' },
+                  { value: 'severity_change', label: 'Severity Changes', desc: 'When an existing disaster becomes more severe' },
+                  { value: 'update', label: 'Updates', desc: 'General updates about ongoing crises' }
+                ].map(type => (
+                  <div key={type.value} className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
                     <Checkbox
-                      id={type}
-                      checked={alertTypes.includes(type)}
-                      onCheckedChange={() => toggleAlertType(type)}
+                      id={type.value}
+                      checked={alertTypes.includes(type.value)}
+                      onCheckedChange={() => toggleAlertType(type.value)}
+                      className="mt-1"
                     />
-                    <Label htmlFor={type} className="font-normal cursor-pointer text-sm">
-                      {type === 'new_crisis' ? 'New Crisis' : type === 'severity_change' ? 'Severity Change' : 'Updates'}
-                    </Label>
+                    <div className="flex-1">
+                      <Label htmlFor={type.value} className="font-medium cursor-pointer text-sm">
+                        {type.label}
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">{type.desc}</p>
+                    </div>
                   </div>
                 ))}
               </div>
+              {alertTypes.length === 0 && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                  ⚠️ You must select at least one alert type
+                </p>
+              )}
             </div>
 
-            <div>
+            <div className="space-y-1">
               <Label htmlFor="regions" className="text-base font-semibold mb-2 block">
-                Regions (Optional)
+                Step 4: Regions (Optional)
               </Label>
               <Input
                 id="regions"
@@ -563,13 +599,17 @@ export default function SettingsPage() {
                 onChange={(e) => setRegions(e.target.value)}
                 className="text-sm"
               />
-              <p className="text-xs text-muted-foreground mt-2">Comma-separated list. Leave empty to get alerts based on location radius.</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                <strong>Optional:</strong> Enter specific regions (comma-separated) to receive alerts from anywhere, even outside your 100km radius. 
+                Leave empty to only receive alerts based on your location radius.
+              </p>
             </div>
 
             <div className="pt-2 mt-auto">
+            <div className="pt-2 border-t">
               <Button
                 onClick={() => savePreferences()}
-                disabled={saving}
+                disabled={saving || alertTypes.length === 0}
                 className="w-full"
               >
                 {saving ? (
@@ -586,6 +626,11 @@ export default function SettingsPage() {
                   'Save Preferences'
                 )}
               </Button>
+              {alertTypes.length === 0 && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-2 text-center">
+                  Please select at least one alert type to save
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

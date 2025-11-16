@@ -34,29 +34,33 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     """Calculate distance between two coordinates in km using Haversine formula"""
     if not all([lat1, lon1, lat2, lon2]):
         return None
-    
+
     R = 6371  # Earth's radius in km
-    
+
     phi1 = math.radians(lat1)
     phi2 = math.radians(lat2)
     delta_phi = math.radians(lat2 - lat1)
     delta_lambda = math.radians(lon2 - lon1)
-    
+
     a = math.sin(delta_phi/2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda/2)**2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    
+
     return R * c
 
 
-def should_alert_user_for_disaster(user_prefs: UserAlertPreferences, user: User, disaster: Disaster) -> bool:
+def should_alert_user_for_disaster(
+    user_prefs: UserAlertPreferences, user: User, disaster: Disaster, alert_type: str
+) -> bool:
     """Check if user should receive alert for this disaster based on preferences and location
 
     Checks (in order):
     1. User has preferences set up
-    2. Severity meets minimum threshold
-    3. GLOBAL ALERTS MODE: If user has no location (null), receive all alerts
-    4. GEO-RADIUS: Distance from user to disaster (PRIMARY)
-    5. REGION FILTER: User's custom region preferences (SECONDARY)
+    2. Alert type is in user's preferred alert types
+    3. Disaster type matches user's preferred disaster types (if specified)
+    4. Severity meets minimum threshold
+    5. GLOBAL ALERTS MODE: If user has no location (null), receive all alerts
+    6. GEO-RADIUS: Distance from user to disaster (PRIMARY)
+    7. REGION FILTER: User's custom region preferences (SECONDARY)
 
     Note: email_enabled controls EMAIL sending, not alert creation
 
@@ -65,6 +69,26 @@ def should_alert_user_for_disaster(user_prefs: UserAlertPreferences, user: User,
     """
     if not user_prefs:
         return False
+
+    # Check if alert type is in user's preferred alert types
+    if user_prefs.alert_types and isinstance(user_prefs.alert_types, list):
+        if alert_type not in user_prefs.alert_types:
+            return False
+
+    # Check if disaster type matches user's preferred disaster types (if specified)
+    if (
+        user_prefs.disaster_types
+        and isinstance(user_prefs.disaster_types, list)
+        and len(user_prefs.disaster_types) > 0
+    ):
+        if disaster.disaster_type:
+            # Handle comma-separated disaster types (e.g., "landslide, flood")
+            disaster_types_list = [
+                dt.strip().lower() for dt in disaster.disaster_type.split(",")
+            ]
+            user_disaster_types = [dt.lower() for dt in user_prefs.disaster_types]
+            if not any(dt in user_disaster_types for dt in disaster_types_list):
+                return False
 
     disaster_severity = disaster.severity or 0
     if disaster_severity < user_prefs.min_severity:
@@ -97,7 +121,8 @@ def should_alert_user_for_disaster(user_prefs: UserAlertPreferences, user: User,
                 # No regions specified and outside radius = no alert
                 return False
     else:
-        # Fallback: If no coordinates, use region matching only
+        # Fallback: If disaster has no coordinates, use region matching only
+        # If user has no regions set, don't send alert (unless in global mode which is checked above)
         if user_prefs.regions and isinstance(user_prefs.regions, list):
             disaster_location = (disaster.location_name or "").lower()
             matches_region = any(
@@ -106,6 +131,9 @@ def should_alert_user_for_disaster(user_prefs: UserAlertPreferences, user: User,
             )
             if not matches_region:
                 return False
+        else:
+            # No coordinates and no regions = no alert
+            return False
 
     return True
 
@@ -200,7 +228,7 @@ def create_alert_and_queue(
             ).first()
 
             # Check if user should receive this alert
-            if not should_alert_user_for_disaster(prefs, user, disaster):
+            if not should_alert_user_for_disaster(prefs, user, disaster, alert_type):
                 continue
 
             queue_entry = AlertQueue(
