@@ -2,9 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { MapPin, CheckCircle2, Loader2, Search, Globe } from 'lucide-react';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { MapPin, CheckCircle2, Loader2, Search, Globe, Bell, AlertCircle, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -34,8 +31,6 @@ import { useAuth } from '@/hooks/use-auth';
 function OnboardingPageContent() {
   const searchParams = useSearchParams();
   const fromSettings = searchParams.get('from') === 'settings';
-  const [step, setStep] = useState<'welcome' | 'location' | 'success'>('welcome');
-export default function OnboardingPage() {
   const [step, setStep] = useState<'welcome' | 'location' | 'alerts' | 'success'>('welcome');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

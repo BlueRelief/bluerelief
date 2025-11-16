@@ -212,13 +212,15 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold">Settings</h1>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 items-stretch">
-        {/* Profile Card - Fixed */}
-        <Card className="flex flex-col">
+      <div className="grid gap-6 md:grid-cols-2 items-start">
+        {/* Left Column: Profile and Map Style */}
+        <div className="space-y-6">
+          {/* Profile Card */}
+          <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>Profile</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4 flex-1">
+          <CardContent className="flex flex-col gap-3 flex-1">
             <div className="flex items-center space-x-4">
               <Avatar className="h-20 w-20" onClick={() => {
                     console.log("Avatar clicked:", user?.picture);
@@ -308,7 +310,7 @@ export default function SettingsPage() {
 
 
             {/* Member Since and Role Section */}
-            <div className="pt-4 border-t space-y-3">
+            <div className="pt-3 border-t space-y-2">
               {user?.created_at && (
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -328,13 +330,13 @@ export default function SettingsPage() {
             </div>
 
             {/* Location Section */}
-            <div className="pt-4 border-t">
-              <div className="space-y-3">
+            <div className="pt-3 border-t">
+              <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Location</span>
                 </div>
-                {user?.latitude && user?.longitude ? (
+                {user?.latitude != null && user?.longitude != null ? (
                   <>
                     <div className="text-sm">
                       {user.latitude.toFixed(4)}, {user.longitude.toFixed(4)}
@@ -428,8 +430,8 @@ export default function SettingsPage() {
 
 
             {/* Account Removal */}
-            <div className="pt-4 border-t mt-auto">
-              <div className="space-y-3">
+            <div className="pt-3 border-t mt-auto">
+              <div className="space-y-2">
                 <h3 className="text-sm font-semibold text-destructive">Account Removal</h3>
                 <Button
                   variant="destructive"
@@ -446,6 +448,10 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Map Style Settings */}
+        <MapStyleSettings />
+        </div>
 
         {/* Delete Account Confirmation Dialog */}
         <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -499,10 +505,7 @@ export default function SettingsPage() {
               Alert Preferences
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4 flex-1">
-            <div>
-              <Label className="text-base font-semibold mb-3 block">Dashboard Alert Severity</Label>
-          <CardContent className="space-y-6">
+          <CardContent className="flex flex-col gap-4 flex-1 space-y-6">
             <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -605,8 +608,7 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            <div className="pt-2 mt-auto">
-            <div className="pt-2 border-t">
+            <div className="pt-2 border-t mt-auto">
               <Button
                 onClick={() => savePreferences()}
                 disabled={saving || alertTypes.length === 0}
@@ -634,11 +636,6 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
-        
-        {/* Map Style Settings */}
-        <MapStyleSettings />
-
-
       </div>
     </div>
   )
