@@ -110,11 +110,16 @@ export default function DashboardPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showAllEvents, setShowAllEvents] = useState(false);
 
-  // Enable real-time alert notifications
-  useAlertNotifications({
+  // Enable real-time alert notifications and get user-specific alerts
+  const { alerts: userAlerts } = useAlertNotifications({
     userId: user?.user_id ? parseInt(user.user_id, 10) : undefined,
     enabled: !!user?.user_id
   });
+
+  // Count urgent alerts relevant to the user (Level 4-5)
+  const userUrgentAlerts = useMemo(() => {
+    return userAlerts?.filter(alert => alert.severity >= 4) || [];
+  }, [userAlerts]);
 
   useEffect(() => {
     let cancelled = false;
@@ -319,8 +324,8 @@ export default function DashboardPage() {
   }, [regions]);
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground mb-1">{getGreeting()}, {firstName}! 👋</p>
           <h1 className="text-3xl font-bold">Dashboard</h1>
@@ -341,74 +346,74 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* Quick Actions */}
-          <div className="flex items-center gap-1.5">
+          {/* Quick Actions - Icon Only */}
+          <div className="flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link href="/dashboard/map">
-                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
                     <Lordicon 
                       src={LORDICON_SOURCES.globe}
                       trigger="hover"
-                      size={LORDICON_SIZES.lg}
+                      size={LORDICON_SIZES.md}
                       colorize="currentColor"
                     />
                   </Button>
                 </Link>
               </TooltipTrigger>
-              <TooltipContent>View Global Crisis Map</TooltipContent>
+              <TooltipContent>Full Map</TooltipContent>
             </Tooltip>
-            
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href="/dashboard/settings">
-                  <Button variant="ghost" size="icon" className="h-9 w-9">
-                    <Lordicon 
-                      src={LORDICON_SOURCES.location}
-                      trigger="hover"
-                      size={LORDICON_SIZES.lg}
-                      colorize="currentColor"
-                    />
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent>Update Location</TooltipContent>
-            </Tooltip>
-            
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href="/dashboard/alerts">
-                  <Button variant="ghost" size="icon" className="h-9 w-9">
-                    <Lordicon 
-                      src={LORDICON_SOURCES.bell}
-                      trigger="hover"
-                      size={LORDICON_SIZES.lg}
-                      colorize="currentColor"
-                    />
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent>Configure Alerts</TooltipContent>
-            </Tooltip>
-            
+
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link href="/dashboard/data-feed">
-                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
                     <Lordicon 
                       src={LORDICON_SOURCES.dataFeed}
                       trigger="hover"
-                      size={LORDICON_SIZES.lg}
+                      size={LORDICON_SIZES.md}
                       colorize="currentColor"
                     />
                   </Button>
                 </Link>
               </TooltipTrigger>
-              <TooltipContent>View All Events</TooltipContent>
+              <TooltipContent>All Events</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/dashboard/alerts">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Lordicon 
+                      src={LORDICON_SOURCES.bell}
+                      trigger="hover"
+                      size={LORDICON_SIZES.md}
+                      colorize="currentColor"
+                    />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>Alerts</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/dashboard/settings">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Lordicon 
+                      src={LORDICON_SOURCES.location}
+                      trigger="hover"
+                      size={LORDICON_SIZES.md}
+                      colorize="currentColor"
+                    />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>Settings</TooltipContent>
             </Tooltip>
           </div>
 
-          <div className="h-8 w-px bg-border"></div>
+          <div className="h-6 w-px bg-border"></div>
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -439,351 +444,179 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Key Metrics Section */}
-      <div>
-        <div className="flex items-center gap-3 mb-4">
-          <h2 className="text-xl font-semibold">Key Metrics</h2>
-          <div className="flex-1 h-px bg-border"></div>
-        </div>
-
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-l-4 border-l-primary">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
+      {/* Urgent Alert Banner - Only shows user-relevant alerts */}
+      {userUrgentAlerts.length > 0 && (
+        <Card className="border-destructive bg-destructive/5">
+          <CardContent className="py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                <Lordicon
+                  src={LORDICON_SOURCES.alert}
+                  trigger="loop"
+                  size={24}
+                  colorize="var(--destructive)"
+                />
+              </div>
               <div>
+                <div className="font-semibold">
+                  {userUrgentAlerts.length} Urgent Alert{userUrgentAlerts.length !== 1 ? 's' : ''} for Your Region
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  High-severity crises in your monitored areas
+                </div>
+              </div>
+            </div>
+            <Link href="/dashboard/alerts">
+              <Button variant="destructive" size="sm">
+                View Alerts
+                <Lordicon 
+                  src={LORDICON_SOURCES.externalLink}
+                  trigger="hover"
+                  size={LORDICON_SIZES.sm}
+                  colorize="currentColor"
+                />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Key Metrics - Inline Compact */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                <Lordicon
+                  src={LORDICON_SOURCES.globe}
+                  trigger="hover"
+                  size={24}
+                  colorize="rgb(59, 130, 246)"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
                 <div className="text-2xl font-bold">
                   {loading ? "-" : stats.total_crises.toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground flex items-center gap-1">
-                  Total Crises
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Lordicon 
-                        src={LORDICON_SOURCES.info}
-                        trigger="hover" 
-                        size={LORDICON_SIZES.xs}
-                        colorize="currentColor"
-                      />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[300px]">
-                      <p>Total number of detected crisis events in the selected time period from all monitored sources</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
+                <div className="text-xs text-muted-foreground">Total Crises</div>
               </div>
-            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <Lordicon
-                src={LORDICON_SOURCES.globe}
-                trigger="play-once-then-hover"
-                size={LORDICON_SIZES["3xl"]}
-                colorize="currentColor"
-              />
-            </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-destructive">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
+        <Card className="border-l-4 border-l-red-500">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                <Lordicon
+                  src={LORDICON_SOURCES.people}
+                  trigger="hover"
+                  size={24}
+                  colorize="rgb(239, 68, 68)"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
                 <div className="text-2xl font-bold">
                   {loading ? "-" : stats.affected_people.toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground flex items-center gap-1">
-                  Affected People
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Lordicon 
-                        src={LORDICON_SOURCES.info}
-                        trigger="hover" 
-                        size={LORDICON_SIZES.xs}
-                        colorize="currentColor"
-                      />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[300px]">
-                      <p>Estimated population affected by active crises based on location data and population density analysis</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
+                <div className="text-xs text-muted-foreground">Affected People</div>
               </div>
-            <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
-              <Lordicon
-                src={LORDICON_SOURCES.people}
-                trigger="play-once-then-hover"
-                size={LORDICON_SIZES["3xl"]}
-                colorize="currentColor"
-              />
-            </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-amber-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                <Lordicon
+                  src={LORDICON_SOURCES.alert}
+                  trigger="hover"
+                  size={24}
+                  colorize="rgb(245, 158, 11)"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
                 <div className="text-2xl font-bold">
                   {loading ? "-" : stats.urgent_alerts.toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground flex items-center gap-1">
-                  Urgent Alerts
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Lordicon 
-                        src={LORDICON_SOURCES.info}
-                        trigger="hover" 
-                        size={LORDICON_SIZES.xs}
-                        colorize="currentColor"
-                      />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[300px]">
-                      <p>Number of high-severity (Level 4-5) alerts requiring immediate attention</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
-                <Lordicon
-                  src="https://cdn.lordicon.com/vihyezfv.json"
-                  trigger="play-once-then-hover"
-                  size={32}
-                  colorize="currentColor"
-                />
+                <div className="text-xs text-muted-foreground">Urgent Alerts</div>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-green-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                <Lordicon
+                  src={LORDICON_SOURCES.location}
+                  trigger="hover"
+                  size={24}
+                  colorize="rgb(34, 197, 94)"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
                 <div className="text-2xl font-bold">
                   {loading ? "-" : stats.active_regions.toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground flex items-center gap-1">
-                  Active Regions
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Lordicon 
-                        src={LORDICON_SOURCES.info}
-                        trigger="hover" 
-                        size={LORDICON_SIZES.xs}
-                        colorize="currentColor"
-                      />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[300px]">
-                      <p>Number of distinct geographic regions currently experiencing crisis events</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-500">
-                <Lordicon
-                  src="https://cdn.lordicon.com/zosctjws.json"
-                  trigger="play-once-then-hover"
-                  size={32}
-                  colorize="currentColor"
-                />
+                <div className="text-xs text-muted-foreground">Active Regions</div>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
-      </div>
 
-      {/* Global Crisis Heatmap Section */}
-      <div>
-        <div className="flex items-center gap-3 mb-4">
-          <h2 className="text-xl font-semibold">Global Crisis Heatmap</h2>
-          <div className="flex-1 h-px bg-border"></div>
-        </div>
-
+      {/* Recent Events - MAIN FOCUS */}
       <Card>
-        <CardHeader className="pb-3 space-y-3">
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              Live Crisis Map
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Lordicon 
-                    src={LORDICON_SOURCES.info}
-                    trigger="hover" 
-                    size={LORDICON_SIZES.md}
-                    colorize="currentColor"
-                  />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[300px]">
-                  <p>Interactive map showing real-time crisis locations worldwide. Marker size indicates severity. Click markers for details.</p>
-                </TooltipContent>
-              </Tooltip>
-            </CardTitle>
-            <div className="flex gap-2">
-              <Select value={locationFilter} onValueChange={setLocationFilter}>
-                <SelectTrigger className="w-[140px] h-7 text-xs">
-                  <SelectValue placeholder="All Locations" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
-                  <SelectItem value="north-america">North America</SelectItem>
-                  <SelectItem value="south-america">South America</SelectItem>
-                  <SelectItem value="europe">Europe</SelectItem>
-                  <SelectItem value="africa">Africa</SelectItem>
-                  <SelectItem value="asia">Asia</SelectItem>
-                  <SelectItem value="oceania">Oceania</SelectItem>
-                  <SelectItem value="middle-east">Middle East</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={severityFilter} onValueChange={setSeverityFilter}>
-                <SelectTrigger className="w-[120px] h-7 text-xs">
-                  <SelectValue placeholder="All Severity" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Severity</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Additional Filters */}
-          <div className="flex flex-wrap items-center gap-3 pt-2 border-t">
-            <div className="flex-1 min-w-[200px]">
-              <Combobox
-                options={availableCountries.map(country => ({
-                  value: country,
-                  label: country
-                }))}
-                value={countryFilter}
-                onValueChange={setCountryFilter}
-                placeholder="All Countries"
-                searchPlaceholder="Search countries..."
-                emptyText="No country found."
-                className="h-8 text-xs"
-              />
-            </div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">Crisis Type:</span>
-              {availableDisasterTypes.map((type) => (
-                <Badge
-                  key={type}
-                  variant={disasterTypeFilters.includes(type) ? "default" : "outline"}
-                  className="cursor-pointer hover:opacity-80 transition-opacity capitalize text-xs h-6"
-                  onClick={() => toggleDisasterType(type)}
-                >
-                  {type}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          {/* Active Filter Indicators */}
-          {hasActiveMapFilters && (
-            <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
-              <span className="text-xs text-muted-foreground">Active filters:</span>
-              {countryFilter && (
-                <Badge variant="secondary" className="gap-1 text-xs h-6">
-                  {countryFilter}
-                  <span onClick={() => setCountryFilter("")} className="cursor-pointer hover:text-destructive">
-                    <Lordicon 
-                      src={LORDICON_SOURCES.close}
-                      trigger="hover" 
-                      size={LORDICON_SIZES.xs}
-                      colorize="currentColor"
-                    />
-                  </span>
-                </Badge>
-              )}
-              {disasterTypeFilters.map((type) => (
-                <Badge key={type} variant="secondary" className="gap-1 capitalize text-xs h-6">
-                  {type}
-                  <span onClick={() => toggleDisasterType(type)} className="cursor-pointer hover:text-destructive">
-                    <Lordicon 
-                      src={LORDICON_SOURCES.close}
-                      trigger="hover" 
-                      size={LORDICON_SIZES.xs}
-                      colorize="currentColor"
-                    />
-                  </span>
-                </Badge>
-              ))}
-              <Button 
-                variant="ghost" 
-                size="sm"
-                className="h-6 text-xs px-2"
-                onClick={() => {
-                  setCountryFilter("");
-                  setDisasterTypeFilters([]);
-                }}
-              >
-                Clear all
-              </Button>
-            </div>
-          )}
-        </CardHeader>
-        <CardContent className="pb-3">
-          <div className="h-[500px] rounded-md overflow-hidden border">
-            <CrisisMap regions={filteredRegions} focusRegion={locationFilter} />
-          </div>
-        </CardContent>
-      </Card>
-      </div>
-
-      {/* Recent Activity & Insights Section */}
-      <div>
-        <div className="flex items-center gap-3 mb-4">
-          <h2 className="text-xl font-semibold">Recent Activity & Insights</h2>
-          <div className="flex-1 h-px bg-border"></div>
-        </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                Latest Events
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Lordicon 
-                src={LORDICON_SOURCES.info}
+            <CardTitle className="flex items-center gap-2">
+              <Lordicon 
+                src={LORDICON_SOURCES.activity}
                 trigger="hover" 
-                size={LORDICON_SIZES.md}
+                size={LORDICON_SIZES.lg}
                 colorize="currentColor"
               />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[300px]">
-                  <p>Chronological list of detected crisis events from monitored sources. Click &quot;View on Bluesky&quot; to see original social media posts.</p>
-                </TooltipContent>
-              </Tooltip>
+              Latest Crisis Events
             </CardTitle>
-            <div className="relative">
-              <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search events..."
-                className="pl-8 h-8 w-[180px] text-sm"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search..."
+                  className="pl-8 h-7 w-[160px] text-xs"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Link href="/dashboard/data-feed">
+                <Button variant="ghost" size="sm" className="gap-1 h-7">
+                  View All
+                  <Lordicon 
+                    src={LORDICON_SOURCES.externalLink}
+                    trigger="hover" 
+                    size={LORDICON_SIZES.xs}
+                    colorize="currentColor"
+                  />
+                </Button>
+              </Link>
             </div>
           </div>
         </CardHeader>
         <CardContent className="pb-3">
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             {loading ? (
-              <div className="text-center py-8">
+              <div className="col-span-full text-center py-12">
                 <LoadingSpinner size={48} text="Loading events..." />
               </div>
             ) : displayedEvents.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground text-sm">
-                No events found in this time frame. Try expanding your time range or adjusting your search.
+              <div className="col-span-full text-center py-12 text-muted-foreground">
+                No events found
               </div>
             ) : (
-              <>
-                {displayedEvents.map((event) => (
+              displayedEvents.slice(0, 6).map((event) => (
                   <div
                     key={event.id}
                     className="flex flex-col gap-2 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
@@ -838,33 +671,70 @@ export default function DashboardPage() {
                       </div>
                     )}
                   </div>
-                ))}
-                {recentEvents.length > 5 && (
-                  <div className="pt-3 flex justify-center border-t">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowAllEvents(!showAllEvents)}
-                      className="gap-2"
-                    >
-                      {showAllEvents ? (
-                        <>Show Less</>
-                      ) : (
-                        <>
-                          Show All {recentEvents.length} Events
-                          <ExternalLink className="h-3 w-3" />
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </>
+              ))
             )}
           </div>
         </CardContent>
+      </Card>
+
+      {/* Map + Sentiment Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Crisis Map */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Lordicon 
+                  src={LORDICON_SOURCES.globe}
+                  trigger="hover" 
+                  size={LORDICON_SIZES.lg}
+                  colorize="currentColor"
+                />
+                Global Crisis Map
+              </CardTitle>
+              <Link href="/dashboard/map">
+                <Button variant="ghost" size="sm" className="gap-1">
+                  View Full Map
+                  <Lordicon 
+                    src={LORDICON_SOURCES.externalLink}
+                    trigger="hover" 
+                    size={LORDICON_SIZES.xs}
+                    colorize="currentColor"
+                  />
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="pb-3">
+            <div className="h-[400px] rounded-md overflow-hidden border">
+              <CrisisMap regions={filteredRegions} focusRegion={locationFilter} />
+            </div>
+            <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                  <span>Critical</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-orange-500"></div>
+                  <span>High</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
+                  <span>Medium</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                  <span>Low</span>
+                </div>
+              </div>
+              <span>{filteredRegions.length} locations</span>
+            </div>
+          </CardContent>
         </Card>
 
-        <div className="space-y-6">
+        {/* Sidebar - Sentiment + Stats */}
+        <div className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
@@ -932,9 +802,10 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
+        {/* System Stats */}
+        <Card className="lg:col-span-3">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Quick Stats</CardTitle>
+              <CardTitle className="text-base">System Stats</CardTitle>
             </CardHeader>
             <CardContent className="pb-3">
               <div className="space-y-3">
@@ -1020,7 +891,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
       </div>
 
     </div>

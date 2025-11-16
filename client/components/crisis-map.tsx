@@ -68,14 +68,28 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = memo(({ data, regions, mapboxT
   const { resolvedTheme } = useTheme();
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const isMapLoaded = useRef<boolean>(false);
+  const [userMapPreferences, setUserMapPreferences] = useState<{ light_style: string; dark_style: string } | null>(null);
 
   useEffect(() => {
-    if (!mapContainer.current) return;
+    const loadMapPreferences = async () => {
+      try {
+        const prefs = await apiGet<{ light_style: string; dark_style: string }>('/api/map-preferences');
+        setUserMapPreferences(prefs);
+      } catch (error) {
+        console.error('Failed to load map preferences, using defaults:', error);
+        setUserMapPreferences({ light_style: 'standard', dark_style: 'standard-satellite' });
+      }
+    };
+    loadMapPreferences();
+  }, []);
+
+  useEffect(() => {
+    if (!mapContainer.current || !userMapPreferences) return;
 
     mapboxgl.accessToken = mapboxToken;
     const mapStyle = resolvedTheme === 'dark'
-      ? 'mapbox://styles/mapbox/dark-v11'
-      : 'mapbox://styles/mapbox/light-v11';
+      ? `mapbox://styles/mapbox/${userMapPreferences.dark_style}`
+      : `mapbox://styles/mapbox/${userMapPreferences.light_style}`;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -254,14 +268,14 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = memo(({ data, regions, mapboxT
       isMapLoaded.current = false;
       map.current?.remove();
     };
-  }, [data, regions, mapboxToken, resolvedTheme, onViewDetails]);
+  }, [data, regions, mapboxToken, resolvedTheme, onViewDetails, userMapPreferences]);
 
   useEffect(() => {
-    if (!map.current || !resolvedTheme || !isMapLoaded.current) return;
+    if (!map.current || !resolvedTheme || !isMapLoaded.current || !userMapPreferences) return;
 
     const mapStyle = resolvedTheme === 'dark'
-      ? 'mapbox://styles/mapbox/dark-v11'
-      : 'mapbox://styles/mapbox/light-v11';
+      ? `mapbox://styles/mapbox/${userMapPreferences.dark_style}`
+      : `mapbox://styles/mapbox/${userMapPreferences.light_style}`;
 
     map.current.setStyle(mapStyle);
 
@@ -342,7 +356,7 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = memo(({ data, regions, mapboxT
         });
       }
     });
-  }, [resolvedTheme, data]);
+  }, [resolvedTheme, data, userMapPreferences]);
 
   useEffect(() => {
     if (!map.current || !focusRegion || focusRegion === 'all') return;
