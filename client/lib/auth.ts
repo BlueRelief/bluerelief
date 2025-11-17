@@ -10,6 +10,8 @@ export interface User {
   location?: string;
   latitude?: number;
   longitude?: number;
+  role?: string;
+  created_at?: string;
 }
 
 export async function checkAuthStatus(): Promise<User | null> {
@@ -56,6 +58,8 @@ export async function loginWithEmail(email: string, password: string): Promise<v
     throw new Error(error.detail || "Login failed");
   }
 
+  // Small delay to ensure cookie is set before redirect
+  await new Promise(resolve => setTimeout(resolve, 100));
   window.location.href = "/dashboard";
 }
 

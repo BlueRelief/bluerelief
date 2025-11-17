@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useTheme } from "next-themes"
 import { useAuth } from "@/hooks/use-auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -18,13 +17,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Search, Check, AlertCircle, Loader2, Sun, Moon, Monitor } from "lucide-react"
+import { Search, Check, AlertCircle, Loader2, RefreshCw, Trash2, MapPin, Calendar, User, Edit2, X } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
 import { MapStyleSettings } from "@/components/map-style-settings"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { useRouter } from "next/navigation"
 
 export default function SettingsPage() {
-  const { theme, setTheme } = useTheme()
-  const { user, loading } = useAuth()
+  const { user, loading, refreshAuth } = useAuth()
+  const router = useRouter()
   const [emailNotifications, setEmailNotifications] = useState(false)
   const [twoFactor, setTwoFactor] = useState(false)
   const [autoUpdates, setAutoUpdates] = useState(false)
@@ -37,6 +45,12 @@ export default function SettingsPage() {
   const [regions, setRegions] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [updatingLocation, setUpdatingLocation] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState('')
+  const [updatingName, setUpdatingName] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
 
   const loadPreferences = useCallback(async () => {
     try {
@@ -94,27 +108,119 @@ export default function SettingsPage() {
     )
   }
 
+  const updateLocation = () => {
+    router.push('/onboarding?from=settings')
+  }
+
+  const clearLocation = async () => {
+    if (!user?.user_id) return
+
+    if (!confirm('Are you sure you want to clear your location? You will receive global alerts instead of location-based alerts.')) {
+      return
+    }
+
+    setUpdatingLocation(true)
+    try {
+      const response = await apiClient('/auth/setup-location', {
+        method: 'POST',
+        body: JSON.stringify({
+          location: null,
+          latitude: null,
+          longitude: null,
+        }),
+      })
+
+      if (response.ok) {
+        await refreshAuth()
+      } else {
+        alert('Failed to clear location')
+      }
+    } catch (err) {
+      console.error('Error clearing location:', err)
+      alert('Error clearing location')
+    } finally {
+      setUpdatingLocation(false)
+    }
+  }
+
+  const startEditingName = () => {
+    setNameValue(user?.name || '')
+    setEditingName(true)
+  }
+
+  const cancelEditingName = () => {
+    setEditingName(false)
+    setNameValue('')
+  }
+
+  const saveName = async () => {
+    if (!user?.user_id || !nameValue.trim()) return
+
+    setUpdatingName(true)
+    try {
+      const response = await apiClient('/auth/update-name', {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: nameValue.trim(),
+        }),
+      })
+
+      if (response.ok) {
+        await refreshAuth()
+        setEditingName(false)
+        setNameValue('')
+      } else {
+        const error = await response.json()
+        alert(error.detail || 'Failed to update name')
+      }
+    } catch (err) {
+      console.error('Error updating name:', err)
+      alert('Error updating name')
+    } finally {
+      setUpdatingName(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!user?.user_id) return
+
+    setDeletingAccount(true)
+    try {
+      const response = await apiClient('/auth/delete-account', {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // Clear auth state and redirect to home page
+        // Use window.location to ensure full page reload and cookie clearing
+        window.location.href = '/'
+      } else {
+        const error = await response.json()
+        alert(error.detail || 'Failed to delete account')
+        setDeletingAccount(false)
+      }
+    } catch (err) {
+      console.error('Error deleting account:', err)
+      alert('Error deleting account')
+      setDeletingAccount(false)
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-7xl">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Settings</h1>
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search"
-            className="pl-9 bg-muted/50"
-          />
-        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Profile Card - Fixed */}
-        <Card>
+      <div className="grid gap-6 md:grid-cols-2 items-start">
+        {/* Left Column: Profile and Map Style */}
+        <div className="space-y-6">
+          {/* Profile Card */}
+          <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>Profile</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="flex flex-col gap-3 flex-1">
             <div className="flex items-center space-x-4">
               <Avatar className="h-20 w-20" onClick={() => {
                     console.log("Avatar clicked:", user?.picture);
@@ -140,9 +246,56 @@ export default function SettingsPage() {
                   </>
                 ) : (
                   <>
-                    <div className="font-medium text-lg">
-                      {user?.name || "No name available"}
-                    </div>
+                    {editingName ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={nameValue}
+                          onChange={(e) => setNameValue(e.target.value)}
+                          className="flex-1"
+                          placeholder="Enter your name"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              void saveName()
+                            } else if (e.key === 'Escape') {
+                              cancelEditingName()
+                            }
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          onClick={saveName}
+                          disabled={updatingName || !nameValue.trim()}
+                        >
+                          {updatingName ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Check className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={cancelEditingName}
+                          disabled={updatingName}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div className="font-medium text-lg">
+                          {user?.name || "No name available"}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={startEditingName}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    )}
                     <div className="text-sm text-muted-foreground">
                       {user?.user_email}
                     </div>
@@ -153,18 +306,206 @@ export default function SettingsPage() {
                 )}
               </div>
             </div>
+
+
+
+            {/* Member Since and Role Section */}
+            <div className="pt-3 border-t space-y-2">
+              {user?.created_at && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    Member since: {new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                </div>
+              )}
+              {user?.role && (
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    Role: {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Location Section */}
+            <div className="pt-3 border-t">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Location</span>
+                </div>
+                {user?.latitude != null && user?.longitude != null ? (
+                  <>
+                    <div className="text-sm">
+                      {user.latitude.toFixed(4)}, {user.longitude.toFixed(4)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Alerts within 100km
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={updateLocation}
+                        disabled={updatingLocation}
+                        className="flex-1"
+                      >
+                        {updatingLocation ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Updating...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Update Location
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearLocation}
+                        disabled={updatingLocation}
+                        className="flex-1"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Clear Location
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="text-sm text-muted-foreground">
+                      No location set
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={updateLocation}
+                      disabled={updatingLocation}
+                      className="w-full"
+                    >
+                      {updatingLocation ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Updating...
+                        </>
+                      ) : (
+                        <>
+                          <MapPin className="w-4 h-4 mr-2" />
+                          Set Location
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Email Notifications Section */}
+            <div className="pt-4 border-t">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <Label htmlFor="email-notifications" className="text-base font-normal">
+                    Email Notifications
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Receive email alerts for crises in your area
+                  </p>
+                </div>
+                <Switch
+                  id="email-notifications"
+                  checked={emailNotifications}
+                  onCheckedChange={(checked) => {
+                    setEmailNotifications(checked)
+                    void savePreferences({ email_enabled: checked })
+                  }}
+                />
+              </div>
+            </div>
+
+
+
+            {/* Account Removal */}
+            <div className="pt-3 border-t mt-auto">
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-destructive">Account Removal</h3>
+                <Button
+                  variant="destructive"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  className="w-full"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Account
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Permanently delete your account and all associated data. This action cannot be undone.
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
+        {/* Map Style Settings */}
+        <MapStyleSettings />
+        </div>
+
+        {/* Delete Account Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Account</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data, including:
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>Your profile information</li>
+                  <li>Your alert preferences</li>
+                  <li>Your location settings</li>
+                  <li>All associated data</li>
+                </ul>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={deletingAccount}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteAccount}
+                disabled={deletingAccount}
+              >
+                {deletingAccount ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Account
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Alert Preferences Card */}
-        <Card>
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5" />
               Alert Preferences
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="flex flex-col gap-4 flex-1 space-y-6">
             <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -267,7 +608,7 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            <div className="pt-2 border-t">
+            <div className="pt-2 border-t mt-auto">
               <Button
                 onClick={() => savePreferences()}
                 disabled={saving || alertTypes.length === 0}
@@ -295,120 +636,6 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Account Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Account</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <Label htmlFor="email-notifications" className="text-base font-normal">
-                  Email Notifications
-                </Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Receive email alerts for crises in your area
-                </p>
-              </div>
-              <Switch
-                id="email-notifications"
-                checked={emailNotifications}
-                onCheckedChange={(checked) => {
-                  setEmailNotifications(checked)
-                  void savePreferences({ email_enabled: checked })
-                }}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="two-factor" className="text-base font-normal">
-                Two-Factor Authentication
-              </Label>
-              <Switch
-                id="two-factor"
-                checked={twoFactor}
-                onCheckedChange={setTwoFactor}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="auto-updates" className="text-base font-normal">
-                Auto Updates
-              </Label>
-              <Switch
-                id="auto-updates"
-                checked={autoUpdates}
-                onCheckedChange={setAutoUpdates}
-              />
-            </div>
-            <div className="flex items-center space-x-3">
-              <Checkbox
-                id="share-usage-data"
-                checked={shareUsageData}
-                onCheckedChange={(checked) => setShareUsageData(checked as boolean)}
-              />
-              <Label htmlFor="share-usage-data" className="text-base font-normal cursor-pointer">
-                Share Usage Data
-              </Label>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Theme Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Theme</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center space-x-3">
-              <input
-                type="radio"
-                name="theme"
-                value="light"
-                id="light"
-                checked={theme === "light"}
-                onChange={() => setTheme("light")}
-                className="h-4 w-4"
-              />
-              <Label htmlFor="light" className="text-base font-normal cursor-pointer flex items-center gap-2">
-                <Sun className="w-4 h-4" />
-                Light
-              </Label>
-            </div>
-            <div className="flex items-center space-x-3">
-              <input
-                type="radio"
-                name="theme"
-                value="dark"
-                id="dark"
-                checked={theme === "dark"}
-                onChange={() => setTheme("dark")}
-                className="h-4 w-4"
-              />
-              <Label htmlFor="dark" className="text-base font-normal cursor-pointer flex items-center gap-2">
-                <Moon className="w-4 h-4" />
-                Dark
-              </Label>
-            </div>
-            <div className="flex items-center space-x-3">
-              <input
-                type="radio"
-                name="theme"
-                value="system"
-                id="system"
-                checked={theme === "system"}
-                onChange={() => setTheme("system")}
-                className="h-4 w-4"
-              />
-              <Label htmlFor="system" className="text-base font-normal cursor-pointer flex items-center gap-2">
-                <Monitor className="w-4 h-4" />
-                System
-              </Label>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Map Style Settings */}
-        <MapStyleSettings />
       </div>
     </div>
   )

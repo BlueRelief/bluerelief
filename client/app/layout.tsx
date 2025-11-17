@@ -3,6 +3,7 @@ import { Lato } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProviderWrapper } from "@/components/auth-provider-wrapper";
 
 const lato = Lato({
   variable: "--font-sans",
@@ -76,8 +77,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster />
+          <AuthProviderWrapper>
+            {children}
+            <Toaster />
+          </AuthProviderWrapper>
         </ThemeProvider>
       </body>
     </html>

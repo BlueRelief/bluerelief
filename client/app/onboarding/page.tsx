@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { MapPin, CheckCircle2, Loader2, Search, Globe, Bell, AlertCircle, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -28,7 +28,9 @@ import { Logo } from '@/components/logo';
 import { checkAuthStatus } from '@/lib/auth';
 import { useAuth } from '@/hooks/use-auth';
 
-export default function OnboardingPage() {
+function OnboardingPageContent() {
+  const searchParams = useSearchParams();
+  const fromSettings = searchParams.get('from') === 'settings';
   const [step, setStep] = useState<'welcome' | 'location' | 'alerts' | 'success'>('welcome');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,13 @@ export default function OnboardingPage() {
   
   const router = useRouter();
   const { user } = useAuth();
+
+  // Skip to location step if coming from settings
+  useEffect(() => {
+    if (fromSettings) {
+      setStep('location');
+    }
+  }, [fromSettings]);
 
   const handleBrowserLocation = async () => {
     setLoading(true);
@@ -130,6 +139,20 @@ export default function OnboardingPage() {
       });
 
       if (response.ok) {
+        setSuccessMessage('You\'ll receive alerts for all global disasters');
+        setStep('success');
+        
+        setTimeout(async () => {
+          await checkAuthStatus();
+          if (fromSettings) {
+            router.push('/dashboard/settings');
+          } else {
+            router.push('/dashboard');
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 500);
+          }
+        }, 1500);
         setStep('alerts');
         setLoading(false);
       } else {
@@ -197,10 +220,14 @@ export default function OnboardingPage() {
         
         setTimeout(async () => {
           await checkAuthStatus();
-          router.push('/dashboard');
-          setTimeout(() => {
-            window.location.href = '/dashboard';
-          }, 500);
+          if (fromSettings) {
+            router.push('/dashboard/settings');
+          } else {
+            router.push('/dashboard');
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 500);
+          }
         }, 1500);
       } else {
         setError('Failed to save alert preferences');
@@ -537,5 +564,25 @@ export default function OnboardingPage() {
         </Dialog>
       </div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <Card className="p-8 space-y-6 shadow-xl">
+              <div className="flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            </Card>
+          </div>
+        </div>
+      }
+    >
+      <OnboardingPageContent />
+    </Suspense>
   );
 }

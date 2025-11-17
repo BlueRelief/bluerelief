@@ -112,6 +112,8 @@ def get_current_user(token: str = Cookie(None)):
             "location": user_data.get("location"),
             "latitude": user_data.get("latitude"),
             "longitude": user_data.get("longitude"),
+            "role": user_data.get("role"),
+            "created_at": user_data.get("created_at"),
         }
 
     except ExpiredSignatureError:
@@ -144,6 +146,8 @@ async def auth_status(request: Request, token: str = Cookie(None)):
                 "location": user.get("location"),
                 "latitude": user.get("latitude"),
                 "longitude": user.get("longitude"),
+                "role": user.get("role"),
+                "created_at": user.get("created_at"),
             },
         }
     except HTTPException:
@@ -329,7 +333,10 @@ async def login(request: EmailLoginRequest, req: Request):
     user_agent = req.headers.get("User-Agent")
 
     try:
-        user = db.query(User).filter(User.email == request.email).first()
+        user = db.query(User).filter(
+            User.email == request.email,
+            User.deleted_at == None
+        ).first()
 
         if not user or not user.password:
             raise HTTPException(status_code=401, detail="Invalid email or password")
@@ -578,9 +585,14 @@ async def auth(request: Request):
         raise HTTPException(status_code=401, detail="Missing user information from Google.")
 
     # Store user data in database
-    user_data = upsert_user(user_id, user_email, user_name, user_pic)
-    if user_data is None:
-        raise HTTPException(status_code=500, detail="Failed to store user data")
+    try:
+        user_data = upsert_user(user_id, user_email, user_name, user_pic)
+        if user_data is None:
+            logger.error(f"upsert_user returned None for email: {user_email}")
+            raise HTTPException(status_code=500, detail="Failed to store user data")
+    except Exception as e:
+        logger.error(f"Error storing user data for {user_email}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to store user data: {str(e)}")
 
     # Create JWT token with 7 day expiration
     access_token_expires = timedelta(days=7)
@@ -735,3 +747,128 @@ async def setup_location(request: Request, token: str = Cookie(None)):
     except Exception as e:
         logger.error(f"Error setting location: {e}")
         raise HTTPException(status_code=500, detail="Failed to set location")
+
+
+class UpdateNameRequest(BaseModel):
+    name: str
+
+
+@router.put("/update-name")
+async def update_name(request: Request, name_data: UpdateNameRequest, token: str = Cookie(None)):
+    """Update user's name"""
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    try:
+        user = get_current_user(token)
+        user_id = user["user_id"]
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    if not name_data.name or not name_data.name.strip():
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
+
+    from db_utils.db import SessionLocal, User
+
+    db = SessionLocal()
+    try:
+        user_obj = db.query(User).filter(User.id == user_id).first()
+        if not user_obj:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        old_name = user_obj.name
+        user_obj.name = name_data.name.strip()
+        user_obj.updated_at = datetime.utcnow()
+
+        db.commit()
+
+        # Log name update
+        client_ip = request.client.host if request.client else None
+        user_agent = request.headers.get("User-Agent")
+        
+        await logging_service.log_audit(
+            user_id=user_id,
+            action="NAME_UPDATED",
+            resource_type="user",
+            resource_id=user_id,
+            old_value={"name": old_name},
+            new_value={"name": name_data.name.strip()},
+            change_summary=f"User updated name from '{old_name}' to '{name_data.name.strip()}'",
+            ip_address=client_ip,
+            user_agent=user_agent,
+            is_admin_action=False,
+        )
+
+        return {
+            "status": "success",
+            "name": user_obj.name,
+        }
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating name: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update name")
+    finally:
+        db.close()
+
+
+@router.delete("/delete-account")
+async def delete_account(request: Request, token: str = Cookie(None)):
+    """Delete user's own account (soft delete)"""
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    try:
+        user = get_current_user(token)
+        user_id = user["user_id"]
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    from db_utils.db import SessionLocal, User
+
+    db = SessionLocal()
+    try:
+        user_obj = db.query(User).filter(User.id == user_id).first()
+        if not user_obj:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Soft delete by setting deleted_at
+        user_obj.deleted_at = datetime.utcnow()
+        user_obj.is_active = False
+        user_obj.updated_at = datetime.utcnow()
+
+        db.commit()
+
+        # Log account deletion
+        client_ip = request.client.host if request.client else None
+        user_agent = request.headers.get("User-Agent")
+        
+        await logging_service.log_audit(
+            user_id=user_id,
+            action="ACCOUNT_DELETED",
+            resource_type="user",
+            resource_id=user_id,
+            change_summary="User deleted their own account",
+            ip_address=client_ip,
+            user_agent=user_agent,
+            is_admin_action=False,
+        )
+
+        # Clear the session cookie
+        response = JSONResponse({
+            "status": "success",
+            "message": "Account deleted successfully"
+        })
+        # Delete cookie with same parameters as set_cookie (httponly=True, secure=False, samesite="lax")
+        response.delete_cookie(
+            "token",
+            path="/",
+            samesite="lax"
+        )
+
+        return response
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error deleting account: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete account")
+    finally:
+        db.close()

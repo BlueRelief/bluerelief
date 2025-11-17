@@ -38,7 +38,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { Lordicon } from "@/components/lordicon";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
@@ -295,19 +297,26 @@ function AppSidebar({ user }: AppSidebarProps) {
   );
 }
 
-export default function DashboardLayout({
+function DashboardLayoutContent({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
   const { user, isAuthenticated, loading } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
+    // Only redirect if we've finished loading and user is definitely not authenticated
+    // Add a small delay to avoid race conditions after login
     if (!loading && !isAuthenticated) {
-      router.push("/");
+      const timer = setTimeout(() => {
+        // Double-check auth status before redirecting
+        router.push("/");
+      }, 200);
+      return () => clearTimeout(timer);
     }
   }, [isAuthenticated, loading, router]);
 
@@ -352,31 +361,69 @@ export default function DashboardLayout({
 
   return (
     <TooltipProvider>
-    <SidebarProvider>
-      <AppSidebar user={user} />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-16">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
-            <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Toggle sidebar</span>
-              <Kbd>{typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</Kbd>
-              <span>+</span>
-              <Kbd>B</Kbd>
+      <SidebarProvider>
+        <AppSidebar user={user} />
+        <SidebarInset>
+          <header className="flex h-16 shrink-0 items-center gap-2 border-b px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-16">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger className="-ml-1" />
+              <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Toggle sidebar</span>
+                <Kbd>{typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</Kbd>
+                <span>+</span>
+                <Kbd>B</Kbd>
+              </div>
             </div>
+            <div className="ml-auto flex items-center gap-4">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                    {theme === "light" ? (
+                      <Sun className="h-4 w-4" />
+                    ) : theme === "dark" ? (
+                      <Moon className="h-4 w-4" />
+                    ) : (
+                      <Monitor className="h-4 w-4" />
+                    )}
+                    <span className="sr-only">Toggle theme</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Theme</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setTheme("light")}>
+                    <Sun className="mr-2 h-4 w-4" />
+                    <span>Light</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("dark")}>
+                    <Moon className="mr-2 h-4 w-4" />
+                    <span>Dark</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("system")}>
+                    <Monitor className="mr-2 h-4 w-4" />
+                    <span>System</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {user?.user_id && <NotificationCenter userId={user.user_id} />}
+              <span className="text-sm text-muted-foreground hidden md:inline">
+                Crisis Detection Platform
+              </span>
+            </div>
+          </header>
+          <div className="flex flex-1 flex-col gap-6 p-6 pt-6">
+            {children}
           </div>
-          <div className="ml-auto flex items-center gap-4">
-            {user?.user_id && <NotificationCenter userId={user.user_id} />}
-            <span className="text-sm text-muted-foreground hidden md:inline">
-              Crisis Detection Platform
-            </span>
-          </div>
-        </header>
-        <div className="flex flex-1 flex-col gap-6 p-6 pt-6">
-          {children}
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+        </SidebarInset>
+      </SidebarProvider>
     </TooltipProvider>
   );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <DashboardLayoutContent>{children}</DashboardLayoutContent>;
 }
