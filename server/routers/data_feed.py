@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc, and_
+from sqlalchemy import func, desc, and_, or_
 from datetime import datetime, timedelta
 from typing import Optional
 from db_utils.db import SessionLocal, DataFeed, Post, Disaster, CollectionRun
@@ -82,17 +82,30 @@ def get_weekly_crises(
     days: int = Query(default=7, ge=1, le=90),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
+    search: str = Query(default="", description="Search crises by name, location, or disaster type"),
     db: Session = Depends(get_db),
 ):
-    """Get recent crisis events with pagination (default last 7 days)"""
+    """Get recent crisis events with pagination and search (default last 7 days)"""
     cutoff_date = datetime.utcnow() - timedelta(days=days)
 
     query = (
         db.query(Disaster)
         .join(Post, Disaster.post_id == Post.id, isouter=True)
         .filter(Disaster.extracted_at >= cutoff_date)
-        .order_by(desc(Disaster.extracted_at))
     )
+
+    # Apply search filter if provided
+    if search and search.strip():
+        search_term = f"%{search.strip()}%"
+        query = query.filter(
+            or_(
+                Disaster.description.ilike(search_term),
+                Disaster.location_name.ilike(search_term),
+                Post.disaster_type.ilike(search_term)
+            )
+        )
+    
+    query = query.order_by(desc(Disaster.extracted_at))
 
     total_count = query.count()
     total_pages = (total_count + page_size - 1) // page_size
