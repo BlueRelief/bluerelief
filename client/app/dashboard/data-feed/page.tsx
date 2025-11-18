@@ -85,6 +85,10 @@ export default function DataFeedPage() {
     async function fetchInitialData() {
       try {
         setLoading(true)
+        const dismissed = typeof window !== 'undefined' ? localStorage.getItem('data-feed-disclaimer-dismissed') : null
+        if (dismissed === 'true') {
+          setShowDisclaimer(false)
+        }
         const [statusData, overviewData] = await Promise.all([
           getDataFeedStatus(),
           getDataFeedOverview()
@@ -231,6 +235,34 @@ export default function DataFeedPage() {
           />
         </Button>
       </div>
+
+      {showDisclaimer && (
+        <div className="rounded-xl border border-border bg-muted/70 p-4 text-sm text-muted-foreground flex items-start gap-3 justify-between">
+          <div className="flex items-start gap-3">
+            <Info className="mt-0.5 h-4 w-4 text-primary" aria-hidden />
+            <div>
+              <p className="font-medium text-foreground">Crisis data updates</p>
+              <p>
+                Crisis data is automatically updated every 24 hours from Bluesky and other trusted sources.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+            aria-label="Dismiss data freshness disclaimer"
+            onClick={() => {
+              setShowDisclaimer(false)
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('data-feed-disclaimer-dismissed', 'true')
+              }
+            }}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {/* Overview Stats */}
       {loading ? (
