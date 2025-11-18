@@ -92,7 +92,17 @@ export async function getDataFeedOverview() {
   }>('/api/data-feed/overview');
 }
 
-export async function getWeeklyCrises(days = 7, page = 1, pageSize = 10) {
+export async function getWeeklyCrises(days = 7, page = 1, pageSize = 10, search = "") {
+  const params = new URLSearchParams({
+    days: days.toString(),
+    page: page.toString(),
+    page_size: pageSize.toString(),
+  });
+  
+  if (search && search.trim()) {
+    params.append('search', search.trim());
+  }
+  
   return apiGet<{ 
     crises: Array<{
       id: number;
@@ -116,7 +126,7 @@ export async function getWeeklyCrises(days = 7, page = 1, pageSize = 10) {
       has_next: boolean;
       has_prev: boolean;
     }
-  }>(`/api/data-feed/weekly-crises?days=${days}&page=${page}&page_size=${pageSize}`);
+  }>(`/api/data-feed/weekly-crises?${params.toString()}`);
 }
 
 // Analysis API functions

@@ -1,10 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ArrowUpRight, Info, X } from "lucide-react"
+import { ArrowUpRight, Search, Info, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { SentimentBadge } from "@/components/sentiment-badge"
 import { BlueskyIcon } from "@/components/bluesky-icon"
 import { Lordicon } from "@/components/lordicon"
@@ -76,6 +77,8 @@ export default function DataFeedPage() {
   const [loading, setLoading] = useState(true)
   const [loadingCrises, setLoadingCrises] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [showDisclaimer, setShowDisclaimer] = useState(true)
 
   useEffect(() => {
@@ -102,11 +105,21 @@ export default function DataFeedPage() {
     fetchInitialData()
   }, [])
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setCurrentPage(1) // Reset to first page on search
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
   useEffect(() => {
     async function fetchCrises() {
       try {
         setLoadingCrises(true)
-        const crisesData = await getWeeklyCrises(7, currentPage, 10)
+        const crisesData = await getWeeklyCrises(7, currentPage, 10, debouncedSearch)
         setWeeklyCrises(crisesData.crises)
         setPagination(crisesData.pagination)
         setLastUpdated(new Date())
@@ -117,7 +130,7 @@ export default function DataFeedPage() {
       }
     }
     fetchCrises()
-  }, [currentPage])
+  }, [currentPage, debouncedSearch])
 
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString)
@@ -462,15 +475,29 @@ export default function DataFeedPage() {
         {/* Crisis Feed */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            Recent Crisis Events
-            <Badge variant="secondary" className="ml-2">
-              {pagination?.total_count || 0} total
-            </Badge>
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Events detected in the past 7 days from Bluesky posts
-          </p>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                Recent Crisis Events
+                <Badge variant="secondary" className="ml-2">
+                  {pagination?.total_count || 0} total
+                </Badge>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Events detected in the past 7 days from Bluesky posts
+              </p>
+            </div>
+            <div className="relative w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search by name, location, or disaster type..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {loadingCrises ? (
@@ -585,12 +612,25 @@ export default function DataFeedPage() {
                   colorize="currentColor"
                 />
               </div>
-              <p className="text-lg font-medium text-muted-foreground">
-                No crises detected in the past week. This is good news!
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Try adjusting your time range or filters
-              </p>
+              {debouncedSearch ? (
+                <>
+                  <p className="text-lg font-medium text-muted-foreground">
+                    No results found for &quot;{debouncedSearch}&quot;
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Try a different search term or clear your search
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-medium text-muted-foreground">
+                    No crises detected in the past week. This is good news!
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Try adjusting your time range or filters
+                  </p>
+                </>
+              )}
             </div>
           )}
           
