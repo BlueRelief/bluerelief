@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ArrowUpRight, Search } from "lucide-react"
+import { ArrowUpRight, Search, Info, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -79,6 +79,7 @@ export default function DataFeedPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [showDisclaimer, setShowDisclaimer] = useState(true)
 
   useEffect(() => {
     async function fetchInitialData() {
