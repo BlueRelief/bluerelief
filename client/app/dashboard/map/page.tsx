@@ -87,7 +87,7 @@ export default function MapPage() {
     );
   };
 
-  const availableDisasterTypes = ["earthquake", "flood", "fire", "storm", "tsunami", "other"];
+  const availableDisasterTypes = ["earthquake", "flood", "wildfire", "hurricane", "tornado", "tsunami", "volcano", "heatwave"];
   const hasActiveFilters = countryFilter !== "" || disasterTypeFilters.length > 0 || locationFilter !== "all" || severityFilter !== "all";
 
   const availableCountries = useMemo(() => {

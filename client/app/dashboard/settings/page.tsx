@@ -9,7 +9,6 @@ import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
   SelectContent,
@@ -17,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Search, Check, AlertCircle, Loader2, RefreshCw, Trash2, MapPin, Calendar, User, Edit2, X } from "lucide-react"
+import { Search, Check, AlertCircle, Loader2, RefreshCw, Trash2, MapPin, Calendar, User, Edit2, X, Plus } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
 import { MapStyleSettings } from "@/components/map-style-settings"
 import {
@@ -30,19 +29,29 @@ import {
 } from "@/components/ui/dialog"
 import { useRouter } from "next/navigation"
 
+interface WatchedRegion {
+  name: string
+  lat: number
+  lng: number
+  bounds?: {
+    ne_lat: number
+    ne_lng: number
+    sw_lat: number
+    sw_lng: number
+  }
+  place_id?: string
+}
+
 export default function SettingsPage() {
   const { user, loading, refreshAuth } = useAuth()
   const router = useRouter()
   const [emailNotifications, setEmailNotifications] = useState(false)
-  const [twoFactor, setTwoFactor] = useState(false)
-  const [autoUpdates, setAutoUpdates] = useState(false)
-  const [shareUsageData, setShareUsageData] = useState(true)
 
   // Alert preferences
   const [minSeverity, setMinSeverity] = useState(3)
-  const [emailMinSeverity, setEmailMinSeverity] = useState(3)
-  const [alertTypes, setAlertTypes] = useState(['new_crisis', 'severity_change', 'update'])
-  const [regions, setRegions] = useState('')
+  const [watchedRegions, setWatchedRegions] = useState<WatchedRegion[]>([])
+  const [regionSearch, setRegionSearch] = useState('')
+  const [searchingRegion, setSearchingRegion] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [updatingLocation, setUpdatingLocation] = useState(false)
@@ -58,9 +67,7 @@ export default function SettingsPage() {
       if (response.ok) {
         const data = await response.json()
         setMinSeverity(data.min_severity || 3)
-        setEmailMinSeverity(data.email_min_severity || 3)
-        setAlertTypes(data.alert_types || ['new_crisis', 'severity_change', 'update'])
-        setRegions(data.regions?.join(', ') || '')
+        setWatchedRegions(data.watched_regions || [])
         setEmailNotifications(data.email_enabled || false)
       }
     } catch (err) {
@@ -84,9 +91,7 @@ export default function SettingsPage() {
         method: 'PUT',
         body: JSON.stringify({
           min_severity: minSeverity,
-          email_min_severity: emailMinSeverity,
-          alert_types: alertTypes,
-          regions: regions ? regions.split(',').map(r => r.trim()).filter(r => r) : null,
+          watched_regions: watchedRegions.length > 0 ? watchedRegions : null,
           email_enabled: overrides?.email_enabled ?? emailNotifications,
         }),
       })
@@ -102,10 +107,31 @@ export default function SettingsPage() {
     }
   }
 
-  const toggleAlertType = (type: string) => {
-    setAlertTypes(prev =>
-      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
-    )
+  const searchAndAddRegion = async () => {
+    if (!regionSearch.trim()) return
+
+    setSearchingRegion(true)
+    try {
+      const response = await apiClient(`/api/alerts/regions/search?query=${encodeURIComponent(regionSearch)}`)
+      if (response.ok) {
+        const region: WatchedRegion = await response.json()
+        if (!watchedRegions.some(r => r.place_id === region.place_id)) {
+          setWatchedRegions([...watchedRegions, region])
+        }
+        setRegionSearch('')
+      } else {
+        alert('Region not found. Try a different search term.')
+      }
+    } catch (err) {
+      console.error('Failed to search region:', err)
+      alert('Failed to search region')
+    } finally {
+      setSearchingRegion(false)
+    }
+  }
+
+  const removeRegion = (index: number) => {
+    setWatchedRegions(watchedRegions.filter((_, i) => i !== index))
   }
 
   const updateLocation = () => {
@@ -510,19 +536,19 @@ export default function SettingsPage() {
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div className="text-sm space-y-2">
-                  <p className="font-semibold text-foreground">How notifications work</p>
+                  <p className="font-semibold text-foreground">How alerts work</p>
                   <div className="space-y-1.5 text-muted-foreground">
-                    <p>• <strong>Location-based:</strong> You&apos;ll receive alerts for disasters within 100km of your location</p>
-                    <p>• <strong>Severity filter:</strong> Only alerts at or above your minimum severity will appear</p>
-                    <p>• <strong>Alert types:</strong> Choose which types of alerts you want to see</p>
-                    <p>• <strong>Regions:</strong> Optionally specify regions to receive alerts from anywhere</p>
+                    <p>• <strong>Location-based:</strong> Alerts for disasters within 100km of your location</p>
+                    <p>• <strong>Severity filter:</strong> Only alerts at or above your minimum severity</p>
+                    <p>• <strong>Custom regions:</strong> Optionally add regions to get alerts from anywhere</p>
+                    <p>• <strong>No location:</strong> Receive all global alerts</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="space-y-1">
-              <Label className="text-base font-semibold mb-3 block">Step 1: Dashboard Alert Severity</Label>
+              <Label className="text-base font-semibold mb-3 block">Minimum Severity</Label>
               <Select value={String(minSeverity)} onValueChange={(value) => setMinSeverity(Number(value))}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -536,82 +562,73 @@ export default function SettingsPage() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-2">
-                Only alerts at this severity level or higher will appear in your dashboard. Lower severity = more alerts.
+                Only disasters at this severity or higher will trigger alerts (both dashboard and email).
               </p>
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-base font-semibold mb-3 block">Step 2: Email Alert Severity</Label>
-              <Select value={String(emailMinSeverity)} onValueChange={(value) => setEmailMinSeverity(Number(value))}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Low (1) - All alerts</SelectItem>
-                  <SelectItem value="2">Medium (2) - Moderate and above</SelectItem>
-                  <SelectItem value="3">High (3) - Serious alerts only</SelectItem>
-                  <SelectItem value="4">Very High (4) - Critical only</SelectItem>
-                  <SelectItem value="5">Critical (5) - Most severe only</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-2">
-                Only emails will be sent for alerts at this severity level or higher. This is separate from dashboard alerts.
-              </p>
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-base font-semibold mb-3 block">Step 3: Alert Types</Label>
-              <p className="text-xs text-muted-foreground mb-3">Select which types of alerts you want to receive:</p>
-              <div className="space-y-3">
-                {[
-                  { value: 'new_crisis', label: 'New Crisis', desc: 'When a new disaster is first detected' },
-                  { value: 'severity_change', label: 'Severity Changes', desc: 'When an existing disaster becomes more severe' },
-                  { value: 'update', label: 'Updates', desc: 'General updates about ongoing crises' }
-                ].map(type => (
-                  <div key={type.value} className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                    <Checkbox
-                      id={type.value}
-                      checked={alertTypes.includes(type.value)}
-                      onCheckedChange={() => toggleAlertType(type.value)}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <Label htmlFor={type.value} className="font-medium cursor-pointer text-sm">
-                        {type.label}
-                      </Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">{type.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {alertTypes.length === 0 && (
-                <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                  ⚠️ You must select at least one alert type
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="regions" className="text-base font-semibold mb-2 block">
-                Step 4: Regions (Optional)
+            <div className="space-y-3">
+              <Label className="text-base font-semibold block">
+                Watch Additional Regions (Optional)
               </Label>
-              <Input
-                id="regions"
-                placeholder="e.g., Texas, California, New York"
-                value={regions}
-                onChange={(e) => setRegions(e.target.value)}
-                className="text-sm"
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                <strong>Optional:</strong> Enter specific regions (comma-separated) to receive alerts from anywhere, even outside your 100km radius. 
-                Leave empty to only receive alerts based on your location radius.
+              <p className="text-xs text-muted-foreground">
+                Get alerts from these regions even if they&apos;re outside your 100km radius.
               </p>
+              
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Search for a region (e.g., California, Texas)"
+                  value={regionSearch}
+                  onChange={(e) => setRegionSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      void searchAndAddRegion()
+                    }
+                  }}
+                  className="text-sm"
+                />
+                <Button
+                  onClick={searchAndAddRegion}
+                  disabled={searchingRegion || !regionSearch.trim()}
+                  size="sm"
+                >
+                  {searchingRegion ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+
+              {watchedRegions.length > 0 && (
+                <div className="space-y-2">
+                  {watchedRegions.map((region, index) => (
+                    <div
+                      key={region.place_id || index}
+                      className="flex items-center justify-between p-2 rounded-lg border bg-muted/30"
+                    >
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">{region.name}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeRegion(index)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="pt-2 border-t mt-auto">
               <Button
                 onClick={() => savePreferences()}
-                disabled={saving || alertTypes.length === 0}
+                disabled={saving}
                 className="w-full"
               >
                 {saving ? (
@@ -628,11 +645,6 @@ export default function SettingsPage() {
                   'Save Preferences'
                 )}
               </Button>
-              {alertTypes.length === 0 && (
-                <p className="text-xs text-red-600 dark:text-red-400 mt-2 text-center">
-                  Please select at least one alert type to save
-                </p>
-              )}
             </div>
           </CardContent>
         </Card>

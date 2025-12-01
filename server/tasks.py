@@ -4,11 +4,12 @@ from celery_app import celery_app
 from services.bluesky import fetch_posts
 from services.analysis import analyze_posts, analyze_sentiment
 from services.database_service import (
-    create_collection_run, 
-    complete_collection_run, 
-    save_posts, 
+    create_collection_run,
+    complete_collection_run,
+    save_posts,
     save_analysis,
-    get_existing_post_ids
+    get_existing_post_ids,
+    update_data_feed_status,
 )
 from services.archive_service import ArchiveService
 from services.alert_generator import generate_alerts as generate_alerts_service
@@ -26,10 +27,13 @@ from typing import Dict, List
 # Disaster type configuration with hashtags
 DISASTER_CONFIG: Dict[str, List[str]] = {
     "earthquake": ["#earthquake", "#quake", "#seismic"],
-    "hurricane": ["#hurricane", "#cyclone", "#tropicalstorm"],
+    "hurricane": ["#hurricane", "#cyclone", "#typhoon", "#tropicalstorm"],
     "flood": ["#flood", "#flooding", "#flashflood"],
     "wildfire": ["#wildfire", "#forestfire", "#bushfire"],
-    "tornado": ["#tornado", "#twister"]
+    "tornado": ["#tornado", "#twister"],
+    "tsunami": ["#tsunami"],
+    "volcano": ["#volcano", "#eruption", "#volcaniceruption"],
+    "heatwave": ["#heatwave", "#extremeheat", "#heatdome"],
 }
 
 
@@ -51,7 +55,7 @@ def collect_and_analyze(include_enhanced: bool = True):
     """
     start_time = time.time()
     task_name = "collect_and_analyze"
-    
+
     print(f"\n{'='*50}")
     print(f"Starting Multi-Disaster BlueSky collection - {datetime.now()}")
     if include_enhanced:
@@ -151,6 +155,8 @@ def collect_and_analyze(include_enhanced: bool = True):
 
         complete_collection_run(run.id, total_saved, "completed")
 
+        update_data_feed_status()
+
         print(f"\n[{datetime.now()}] Multi-Disaster job completed successfully!")
 
         # Return detailed results
@@ -179,7 +185,7 @@ def collect_and_analyze(include_enhanced: bool = True):
                 result=results,
             )
         )
-        
+
         # Log data collection metrics
         loop.run_until_complete(
             logging_service.log_data_collection(
@@ -198,8 +204,12 @@ def collect_and_analyze(include_enhanced: bool = True):
     except Exception as e:
         error_msg = f"Error in multi-disaster collection: {str(e)}"
         complete_collection_run(run.id, 0, "failed", error_msg)
+        try:
+            update_data_feed_status()
+        except Exception as update_error:
+            print(f"⚠️ Failed to update feed status: {update_error}")
         print(f"\n[{datetime.now()}] {error_msg}")
-        
+
         # Log task failure
         duration_ms = int((time.time() - start_time) * 1000)
         loop.run_until_complete(
@@ -210,7 +220,7 @@ def collect_and_analyze(include_enhanced: bool = True):
                 error=str(e),
             )
         )
-        
+
         raise
 
 

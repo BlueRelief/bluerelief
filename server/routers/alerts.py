@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from db_utils.db import Alert, AlertQueue, UserAlertPreferences, User, SessionLocal, get_db_session
+from services.geocoding_service import geocode_region
 from typing import Optional, List
 from pydantic import BaseModel
 from datetime import datetime
@@ -23,29 +24,39 @@ class AlertResponse(BaseModel):
         from_attributes = True
 
 
+class WatchedRegion(BaseModel):
+    name: str
+    lat: float
+    lng: float
+    bounds: Optional[dict] = None
+    place_id: Optional[str] = None
+
+
 class UserAlertPreferencesRequest(BaseModel):
-    alert_types: List[str] = ["new_crisis", "severity_change", "update"]
     min_severity: int = 3
     email_enabled: bool = True
-    email_min_severity: int = 3
-    regions: Optional[List[str]] = None
-    disaster_types: Optional[List[str]] = None
+    watched_regions: Optional[List[WatchedRegion]] = None
 
 
 class UserAlertPreferencesResponse(BaseModel):
     id: int
     user_id: str
-    alert_types: List[str]
     min_severity: int
     email_enabled: bool
-    email_min_severity: int
-    regions: Optional[List[str]]
-    disaster_types: Optional[List[str]]
+    watched_regions: Optional[List[dict]]
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class RegionSearchResult(BaseModel):
+    name: str
+    lat: float
+    lng: float
+    bounds: Optional[dict] = None
+    place_id: Optional[str] = None
 
 
 class UserLocationRequest(BaseModel):
@@ -200,32 +211,33 @@ def update_alert_preferences(
     """Update user's alert preferences"""
     if not db:
         raise HTTPException(status_code=500, detail="Database connection failed")
-    
+
     try:
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        
+
         prefs = db.query(UserAlertPreferences).filter(
             UserAlertPreferences.user_id == user_id
         ).first()
-        
+
         if not prefs:
             prefs = UserAlertPreferences(user_id=user_id)
             db.add(prefs)
-        
+
         if prefs_data:
-            prefs.alert_types = prefs_data.alert_types
             prefs.min_severity = prefs_data.min_severity
             prefs.email_enabled = prefs_data.email_enabled
-            prefs.email_min_severity = prefs_data.email_min_severity
-            prefs.regions = prefs_data.regions
-            prefs.disaster_types = prefs_data.disaster_types
+            prefs.watched_regions = (
+                [r.model_dump() for r in prefs_data.watched_regions]
+                if prefs_data.watched_regions
+                else None
+            )
             prefs.updated_at = datetime.utcnow()
-        
+
         db.commit()
         db.refresh(prefs)
-        
+
         return prefs
     except Exception as e:
         db.rollback()
@@ -243,21 +255,21 @@ def update_user_location(
     """Update user's primary location"""
     if not db:
         raise HTTPException(status_code=500, detail="Database connection failed")
-    
+
     try:
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        
+
         if location_data:
             user.location = location_data.location
             user.latitude = location_data.latitude
             user.longitude = location_data.longitude
             user.updated_at = datetime.utcnow()
-        
+
         db.commit()
         db.refresh(user)
-        
+
         return {
             "status": "success",
             "location": user.location,
@@ -269,3 +281,20 @@ def update_user_location(
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
+
+
+@router.get("/regions/search", response_model=RegionSearchResult)
+def search_region(query: str = Query(..., min_length=2)):
+    """Search for a region using Google Geocoding API"""
+    result = geocode_region(query)
+
+    if not result:
+        raise HTTPException(status_code=404, detail="Region not found")
+
+    return RegionSearchResult(
+        name=result["name"],
+        lat=result["lat"],
+        lng=result["lng"],
+        bounds=result.get("bounds"),
+        place_id=result.get("place_id"),
+    )

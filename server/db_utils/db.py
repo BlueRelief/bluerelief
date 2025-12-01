@@ -274,14 +274,9 @@ class UserAlertPreferences(Base):
     user_id = Column(
         String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    alert_types = Column(
-        JSON, default=["new_crisis", "severity_change", "update"], nullable=False
-    )
     min_severity = Column(Integer, default=3, nullable=False)
     email_enabled = Column(Boolean, default=True, nullable=False)
-    email_min_severity = Column(Integer, default=3, nullable=False)
-    regions = Column(JSON, nullable=True)
-    disaster_types = Column(JSON, nullable=True)
+    watched_regions = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False

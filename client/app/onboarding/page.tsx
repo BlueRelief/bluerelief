@@ -6,7 +6,6 @@ import { MapPin, CheckCircle2, Loader2, Search, Globe, Bell, AlertCircle, Chevro
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -40,7 +39,6 @@ function OnboardingPageContent() {
   
   // Alert preferences state
   const [minSeverity, setMinSeverity] = useState(3);
-  const [alertTypes, setAlertTypes] = useState(['new_crisis', 'severity_change', 'update']);
   const [savingAlerts, setSavingAlerts] = useState(false);
   
   const router = useRouter();
@@ -191,12 +189,6 @@ function OnboardingPageContent() {
     }
   };
 
-  const toggleAlertType = (type: string) => {
-    setAlertTypes(prev =>
-      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
-    );
-  };
-
   const saveAlertPreferences = async () => {
     if (!user?.user_id) return;
 
@@ -206,10 +198,7 @@ function OnboardingPageContent() {
         method: 'PUT',
         body: JSON.stringify({
           min_severity: minSeverity,
-          email_min_severity: 3,
-          alert_types: alertTypes,
-          regions: null,
-          disaster_types: null,
+          watched_regions: null,
           email_enabled: true,
         }),
       });
@@ -448,36 +437,10 @@ function OnboardingPageContent() {
                 </p>
               </div>
 
-              <div>
-                <Label className="text-base font-semibold mb-3 block">Alert Types</Label>
-                <div className="space-y-3">
-                  {[
-                    { value: 'new_crisis', label: 'New Crisis', desc: 'When a new disaster is detected' },
-                    { value: 'severity_change', label: 'Severity Changes', desc: 'When disaster severity increases' },
-                    { value: 'update', label: 'Updates', desc: 'General updates about ongoing crises' }
-                  ].map(type => (
-                    <div key={type.value} className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                      <Checkbox
-                        id={type.value}
-                        checked={alertTypes.includes(type.value)}
-                        onCheckedChange={() => toggleAlertType(type.value)}
-                        className="mt-1"
-                      />
-                      <div className="flex-1">
-                        <Label htmlFor={type.value} className="font-medium cursor-pointer text-sm">
-                          {type.label}
-                        </Label>
-                        <p className="text-xs text-muted-foreground mt-0.5">{type.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               <div className="pt-2 space-y-3">
                 <Button
                   onClick={saveAlertPreferences}
-                  disabled={savingAlerts || alertTypes.length === 0}
+                  disabled={savingAlerts}
                   size="lg"
                   className="w-full h-12 text-base"
                 >
