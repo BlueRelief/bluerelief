@@ -220,3 +220,38 @@ export async function getAnalysisFilterOptions() {
     disaster_types: string[];
   }>('/api/analysis/filter-options');
 }
+
+export async function getRecentEvents(limit = 10, country?: string, disasterType?: string) {
+  const params = new URLSearchParams();
+  params.append('days', '30');
+  params.append('page', '1');
+  params.append('page_size', limit.toString());
+  
+  if (country) params.append('country', country);
+  if (disasterType) params.append('disaster_type', disasterType);
+  
+  return apiGet<{ 
+    crises: Array<{
+      id: number;
+      crisis_name: string;
+      date: string;
+      region: string;
+      severity: string;
+      tweets_analyzed: number;
+      status: string;
+      description: string;
+      sentiment?: string | null;
+      sentiment_score?: number | null;
+      disaster_type: string;
+      bluesky_url: string | null;
+    }>;
+    pagination: {
+      page: number;
+      page_size: number;
+      total_count: number;
+      total_pages: number;
+      has_next: boolean;
+      has_prev: boolean;
+    }
+  }>(`/api/data-feed/weekly-crises?${params.toString()}`);
+}

@@ -46,8 +46,11 @@ import {
   getAnalysisRegionalAnalysis,
   getAnalysisStatistics,
   getAnalysisPatterns,
-  getAnalysisFilterOptions
+  getAnalysisFilterOptions,
+  getRecentEvents
 } from "@/lib/api-client";
+import Link from "next/link";
+import { ArrowRight, MapPin, Clock } from "lucide-react";
 
 const CrisisMap = dynamic(() => import("@/components/crisis-map"), {
   ssr: false,
@@ -193,6 +196,17 @@ export default function AnalysisPage() {
     };
   } | null>(null);
 
+  const [recentEvents, setRecentEvents] = useState<Array<{
+    id: number;
+    crisis_name: string;
+    date: string;
+    region: string;
+    severity: string;
+    description: string;
+    disaster_type: string;
+  }>>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -316,6 +330,27 @@ export default function AnalysisPage() {
 
     fetchFilterOptions();
   }, []);
+
+  useEffect(() => {
+    const fetchRecentEvents = async () => {
+      try {
+        setEventsLoading(true);
+        const country = selectedCountry || undefined;
+        const disasterType = selectedDisasterTypes.length > 0 
+          ? selectedDisasterTypes.join(',') 
+          : undefined;
+        
+        const eventsData = await getRecentEvents(8, country, disasterType);
+        setRecentEvents(eventsData.crises);
+      } catch (e) {
+        console.error('Failed to fetch recent events:', e);
+      } finally {
+        setEventsLoading(false);
+      }
+    };
+
+    fetchRecentEvents();
+  }, [selectedCountry, selectedDisasterTypes]);
 
   useEffect(() => {
     const fetchAnalysisData = async () => {
@@ -607,6 +642,119 @@ export default function AnalysisPage() {
                   </Badge>
                 ))}
               </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Active Events Summary */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Lordicon 
+                src={LORDICON_SOURCES.alert}
+                trigger="hover" 
+                size={LORDICON_SIZES.xl}
+                colorize="currentColor"
+              />
+              <div>
+                <CardTitle className="text-lg">Active Events Summary</CardTitle>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {hasActiveFilters 
+                    ? "Recent events matching your filters" 
+                    : "Recent crisis events being analyzed"}
+                </p>
+              </div>
+            </div>
+            <Link href="/dashboard/data-feed">
+              <Button variant="ghost" size="sm" className="gap-1.5">
+                View All Events
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {eventsLoading ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="p-4 border rounded-lg">
+                  <div className="flex items-start justify-between mb-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-5 w-16" />
+                  </div>
+                  <Skeleton className="h-4 w-full mb-2" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              ))}
+            </div>
+          ) : recentEvents.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {recentEvents.slice(0, 8).map((event) => (
+                <div 
+                  key={event.id}
+                  className="p-4 border rounded-lg hover:border-primary/50 hover:bg-accent/30 transition-all duration-200 cursor-pointer group"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h4 className="font-medium text-sm leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+                      {event.crisis_name}
+                    </h4>
+                    <Badge 
+                      variant={
+                        event.severity === "Critical" ? "destructive" :
+                        event.severity === "High" ? "destructive" :
+                        event.severity === "Medium" ? "default" : "secondary"
+                      }
+                      className="shrink-0 text-xs"
+                    >
+                      {event.severity}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                    {event.description}
+                  </p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {event.region}
+                      </span>
+                      <Badge variant="outline" className="text-xs capitalize py-0">
+                        {event.disaster_type}
+                      </Badge>
+                    </div>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {new Date(event.date).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                <Lordicon 
+                  src={LORDICON_SOURCES.checkCircle}
+                  trigger="hover" 
+                  size={LORDICON_SIZES.xl}
+                  colorize="currentColor"
+                />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">
+                {hasActiveFilters 
+                  ? "No events match your current filters" 
+                  : "No recent events detected"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {hasActiveFilters 
+                  ? "Try adjusting your filter criteria" 
+                  : "This is good news! The system is monitoring for new events."}
+              </p>
             </div>
           )}
         </CardContent>
