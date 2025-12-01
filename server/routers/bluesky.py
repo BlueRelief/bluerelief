@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from tasks import collect_and_analyze
 from services.database_service import get_recent_disasters, get_collection_stats
@@ -78,7 +78,7 @@ def get_disaster(disaster_id: int, db: Session = Depends(get_db)):
     """Get specific disaster by ID"""
     disaster = db.query(Disaster).filter(Disaster.id == disaster_id).first()
     if not disaster:
-        return {"error": "Disaster not found"}
+        raise HTTPException(status_code=404, detail="Disaster not found")
     
     return {
         "id": disaster.id,
@@ -86,7 +86,7 @@ def get_disaster(disaster_id: int, db: Session = Depends(get_db)):
         "latitude": disaster.latitude,
         "longitude": disaster.longitude,
         "disaster_type": disaster.disaster_type or None,
-        "event_time": disaster.event_time,
+        "event_time": disaster.event_time.isoformat() if disaster.event_time else None,
         "severity": disaster.severity,
         "magnitude": disaster.magnitude,
         "description": disaster.description,
