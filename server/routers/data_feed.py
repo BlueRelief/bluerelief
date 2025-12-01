@@ -4,6 +4,8 @@ from sqlalchemy import func, desc, and_, or_
 from datetime import datetime, timedelta
 from typing import Optional
 from db_utils.db import SessionLocal, DataFeed, Post, Disaster, CollectionRun
+from services.database_service import ensure_data_feed_initialized, calculate_next_run_time
+import os
 
 router = APIRouter(prefix="/api/data-feed", tags=["data-feed"])
 
@@ -19,20 +21,27 @@ def get_db():
 @router.get("/status")
 def get_feed_status(db: Session = Depends(get_db)):
     """Get status of all data collection feeds"""
+    ensure_data_feed_initialized()
+    
     feeds = db.query(DataFeed).all()
     
-    return {
-        "feeds": [
-            {
-                "id": feed.id,
-                "name": feed.name,
-                "status": feed.status,
-                "last_run": feed.last_run_at.isoformat() if feed.last_run_at else None,
-                "next_run": feed.next_run_at.isoformat() if feed.next_run_at else None,
-            }
-            for feed in feeds
-        ]
-    }
+    schedule_hours = int(os.getenv("SCHEDULE_HOURS", "8"))
+    
+    result_feeds = []
+    for feed in feeds:
+        next_run = feed.next_run_at
+        if next_run is None:
+            next_run = calculate_next_run_time(schedule_hours)
+        
+        result_feeds.append({
+            "id": feed.id,
+            "name": feed.name,
+            "status": feed.status,
+            "last_run": feed.last_run_at.isoformat() if feed.last_run_at else None,
+            "next_run": next_run.isoformat() if next_run else None,
+        })
+    
+    return {"feeds": result_feeds}
 
 
 @router.get("/overview")

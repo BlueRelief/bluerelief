@@ -6,8 +6,52 @@ import time
 from typing import List, Dict, Any, Optional
 import json
 import re
+import requests
+import base64
+from io import BytesIO
+from PIL import Image
+from services.geocoding_service import geocode_region
 
 load_dotenv()
+
+
+def download_image(url: str, max_size: int = 1024) -> Optional[Dict]:
+    """Download and prepare image for Gemini vision API.
+
+    Args:
+        url: Image URL to download
+        max_size: Max dimension to resize to (saves tokens)
+
+    Returns:
+        Dict with mime_type and data for Gemini, or None if failed
+    """
+    try:
+        headers = {"User-Agent": "BlueRelief/1.0 (Crisis Monitoring Service)"}
+        response = requests.get(url, timeout=10, headers=headers)
+        response.raise_for_status()
+
+        # Open and resize image
+        img = Image.open(BytesIO(response.content))
+
+        # Convert to RGB if needed (for PNG with transparency)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+
+        # Resize if too large
+        if max(img.size) > max_size:
+            ratio = max_size / max(img.size)
+            new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+
+        # Convert to base64
+        buffer = BytesIO()
+        img.save(buffer, format="JPEG", quality=85)
+        img_data = base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+        return {"mime_type": "image/jpeg", "data": img_data}
+    except Exception as e:
+        print(f"⚠️  Failed to download image {url[:50]}...: {e}")
+        return None
 
 
 def normalize_event_time(time_str: str) -> Optional[datetime]:
@@ -155,41 +199,92 @@ def analyze_posts(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1)
 
         print(f"\n📦 Processing batch {batch_num + 1}/{total_batches} ({len(batch_posts)} posts)")
 
-        # Build prompt with post IDs included
-        posts_text = "\n".join(
-            [
-                f"{idx}. [POST_ID: {post.get('db_post_id', 'unknown')}] {post.get('text') or post.get('record', {}).get('text', '')}"
-                for idx, post in enumerate(batch_posts, start_idx + 1)
-            ]
-        )
+        # Build prompt with post IDs and collect images
+        posts_lines = []
+        batch_images = []  # Collect images for vision API
+
+        for idx, post in enumerate(batch_posts, start_idx + 1):
+            text = post.get("text") or post.get("record", {}).get("text", "")
+            post_id = post.get("db_post_id", "unknown")
+
+            # Get image URLs if available
+            media = post.get("media", {})
+            image_urls = media.get("urls", []) if isinstance(media, dict) else []
+
+            line = f"{idx}. [POST_ID: {post_id}] {text}"
+
+            # Download and include images (max 2 per post, max 10 per batch)
+            if image_urls and len(batch_images) < 10:
+                for img_url in image_urls[:2]:
+                    img_data = download_image(img_url)
+                    if img_data:
+                        batch_images.append(
+                            {"post_id": post_id, "post_idx": idx, "image": img_data}
+                        )
+                        line += f"\n   [HAS_IMAGE_{len(batch_images)}]"
+
+            posts_lines.append(line)
+
+        posts_text = "\n".join(posts_lines)
+
+        if batch_images:
+            print(f"📷 Downloaded {len(batch_images)} images for vision analysis")
 
         prompt = (
             f"CURRENT TIME (UTC): {now.isoformat()}Z\n\n"
             "Analyze these social media posts about disasters and extract structured information. "
+            "Some posts have attached images marked as [HAS_IMAGE_N] - I'm also providing these images below. "
+            "Use BOTH the text AND images to extract disaster details. Images often contain headlines, news graphics, or photos showing the disaster. "
             "For each disaster mentioned, return a JSON array with objects containing:\n"
             "- post_id: the database post ID from the [POST_ID: X] marker (MUST be an integer or null)\n"
-            "- location_name: the place name (e.g., 'Tokyo, Japan', 'Manila, Philippines')\n"
-            "- latitude: decimal latitude coordinate (e.g., 35.6762)\n"
-            "- longitude: decimal longitude coordinate (e.g., 139.6503)\n"
+            "- location_name: the SPECIFIC place name (e.g., 'Los Angeles, California, USA', 'Tokyo, Japan', 'Manila, Philippines'). "
+            "Include city/region, state/province, and country. Must be a real, geocodable location.\n"
             "- event_time: **ONLY ISO 8601 format YYYY-MM-DDTHH:MM:SSZ** when the disaster occurred. "
-            "If the exact time is unknown, use the post's timestamp or estimate based on context. "
-            "NEVER use vague terms like 'next week', 'upcoming', 'ongoing', 'recently', etc. "
-            "ALWAYS return a valid ISO 8601 timestamp. If completely unknown, use current time.\n"
-            "- disaster_type: type of disaster (e.g., 'earthquake', 'hurricane', 'flood', 'wildfire', 'tornado')\n"
+            "CRITICAL: Only extract CURRENT/RECENT disasters (within the last 30 days). "
+            "If a post mentions a HISTORICAL disaster (years/decades ago), SKIP IT entirely. "
+            "If the exact time is unknown, use the current time. "
+            "NEVER use vague terms like 'next week', 'upcoming', 'ongoing', 'recently', etc.\n"
+            "- disaster_type: MUST be exactly ONE of these 8 values (lowercase): "
+            "earthquake, flood, wildfire, hurricane, tornado, tsunami, volcano, heatwave. "
+            "Pick ONE. No combinations.\n"
             "- severity: rate 1-5 (1=minor, 5=catastrophic)\n"
             "- magnitude: single numerical value if applicable, null otherwise\n"
-            "- description: brief summary\n"
+            "- description: DETAILED summary (at least 50 characters) with specific facts like casualties, damage, evacuations. "
+            "Do NOT just say 'Flood in Indonesia' - include actual details from the post.\n"
             "- affected_population: estimate number of people affected. "
             "Look for mentions like 'X families evacuated', 'Y people without power'. "
             "Convert to individual counts (1 family ≈ 4 people, 1 home ≈ 3 people). "
             "Provide best-effort estimates: neighborhood=5000, city block=500, building=50, regional=50000. "
             "Return null if completely unknown.\n\n"
+            "CRITICAL LOCATION RULES:\n"
+            "1. NEVER use vague locations like 'Worldwide', 'Global', 'Asia', 'Europe', 'Unknown', 'Undisclosed'\n"
+            "2. If a disaster affects MULTIPLE COUNTRIES, create SEPARATE entries for each country with specific locations\n"
+            "   Example: 'Floods in Thailand and Indonesia' → two entries: 'Bangkok, Thailand' AND 'Jakarta, Indonesia'\n"
+            "3. If no specific location is mentioned, SKIP that disaster entirely - do not include it\n"
+            "4. Use the most specific location possible (city > state > country)\n"
+            "5. For ocean/offshore events, use nearest coastal city (e.g., 'Offshore Ecuador' → 'Salinas, Ecuador')\n\n"
+            "DISASTER TYPE MAPPING:\n"
+            "- bushfire/forest fire → wildfire\n"
+            "- flash flood/flooding → flood\n"
+            "- cyclone/typhoon/tropical storm → hurricane\n"
+            "- twister → tornado\n"
+            "- quake/tremor → earthquake\n"
+            "- eruption → volcano\n"
+            "- heat wave/extreme heat → heatwave\n\n"
             f"Posts:\n{posts_text}\n\n"
-            "Return ONLY valid JSON. CRITICAL: event_time MUST be ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ), never vague text."
+            "Return ONLY valid JSON. DO NOT include latitude/longitude - we will geocode the location_name separately."
         )
 
         try:
-            response = model.generate_content(prompt)
+            # Build content parts for multimodal request
+            content_parts = [prompt]
+
+            # Add images if we have any
+            if batch_images:
+                for img_info in batch_images:
+                    content_parts.append({"inline_data": img_info["image"]})
+
+            response = model.generate_content(content_parts)
             cleaned_response = clean_json_response(response.text)
 
             # Try to merge the disasters from this batch
@@ -208,8 +303,53 @@ def analyze_posts(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1)
             print(f"⚠️ Error processing batch {batch_num + 1}: {str(e)}")
 
     if all_disasters:
-        final_json = json.dumps(all_disasters, indent=2)
-        print(f"\n[{datetime.now()}] AI Analysis Complete - Found {len(all_disasters)} total disasters")
+        # Filter out vague/invalid locations before geocoding
+        vague_terms = [
+            "worldwide",
+            "global",
+            "unknown",
+            "undisclosed",
+            "various",
+            "multiple",
+        ]
+        valid_disasters = []
+        skipped = 0
+
+        for disaster in all_disasters:
+            location = (disaster.get("location_name") or "").strip().lower()
+            if not location or any(term in location for term in vague_terms):
+                skipped += 1
+                continue
+            valid_disasters.append(disaster)
+
+        if skipped:
+            print(f"⏭️  Skipped {skipped} disasters with vague/missing locations")
+
+        # Geocode locations to get accurate coordinates
+        print(f"\n🌍 Geocoding {len(valid_disasters)} disaster locations...")
+        geocoded_disasters = []
+
+        for disaster in valid_disasters:
+            location_name = disaster.get("location_name")
+            geo_result = geocode_region(location_name)
+
+            if geo_result and geo_result.get("lat") and geo_result.get("lng"):
+                disaster["latitude"] = geo_result["lat"]
+                disaster["longitude"] = geo_result["lng"]
+                geocoded_disasters.append(disaster)
+            else:
+                print(f"⚠️  Failed to geocode: {location_name[:50]}")
+
+        print(f"✅ Geocoded {len(geocoded_disasters)}/{len(valid_disasters)} locations")
+
+        if not geocoded_disasters:
+            print("⚠️  No disasters with valid coordinates")
+            return "[]"
+
+        final_json = json.dumps(geocoded_disasters, indent=2)
+        print(
+            f"\n[{datetime.now()}] AI Analysis Complete - Found {len(geocoded_disasters)} disasters with coordinates"
+        )
         return final_json
 
     return "[]"

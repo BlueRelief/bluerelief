@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from db_utils.db import Alert, AlertQueue, Disaster, User, UserAlertPreferences, SessionLocal
+from services.geocoding_service import is_point_in_bounds
 import json
 import logging
 import math
@@ -32,7 +33,7 @@ def get_severity_priority(severity: int) -> int:
 
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculate distance between two coordinates in km using Haversine formula"""
-    if not all([lat1, lon1, lat2, lon2]):
+    if any(v is None for v in [lat1, lon1, lat2, lon2]):
         return None
 
     R = 6371  # Earth's radius in km
@@ -51,91 +52,52 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
 def should_alert_user_for_disaster(
     user_prefs: UserAlertPreferences, user: User, disaster: Disaster, alert_type: str
 ) -> bool:
-    """Check if user should receive alert for this disaster based on preferences and location
+    """Check if user should receive alert for this disaster
 
-    Checks (in order):
-    1. User has preferences set up
-    2. Alert type is in user's preferred alert types
-    3. Disaster type matches user's preferred disaster types (if specified)
-    4. Severity meets minimum threshold
-    5. GLOBAL ALERTS MODE: If user has no location (null), receive all alerts
-    6. GEO-RADIUS: Distance from user to disaster (PRIMARY)
-    7. REGION FILTER: User's custom region preferences (SECONDARY)
-
-    Note: email_enabled controls EMAIL sending, not alert creation
-
-    Returns:
-        True if user should receive the alert
+    Simple logic:
+    1. Must have preferences set up
+    2. Disaster severity must meet user's minimum threshold
+    3. Location check:
+       - No user location = global mode (all alerts)
+       - Has location = must be within 100km OR match a custom region
+       - No disaster coordinates = must match a custom region
     """
     if not user_prefs:
         return False
-
-    # Check if alert type is in user's preferred alert types
-    if user_prefs.alert_types and isinstance(user_prefs.alert_types, list):
-        if alert_type not in user_prefs.alert_types:
-            return False
-
-    # Check if disaster type matches user's preferred disaster types (if specified)
-    if (
-        user_prefs.disaster_types
-        and isinstance(user_prefs.disaster_types, list)
-        and len(user_prefs.disaster_types) > 0
-    ):
-        if disaster.disaster_type:
-            # Handle comma-separated disaster types (e.g., "landslide, flood")
-            disaster_types_list = [
-                dt.strip().lower() for dt in disaster.disaster_type.split(",")
-            ]
-            user_disaster_types = [dt.lower() for dt in user_prefs.disaster_types]
-            if not any(dt in user_disaster_types for dt in disaster_types_list):
-                return False
 
     disaster_severity = disaster.severity or 0
     if disaster_severity < user_prefs.min_severity:
         return False
 
-    # GLOBAL ALERTS MODE: If user has no location (null), receive all alerts
+    # Global mode: no location set = receive all alerts
     if user.latitude is None and user.longitude is None:
         return True
 
-    # PRIMARY FILTER: Geo-radius based on user coordinates
-    if user.latitude is not None and user.longitude is not None and \
-       disaster.latitude is not None and disaster.longitude is not None:
+    # Check if disaster is within radius
+    if disaster.latitude is not None and disaster.longitude is not None:
         distance = calculate_distance(
             user.latitude, user.longitude,
             disaster.latitude, disaster.longitude
         )
+        if distance is not None and distance <= ALERT_RADIUS_KM:
+            return True
 
-        # If distance is calculated and exceeds radius, check regions as fallback
-        if distance is not None and distance > ALERT_RADIUS_KM:
-            # SECONDARY FILTER: Check if user has specific regions (override for distant areas)
-            if user_prefs.regions and isinstance(user_prefs.regions, list):
-                disaster_location = (disaster.location_name or "").lower()
-                matches_region = any(
-                    region.lower() in disaster_location or disaster_location in region.lower()
-                    for region in user_prefs.regions
-                )
-                if not matches_region:
-                    return False
-            else:
-                # No regions specified and outside radius = no alert
-                return False
-    else:
-        # Fallback: If disaster has no coordinates, use region matching only
-        # If user has no regions set, don't send alert (unless in global mode which is checked above)
-        if user_prefs.regions and isinstance(user_prefs.regions, list):
-            disaster_location = (disaster.location_name or "").lower()
-            matches_region = any(
-                region.lower() in disaster_location or disaster_location in region.lower()
-                for region in user_prefs.regions
-            )
-            if not matches_region:
-                return False
-        else:
-            # No coordinates and no regions = no alert
-            return False
+    # Check watched regions (with proper bounds checking)
+    if (
+        user_prefs.watched_regions
+        and isinstance(user_prefs.watched_regions, list)
+        and len(user_prefs.watched_regions) > 0
+        and disaster.latitude is not None
+        and disaster.longitude is not None
+    ):
+        for region in user_prefs.watched_regions:
+            bounds = region.get("bounds") if isinstance(region, dict) else None
+            if bounds and is_point_in_bounds(
+                disaster.latitude, disaster.longitude, bounds
+            ):
+                return True
 
-    return True
+    return False
 
 
 def should_alert_for_disaster(disaster) -> tuple[bool, str]:

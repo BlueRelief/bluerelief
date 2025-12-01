@@ -1,9 +1,84 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from db_utils.db import CollectionRun, Post, Disaster, SessionLocal
+from db_utils.db import CollectionRun, Post, Disaster, DataFeed, SessionLocal
 import json
 import re
+import os
 from services.population_estimator import PopulationEstimator
+
+# Valid disaster types - matches DISASTER_CONFIG in tasks.py
+VALID_DISASTER_TYPES = {
+    "earthquake",
+    "hurricane",
+    "flood",
+    "wildfire",
+    "tornado",
+    "tsunami",
+    "volcano",
+    "heatwave",
+}
+
+# Map variations to the 8 standard types
+DISASTER_TYPE_MAPPING = {
+    # earthquake variations
+    "quake": "earthquake",
+    "tremor": "earthquake",
+    "seismic": "earthquake",
+    # hurricane variations
+    "cyclone": "hurricane",
+    "typhoon": "hurricane",
+    "tropical storm": "hurricane",
+    "tropical cyclone": "hurricane",
+    # flood variations
+    "flooding": "flood",
+    "flash flood": "flood",
+    "floods": "flood",
+    # wildfire variations
+    "bushfire": "wildfire",
+    "forest fire": "wildfire",
+    "fire": "wildfire",
+    # tornado variations
+    "twister": "tornado",
+    # volcano variations
+    "eruption": "volcano",
+    "volcanic eruption": "volcano",
+    "volcanic": "volcano",
+    # heatwave variations
+    "heat wave": "heatwave",
+    "extreme heat": "heatwave",
+    "heat dome": "heatwave",
+}
+
+
+def normalize_disaster_type(disaster_type: str) -> str:
+    """Normalize disaster type to one of the 5 standard types."""
+    if not disaster_type:
+        return None
+
+    dt = disaster_type.lower().strip()
+
+    # Take first if comma-separated
+    if "," in dt:
+        dt = dt.split(",")[0].strip()
+
+    # Already valid?
+    if dt in VALID_DISASTER_TYPES:
+        return dt
+
+    # Try direct mapping
+    if dt in DISASTER_TYPE_MAPPING:
+        return DISASTER_TYPE_MAPPING[dt]
+
+    # Try partial match
+    for key, value in DISASTER_TYPE_MAPPING.items():
+        if key in dt:
+            return value
+
+    for valid_type in VALID_DISASTER_TYPES:
+        if valid_type in dt:
+            return valid_type
+
+    return None
 
 
 def extract_post_timestamp(post_data: dict) -> datetime:
@@ -303,8 +378,57 @@ def save_analysis(analysis_text: str, run_id: int, posts: list = None):
             if isinstance(disasters, dict):
                 disasters = [disasters]
 
-            print("Saving disasters to database...")
-            for disaster_data in disasters:
+            # Filter out low-quality disasters
+            valid_disasters = []
+            skipped_coords = 0
+            skipped_quality = 0
+
+            for d in disasters:
+                lat = d.get("latitude")
+                lng = d.get("longitude")
+                description = (d.get("description") or "").strip()
+                location = (d.get("location_name") or "").strip()
+
+                # Must have coordinates
+                if lat is None or lng is None:
+                    skipped_coords += 1
+                    continue
+
+                # Quality checks for description
+                if len(description) < 20:
+                    skipped_quality += 1
+                    continue
+
+                # Check for low-effort descriptions (just repeating location/type)
+                desc_lower = description.lower()
+                loc_lower = location.lower().split(",")[0] if location else ""
+                disaster_type = (d.get("disaster_type") or "").lower()
+
+                # Skip if description is just "[type] in [location]" or similar garbage
+                low_effort_patterns = [
+                    f"{disaster_type} in {loc_lower}",
+                    f"{disaster_type} reported in",
+                    f"a {disaster_type} occurred",
+                    f"{disaster_type} occurred in",
+                    f"general mention of",
+                    f"information about",
+                ]
+                if (
+                    any(pattern in desc_lower for pattern in low_effort_patterns)
+                    and len(description) < 60
+                ):
+                    skipped_quality += 1
+                    continue
+
+                valid_disasters.append(d)
+
+            if skipped_coords:
+                print(f"⏭️  Skipped {skipped_coords} disasters without coordinates")
+            if skipped_quality:
+                print(f"⏭️  Skipped {skipped_quality} low-quality disasters")
+
+            print(f"Saving {len(valid_disasters)} disasters to database...")
+            for disaster_data in valid_disasters:
                 magnitude_value = disaster_data.get("magnitude")
 
                 if magnitude_value is not None:
@@ -337,11 +461,30 @@ def save_analysis(analysis_text: str, run_id: int, posts: list = None):
                     normalize_event_time(event_time) if event_time else None
                 )
 
+                # Skip historical events (older than 30 days)
+                if normalized_event_time:
+                    days_old = (
+                        datetime.utcnow() - normalized_event_time.replace(tzinfo=None)
+                    ).days
+                    if days_old > 30:
+                        print(f"⚠️  Skipping historical event ({days_old} days old)")
+                        continue
+
+                # Normalize disaster type to standard value
+                raw_disaster_type = disaster_data.get("disaster_type")
+                normalized_type = normalize_disaster_type(raw_disaster_type)
+
+                if not normalized_type:
+                    print(
+                        f"⚠️  Skipping disaster with invalid type: {raw_disaster_type}"
+                    )
+                    continue
+
                 affected_population = PopulationEstimator.estimate_population(
                     longitude=disaster_data.get("longitude"),
                     latitude=disaster_data.get("latitude"),
-                    disaster_type=disaster_data.get("disaster_type"),
-                    severity=disaster_data.get("severity")
+                    disaster_type=normalized_type,
+                    severity=disaster_data.get("severity"),
                 )
 
                 disaster = Disaster(
@@ -353,7 +496,7 @@ def save_analysis(analysis_text: str, run_id: int, posts: list = None):
                     magnitude=magnitude_value,
                     description=disaster_data.get("description"),
                     affected_population=affected_population,
-                    disaster_type=disaster_data.get("disaster_type", None),
+                    disaster_type=normalized_type,
                     collection_run_id=run_id,
                     post_id=post_id,
                 )
@@ -361,9 +504,9 @@ def save_analysis(analysis_text: str, run_id: int, posts: list = None):
                 db.add(disaster)
 
             db.commit()
-            linked = sum(1 for d in disasters if d.get("post_id") is not None)
+            linked = sum(1 for d in valid_disasters if d.get("post_id") is not None)
             print(
-                f"Saved {len(disasters)} disasters from AI analysis ({linked} linked to posts)"
+                f"✅ Saved {len(valid_disasters)} disasters ({linked} linked to posts)"
             )
 
         except json.JSONDecodeError as e:
@@ -408,9 +551,9 @@ def get_collection_stats():
         total_runs = db.query(CollectionRun).count()
         total_posts = db.query(Post).count()
         total_disasters = db.query(Disaster).count()
-        
+
         recent_runs = db.query(CollectionRun).order_by(CollectionRun.started_at.desc()).limit(5).all()
-        
+
         return {
             "total_runs": total_runs,
             "total_posts": total_posts,
@@ -429,5 +572,118 @@ def get_collection_stats():
     except Exception as e:
         db.rollback()
         raise e
+    finally:
+        db.close()
+
+
+def calculate_next_run_time(schedule_hours: int = None) -> datetime:
+    """Calculate the next scheduled run time based on the schedule
+
+    Args:
+        schedule_hours: Hours between runs (default: from env var SCHEDULE_HOURS or 8)
+
+    Returns:
+        datetime object for the next scheduled run
+    """
+    if schedule_hours is None:
+        schedule_hours = int(os.getenv("SCHEDULE_HOURS", "8"))
+
+    now = datetime.utcnow()
+    current_hour = now.replace(minute=0, second=0, microsecond=0)
+    remainder = now.hour % schedule_hours
+
+    if remainder == 0:
+        next_run = current_hour + timedelta(hours=schedule_hours)
+    else:
+        hours_until_next = schedule_hours - remainder
+        next_run = current_hour + timedelta(hours=hours_until_next)
+
+    if next_run <= now:
+        next_run = next_run + timedelta(hours=schedule_hours)
+
+    return next_run
+
+
+def update_data_feed_status(
+    feed_name: str = "Bluesky Crisis Monitor", feed_type: str = "bluesky"
+):
+    """Update DataFeed record with last_run_at and next_run_at timestamps
+
+    Args:
+        feed_name: Name of the data feed (default: "Bluesky Crisis Monitor")
+        feed_type: Type of feed (default: "bluesky")
+    """
+    db = SessionLocal()
+    try:
+        feed = db.query(DataFeed).filter(DataFeed.name == feed_name).first()
+
+        if not feed:
+            feed = DataFeed(
+                name=feed_name,
+                feed_type=feed_type,
+                status="active",
+                last_run_at=None,
+                next_run_at=None,
+                total_runs=0,
+            )
+            db.add(feed)
+
+        now = datetime.utcnow()
+        feed.last_run_at = now
+        feed.total_runs += 1
+
+        schedule_hours = int(os.getenv("SCHEDULE_HOURS", "8"))
+        feed.next_run_at = calculate_next_run_time(schedule_hours)
+        feed.updated_at = now
+
+        db.commit()
+        db.refresh(feed)
+        print(
+            f"✅ Updated DataFeed: last_run={feed.last_run_at}, next_run={feed.next_run_at}"
+        )
+
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️ Failed to update DataFeed status: {e}")
+        raise e
+    finally:
+        db.close()
+
+
+def ensure_data_feed_initialized(
+    feed_name: str = "Bluesky Crisis Monitor", feed_type: str = "bluesky"
+):
+    """Ensure DataFeed record exists with calculated next_run_at even if task hasn't run yet
+
+    Args:
+        feed_name: Name of the data feed (default: "Bluesky Crisis Monitor")
+        feed_type: Type of feed (default: "bluesky")
+    """
+    db = SessionLocal()
+    try:
+        feed = db.query(DataFeed).filter(DataFeed.name == feed_name).first()
+
+        schedule_hours = int(os.getenv("SCHEDULE_HOURS", "8"))
+
+        if not feed:
+            feed = DataFeed(
+                name=feed_name,
+                feed_type=feed_type,
+                status="active",
+                last_run_at=None,
+                next_run_at=calculate_next_run_time(schedule_hours),
+                total_runs=0,
+            )
+            db.add(feed)
+            db.commit()
+            print(f"✅ Initialized DataFeed: next_run={feed.next_run_at}")
+        elif feed.next_run_at is None:
+            feed.next_run_at = calculate_next_run_time(schedule_hours)
+            db.commit()
+            print(f"✅ Updated DataFeed next_run: {feed.next_run_at}")
+
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️ Failed to initialize DataFeed: {e}")
     finally:
         db.close()
