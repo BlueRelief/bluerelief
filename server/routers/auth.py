@@ -666,6 +666,28 @@ async def logout(request: Request, token: str = Cookie(None)):
     return response
 
 
+@router.get("/geocode")
+async def geocode_location(query: str):
+    """Geocode a location query using Google Geocoding API"""
+    from services.geocoding_service import geocode_region
+    
+    if not query or len(query.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Query too short")
+    
+    result = geocode_region(query.strip())
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    return {
+        "name": result.get("name"),
+        "latitude": result.get("lat"),
+        "longitude": result.get("lng"),
+        "place_id": result.get("place_id"),
+        "bounds": result.get("bounds"),
+    }
+
+
 @router.post("/setup-location")
 async def setup_location(request: Request, token: str = Cookie(None)):
     """Setup user location during signup (called from frontend)

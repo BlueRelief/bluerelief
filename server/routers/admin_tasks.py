@@ -1,7 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
-from db_utils.db import SessionLocal, User, Disaster, AlertQueue, CollectionRun, engine
+from datetime import datetime
+from db_utils.db import (
+    SessionLocal,
+    User,
+    Disaster,
+    AlertQueue,
+    Alert,
+    UserAlertPreferences,
+    CollectionRun,
+    engine,
+)
 from middleware.admin_auth import get_current_admin
 from celery_app import celery_app
 from tasks import (
@@ -10,7 +20,9 @@ from tasks import (
     manage_alert_queue,
     cleanup_old_alerts,
     archive_completed_disasters,
+    send_alert_emails,
 )
+from services.admin_logger import log_admin_activity
 import sqlalchemy
 
 router = APIRouter(prefix="/api/admin/tasks", tags=["admin-tasks"])
@@ -27,6 +39,14 @@ def get_db():
 class CollectRequest(BaseModel):
     include_enhanced: bool = True
     disaster_types: Optional[List[str]] = None
+
+
+class TriggerTestAlertRequest(BaseModel):
+    user_id: str
+    disaster_type: str = "test"
+    severity: int = 4
+    description: Optional[str] = "Test alert triggered by admin"
+    send_email: bool = True
 
 
 @router.post("/collect")
@@ -114,3 +134,123 @@ def get_task_status(task_id: str, current_admin: User = Depends(get_current_admi
         return {"task_id": task_id, "status": task.status, "result": task.result if task.ready() else None}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve task status: {e}")
+
+
+@router.post("/trigger-test-alert")
+def trigger_test_alert(
+    req: TriggerTestAlertRequest, current_admin: User = Depends(get_current_admin)
+):
+    """
+    Trigger a test alert for a specific user at their location.
+    Creates a test disaster near the user and queues an alert for them.
+    """
+    db = SessionLocal()
+    try:
+        user = (
+            db.query(User)
+            .filter(User.id == req.user_id, User.deleted_at == None)
+            .first()
+        )
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        prefs = (
+            db.query(UserAlertPreferences)
+            .filter(UserAlertPreferences.user_id == req.user_id)
+            .first()
+        )
+
+        if not prefs:
+            raise HTTPException(
+                status_code=400, detail="User has no alert preferences configured"
+            )
+
+        lat = user.latitude if user.latitude else 0.0
+        lon = user.longitude if user.longitude else 0.0
+        location_name = user.location or "Test Location"
+
+        last_run = db.query(CollectionRun).order_by(CollectionRun.id.desc()).first()
+        collection_run_id = last_run.id if last_run else 1
+
+        disaster = Disaster(
+            location_name=f"{location_name} (Test Alert)",
+            latitude=lat,
+            longitude=lon,
+            severity=req.severity,
+            disaster_type=req.disaster_type,
+            description=req.description,
+            extracted_at=datetime.utcnow(),
+            collection_run_id=collection_run_id,
+            archived=False,
+        )
+        db.add(disaster)
+        db.flush()
+
+        alert = Alert(
+            disaster_id=disaster.id,
+            alert_type="test_alert",
+            severity=req.severity,
+            title=f"🧪 Test Alert: {location_name}",
+            message=req.description
+            or "This is a test alert triggered by an administrator.",
+            alert_metadata={
+                "location": location_name,
+                "latitude": lat,
+                "longitude": lon,
+                "is_test": True,
+                "triggered_by": current_admin.id,
+            },
+        )
+        db.add(alert)
+        db.flush()
+
+        queue_entry = AlertQueue(
+            alert_id=alert.id,
+            user_id=user.id,
+            recipient_email=user.email,
+            recipient_name=user.name,
+            priority=1,
+            status="pending",
+        )
+        db.add(queue_entry)
+        db.commit()
+
+        log_admin_activity(
+            admin_id=current_admin.id,
+            action="TEST_ALERT_TRIGGERED",
+            target_user_id=user.id,
+            details={
+                "disaster_id": disaster.id,
+                "alert_id": alert.id,
+                "severity": req.severity,
+                "location": location_name,
+            },
+        )
+
+        result = {
+            "status": "success",
+            "disaster_id": disaster.id,
+            "alert_id": alert.id,
+            "queue_entry_id": queue_entry.id,
+            "user_email": user.email,
+            "location": location_name,
+        }
+
+        if req.send_email:
+            try:
+                task = send_alert_emails.delay()
+                result["email_task_id"] = task.id
+            except Exception as e:
+                result["email_error"] = str(e)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to trigger test alert: {e}"
+        )
+    finally:
+        db.close()

@@ -88,26 +88,17 @@ export function LocationOnboarding({ onLocationSet }: LocationOnboardingProps) {
         throw new Error('Could not determine country from IP');
       }
 
-      const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-      if (!mapboxToken) {
-        setError('Geocoding service not configured');
-        setLoading(false);
-        return;
-      }
-
-      const geoResponse = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(country)}.json?access_token=${mapboxToken}&types=country&limit=1`
-      );
+      const geoResponse = await apiClient(`/auth/geocode?query=${encodeURIComponent(country)}`);
 
       if (!geoResponse.ok) {
         throw new Error('Failed to geocode country');
       }
 
       const geoData = await geoResponse.json();
-      if (geoData.features && geoData.features.length > 0) {
-        const feature = geoData.features[0];
-        [longitude, latitude] = feature.center;
-        locationName = feature.place_name || country;
+      if (geoData.latitude && geoData.longitude) {
+        latitude = geoData.latitude;
+        longitude = geoData.longitude;
+        locationName = geoData.name || country;
         localStorage.setItem('user_country_center', JSON.stringify([longitude, latitude]));
         localStorage.setItem('user_country_name', locationName);
         await handleLocationSet(locationName, latitude, longitude);
@@ -155,27 +146,22 @@ export function LocationOnboarding({ onLocationSet }: LocationOnboardingProps) {
     setError(null);
 
     try {
-      const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-      if (!mapboxToken) {
-        setError('Geocoding service not configured');
+      const response = await apiClient(`/auth/geocode?query=${encodeURIComponent(manualLocation.trim())}`);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          setError('Location not found. Please try a different location.');
+        } else {
+          setError('Failed to find location. Please try again.');
+        }
         setLoading(false);
         return;
       }
 
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(manualLocation)}.json?access_token=${mapboxToken}&limit=1`
-      );
-
-      if (!response.ok) {
-        throw new Error('Geocoding failed');
-      }
-
       const data = await response.json();
-      if (data.features && data.features.length > 0) {
-        const feature = data.features[0];
-        const [longitude, latitude] = feature.center;
-        const locationName = feature.place_name || manualLocation;
-        await handleLocationSet(locationName, latitude, longitude);
+      if (data.latitude && data.longitude) {
+        const locationName = data.name || manualLocation;
+        await handleLocationSet(locationName, data.latitude, data.longitude);
       } else {
         setError('Location not found. Please try a different location.');
         setLoading(false);

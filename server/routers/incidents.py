@@ -36,6 +36,11 @@ def parse_time_range(time_range: str) -> int:
     return time_map.get(time_range, 24)  # Default to 24 hours
 
 
+def should_include_archived(hours: int) -> bool:
+    """Returns True if the time range exceeds 48 hours, meaning archived data should be included"""
+    return hours > 48
+
+
 def get_severity_label(severity: int) -> str:
     """Convert severity number to label"""
     severity_map = {5: "Critical", 4: "High", 3: "Medium", 2: "Low", 1: "Info"}
@@ -45,19 +50,15 @@ def get_severity_label(severity: int) -> str:
 @router.get("")
 async def list_incidents(time_range: str = "24h", db: Session = Depends(get_db)):
     """Return recent disasters for the map"""
-    # Parse time range and calculate cutoff time
     hours = parse_time_range(time_range)
     cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+    include_archived = should_include_archived(hours)
 
-    disasters = (
-        db.query(Disaster)
-        .options(joinedload(Disaster.post))
-        .filter(Disaster.archived == False)
-        .filter(Disaster.extracted_at >= cutoff_time)
-        .order_by(Disaster.extracted_at.desc())
-        .limit(100)
-        .all()
-    )
+    query = db.query(Disaster).options(joinedload(Disaster.post)).filter(Disaster.extracted_at >= cutoff_time)
+    if not include_archived:
+        query = query.filter(Disaster.archived == False)
+
+    disasters = query.order_by(Disaster.extracted_at.desc()).limit(200 if include_archived else 100).all()
 
     result = []
     for d in disasters:
@@ -109,16 +110,14 @@ async def get_nearby_disasters(
 
 
 @router.get("/{disaster_id}")
-async def get_disaster_details(disaster_id: int, db: Session = Depends(get_db)):
+async def get_disaster_details(disaster_id: int, include_archived: bool = False, db: Session = Depends(get_db)):
     """Get detailed information about a specific disaster"""
 
-    disaster = (
-        db.query(Disaster)
-        .options(joinedload(Disaster.post))
-        .filter(Disaster.id == disaster_id)
-        .filter(Disaster.archived == False)
-        .first()
-    )
+    query = db.query(Disaster).options(joinedload(Disaster.post)).filter(Disaster.id == disaster_id)
+    if not include_archived:
+        query = query.filter(Disaster.archived == False)
+
+    disaster = query.first()
 
     if not disaster:
         raise HTTPException(status_code=404, detail="Disaster not found")

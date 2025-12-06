@@ -294,13 +294,13 @@ def send_alert_emails():
             .with_for_update(skip_locked=True)
             .all()
         )
-        
+
         # Mark claimed entries as processing before sending
         for entry in pending_entries:
             entry.status = "processing"
             entry.updated_at = datetime.utcnow()
             db.add(entry)
-        
+
         if pending_entries:
             db.flush()
 
@@ -325,9 +325,9 @@ def send_alert_emails():
                 )
 
                 # Check if alert severity meets email threshold
-                if user_prefs and alert.severity < user_prefs.email_min_severity:
+                if user_prefs and alert.severity < user_prefs.min_severity:
                     logger.info(
-                        f"Skipping email for alert {alert.id}: severity {alert.severity} < email_min_severity {user_prefs.email_min_severity}"
+                        f"Skipping email for alert {alert.id}: severity {alert.severity} < min_severity {user_prefs.min_severity}"
                     )
                     entry.status = "skipped"
                     entry.updated_at = datetime.utcnow()
@@ -364,11 +364,11 @@ def send_alert_emails():
                     entry.status = "failed"
                     entry.retry_count += 1
                     entry.error_message = result.get("error", "Unknown error")
-                    
+
                     # Mark as dead if max retries exceeded
                     if entry.retry_count >= entry.max_retries:
                         entry.status = "dead"
-                    
+
                     failed_count += 1
                     logger.error(
                         "❌ Failed to send alert email user_id=%s alert_id=%s error=%s",
@@ -383,11 +383,11 @@ def send_alert_emails():
                 entry.status = "failed"
                 entry.retry_count += 1
                 entry.error_message = str(e)
-                
+
                 # Mark as dead if max retries exceeded
                 if entry.retry_count >= entry.max_retries:
                     entry.status = "dead"
-                
+
                 entry.updated_at = datetime.utcnow()
                 db.add(entry)
                 failed_count += 1

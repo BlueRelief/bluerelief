@@ -4,46 +4,33 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Link,
   Preview,
   Section,
   Text,
+  Hr,
+  Font,
 } from '@react-email/components';
 import * as React from 'react';
+import { LOGO_DATA_URI, BASE_URL } from './logo';
 
 interface EmailTemplateProps {
   title?: string;
   content?: string;
+  userName?: string;
   buttonText?: string;
   buttonUrl?: string;
   footerText?: string;
   [key: string]: any;
 }
 
-const Logo = () => (
-  <svg width="48" height="48" viewBox="0 0 100 100" style={{ margin: '0 auto', display: 'block' }}>
-    <defs>
-      <mask id="logo-mask">
-        <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
-        <rect x="25" y="25" width="50" height="50" rx="8" ry="8" fill="black" />
-      </mask>
-    </defs>
-    <rect
-      x="0"
-      y="0"
-      width="100"
-      height="100"
-      rx="20"
-      ry="20"
-      fill="#196EE3"
-      mask="url(#logo-mask)"
-    />
-  </svg>
-);
+const baseUrl = BASE_URL;
 
 export const EmailTemplate = ({
   title = 'BlueRelief Notification',
   content = 'This is a notification from BlueRelief.',
+  userName,
   buttonText,
   buttonUrl,
   footerText = 'This email was sent by BlueRelief Emergency Response System.',
@@ -51,27 +38,71 @@ export const EmailTemplate = ({
 }: EmailTemplateProps) => {
   return (
     <Html>
-      <Head />
+      <Head>
+        <Font
+          fontFamily="Lato"
+          fallbackFontFamily="Helvetica"
+          webFont={{
+            url: 'https://fonts.gstatic.com/s/lato/v24/S6uyw4BMUTPHjx4wXg.woff2',
+            format: 'woff2',
+          }}
+          fontWeight={400}
+          fontStyle="normal"
+        />
+      </Head>
       <Preview>{title}</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Section style={logoContainer}>
-            <Logo />
+          <Section style={header}>
+            <Img
+              src={LOGO_DATA_URI}
+              width="48"
+              height="48"
+              alt="BlueRelief"
+              style={logo}
+            />
+            <Text style={brandName}>BlueRelief</Text>
           </Section>
 
-          <Heading style={h1}>{title}</Heading>
+          <Section style={card}>
+            <Heading style={heading}>{title}</Heading>
 
-          <Text style={text}>{content}</Text>
+            {userName && (
+              <Text style={greeting}>Hi {userName},</Text>
+            )}
 
-          {buttonText && buttonUrl && (
-            <Section style={buttonContainer}>
-              <Link style={button} href={buttonUrl}>
-                {buttonText}
+            <Text style={bodyText}>{content}</Text>
+
+            {buttonText && buttonUrl && (
+              <Section style={buttonContainer}>
+                <Link style={button} href={buttonUrl}>
+                  {buttonText}
+                </Link>
+              </Section>
+            )}
+          </Section>
+
+          <Hr style={divider} />
+
+          <Section style={footer}>
+            <Text style={footerTextStyle}>{footerText}</Text>
+            <Text style={footerLinks}>
+              <Link href={`${baseUrl}/dashboard`} style={footerLink}>
+                Dashboard
               </Link>
-            </Section>
-          )}
-
-          <Text style={footer}>{footerText}</Text>
+              {' • '}
+              <Link href={`${baseUrl}/settings`} style={footerLink}>
+                Settings
+              </Link>
+              {' • '}
+              <Link href={`${baseUrl}/support`} style={footerLink}>
+                Support
+              </Link>
+            </Text>
+            <Text style={footerAddress}>
+              BlueRelief • Real-Time Crisis Detection System
+            </Text>
+          </Section>
         </Container>
       </Body>
     </Html>
@@ -80,47 +111,71 @@ export const EmailTemplate = ({
 
 const main = {
   backgroundColor: '#f8fafc',
-  fontFamily: 'Lato, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  fontFamily: 'Lato, Helvetica, Arial, sans-serif',
+  padding: '40px 0',
 };
 
 const container = {
   backgroundColor: '#ffffff',
   margin: '0 auto',
-  padding: '40px 20px',
   maxWidth: '600px',
-  borderRadius: '8px',
-  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+  borderRadius: '12px',
+  overflow: 'hidden' as const,
+  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
 };
 
-const logoContainer = {
-  padding: '0 0 32px',
+const header = {
+  backgroundColor: '#1e3a5f',
+  padding: '32px 40px',
   textAlign: 'center' as const,
 };
 
-const h1 = {
-  color: '#020617',
+const logo = {
+  margin: '0 auto 12px',
+  display: 'block',
+};
+
+const brandName = {
+  color: '#ffffff',
+  fontSize: '24px',
+  fontWeight: '700',
+  margin: '0',
+  letterSpacing: '-0.5px',
+};
+
+const card = {
+  padding: '40px',
+};
+
+const heading = {
+  color: '#0f172a',
   fontSize: '24px',
   fontWeight: '700',
   margin: '0 0 24px',
-  padding: '0',
-  textAlign: 'center' as const,
   lineHeight: '1.3',
 };
 
-const text = {
+const greeting = {
   color: '#334155',
   fontSize: '16px',
   lineHeight: '1.6',
   margin: '0 0 16px',
 };
 
+const bodyText = {
+  color: '#475569',
+  fontSize: '16px',
+  lineHeight: '1.6',
+  margin: '0 0 24px',
+};
+
 const buttonContainer = {
   textAlign: 'center' as const,
-  margin: '32px 0',
+  margin: '32px 0 8px',
 };
 
 const button = {
-  backgroundColor: '#196EE3',
+  backgroundColor: '#3b82f6',
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '16px',
@@ -128,18 +183,44 @@ const button = {
   textDecoration: 'none',
   textAlign: 'center' as const,
   display: 'inline-block',
-  padding: '12px 32px',
-  boxShadow: '0 2px 4px rgba(25, 110, 227, 0.25)',
+  padding: '14px 32px',
+};
+
+const divider = {
+  borderColor: '#e2e8f0',
+  margin: '0',
 };
 
 const footer = {
+  padding: '32px 40px',
+  backgroundColor: '#f8fafc',
+};
+
+const footerTextStyle = {
   color: '#64748b',
-  fontSize: '12px',
+  fontSize: '14px',
   lineHeight: '1.5',
-  margin: '32px 0 0',
+  margin: '0 0 16px',
   textAlign: 'center' as const,
-  borderTop: '1px solid #e2e8f0',
-  paddingTop: '24px',
+};
+
+const footerLinks = {
+  color: '#64748b',
+  fontSize: '14px',
+  margin: '0 0 16px',
+  textAlign: 'center' as const,
+};
+
+const footerLink = {
+  color: '#3b82f6',
+  textDecoration: 'none',
+};
+
+const footerAddress = {
+  color: '#94a3b8',
+  fontSize: '12px',
+  margin: '0',
+  textAlign: 'center' as const,
 };
 
 export default EmailTemplate;

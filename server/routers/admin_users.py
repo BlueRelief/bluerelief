@@ -98,6 +98,7 @@ def list_users(
                 'last_login': u.last_login,
                 'failed_login_attempts': u.failed_login_attempts,
                 'account_locked_until': u.account_locked_until,
+                'location': u.location,
             })
 
         total_pages = (total_items + page_size - 1) // page_size

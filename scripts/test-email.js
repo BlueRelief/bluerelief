@@ -12,7 +12,7 @@ const testEmail = {
     title: 'BlueRelief Test Email',
     content: 'This is a test email from the BlueRelief email service. The service is working correctly!',
     buttonText: 'Visit BlueRelief',
-    buttonUrl: 'https://bluerelief.com'
+    buttonUrl: 'https://bluerelief.app'
   },
   metadata: {
     test: true,
@@ -31,7 +31,7 @@ const testAlert = {
     location: 'Test City, CA',
     description: 'This is a test emergency alert from BlueRelief. The email service is working correctly!',
     buttonText: 'View Details',
-    buttonUrl: 'https://bluerelief.com/test'
+    buttonUrl: 'https://bluerelief.app/test'
   },
   metadata: {
     test: true,

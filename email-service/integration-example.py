@@ -129,14 +129,14 @@ class EmailServiceClient:
 # Example usage in your existing services
 def example_usage():
     """Example of how to use the email service in your existing code."""
-    
+
     # Initialize the email service client
     email_client = EmailServiceClient()
-    
+
     # Check service health
     health = email_client.health_check()
     print(f"Email service status: {health.get('status', 'unknown')}")
-    
+
     # Send an emergency alert
     alert_result = email_client.send_alert_email(
         to="user@example.com",
@@ -144,23 +144,23 @@ def example_usage():
         severity="High",
         location="San Francisco, CA",
         description="A 6.5 magnitude earthquake has been detected in your area. Please take immediate safety precautions.",
-        action_url="https://bluerelief.com/alerts/123"
+        action_url="https://bluerelief.app/alerts/123",
     )
-    
+
     if alert_result.get("success"):
         print(f"Alert email sent successfully: {alert_result.get('messageId')}")
     else:
         print(f"Failed to send alert email: {alert_result.get('error')}")
-    
+
     # Send a notification
     notification_result = email_client.send_notification_email(
         to="user@example.com",
         title="New Data Available",
         message="New disaster data has been processed and is available in your dashboard.",
         notification_type="info",
-        action_url="https://bluerelief.com/dashboard"
+        action_url="https://bluerelief.app/dashboard",
     )
-    
+
     if notification_result.get("success"):
         print(f"Notification sent successfully: {notification_result.get('messageId')}")
     else:

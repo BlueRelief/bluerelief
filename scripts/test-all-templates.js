@@ -25,7 +25,7 @@ const testData = {
       affectedArea: 'San Francisco Bay Area',
       timestamp: new Date().toISOString(),
       actionText: 'View Details',
-      actionUrl: 'https://bluerelief.com/alerts/123'
+      actionUrl: 'https://bluerelief.app/alerts/123'
     },
     metadata: {
       crisisId: '123',
@@ -62,7 +62,7 @@ const testData = {
           severity: 'Critical'
         }
       ],
-      dashboardUrl: 'https://bluerelief.com/dashboard'
+      dashboardUrl: 'https://bluerelief.app/dashboard'
     },
     metadata: {
       type: 'weekly_digest'
@@ -80,7 +80,7 @@ const testData = {
       postTitle: 'Earthquake Response Update',
       postContent: 'The situation in San Francisco is under control. All emergency services are responding effectively.',
       actionText: 'View Post',
-      actionUrl: 'https://bluerelief.com/posts/456',
+      actionUrl: 'https://bluerelief.app/posts/456',
       timestamp: new Date().toISOString()
     },
     metadata: {
@@ -95,9 +95,9 @@ const testData = {
     data: {
       userName: 'John Doe',
       userEmail: TEST_EMAIL,
-      dashboardUrl: 'https://bluerelief.com/dashboard',
-      settingsUrl: 'https://bluerelief.com/settings',
-      helpUrl: 'https://bluerelief.com/help'
+      dashboardUrl: 'https://bluerelief.app/dashboard',
+      settingsUrl: 'https://bluerelief.app/settings',
+      helpUrl: 'https://bluerelief.app/help'
     },
     metadata: {
       type: 'welcome'

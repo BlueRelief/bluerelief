@@ -19,7 +19,7 @@ const testEmail = {
     title: 'Test Email',
     content: 'This is a test email from the BlueRelief email service.',
     buttonText: 'Visit BlueRelief',
-    buttonUrl: 'https://bluerelief.com',
+    buttonUrl: 'https://bluerelief.app',
   },
   metadata: {
     test: true,
@@ -37,7 +37,7 @@ const testAlert = {
     location: 'Test City, CA',
     description: 'This is a test emergency alert from BlueRelief.',
     actionText: 'View Details',
-    actionUrl: 'https://bluerelief.com/test',
+    actionUrl: 'https://bluerelief.app/test',
   },
   metadata: {
     test: true,
@@ -54,7 +54,7 @@ const testNotification = {
     message: 'This is a test notification from BlueRelief.',
     type: 'info',
     actionText: 'View Dashboard',
-    actionUrl: 'https://bluerelief.com/dashboard',
+    actionUrl: 'https://bluerelief.app/dashboard',
   },
   metadata: {
     test: true,

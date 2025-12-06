@@ -3,6 +3,7 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 import time
+import asyncio
 from typing import List, Dict, Any, Optional
 import json
 import re
@@ -13,6 +14,30 @@ from PIL import Image
 from services.geocoding_service import geocode_region
 
 load_dotenv()
+
+# Rate limiter for Gemini API (default 15 RPM for free tier, adjust based on your quota)
+GEMINI_RPM = int(os.getenv("GEMINI_RPM", "15"))
+GEMINI_CONCURRENT_WORKERS = int(os.getenv("GEMINI_CONCURRENT_WORKERS", "3"))
+
+
+class RateLimiter:
+    """Token bucket rate limiter for API calls"""
+    def __init__(self, rpm: int):
+        self.rpm = rpm
+        self.interval = 60.0 / rpm  # seconds between requests
+        self.last_request = 0
+        self._lock = asyncio.Lock()
+    
+    async def acquire(self):
+        async with self._lock:
+            now = time.time()
+            wait_time = self.last_request + self.interval - now
+            if wait_time > 0:
+                await asyncio.sleep(wait_time)
+            self.last_request = time.time()
+
+
+rate_limiter = RateLimiter(GEMINI_RPM)
 
 
 def download_image(url: str, max_size: int = 1024) -> Optional[Dict]:
@@ -159,13 +184,162 @@ def process_batch_with_retry(model, prompt: str, batch_num: int, max_retries: in
             
     return None
 
+def _prepare_batch_prompt(batch_posts: List[Dict], start_idx: int, now: datetime) -> tuple:
+    """Prepare prompt and images for a batch of posts"""
+    posts_lines = []
+    batch_images = []
+
+    for idx, post in enumerate(batch_posts, start_idx + 1):
+        text = post.get("text") or post.get("record", {}).get("text", "")
+        post_id = post.get("db_post_id", "unknown")
+
+        media = post.get("media", {})
+        image_urls = media.get("urls", []) if isinstance(media, dict) else []
+
+        line = f"{idx}. [POST_ID: {post_id}] {text}"
+
+        if image_urls and len(batch_images) < 10:
+            for img_url in image_urls[:2]:
+                img_data = download_image(img_url)
+                if img_data:
+                    batch_images.append(
+                        {"post_id": post_id, "post_idx": idx, "image": img_data}
+                    )
+                    line += f"\n   [HAS_IMAGE_{len(batch_images)}]"
+
+        posts_lines.append(line)
+
+    posts_text = "\n".join(posts_lines)
+
+    prompt = (
+        f"CURRENT TIME (UTC): {now.isoformat()}Z\n\n"
+        "Analyze these social media posts about disasters and extract structured information. "
+        "Some posts have attached images marked as [HAS_IMAGE_N] - I'm also providing these images below. "
+        "Use BOTH the text AND images to extract disaster details. Images often contain headlines, news graphics, or photos showing the disaster. "
+        "For each disaster mentioned, return a JSON array with objects containing:\n"
+        "- post_id: the database post ID from the [POST_ID: X] marker (MUST be an integer or null)\n"
+        "- location_name: the SPECIFIC place name (e.g., 'Los Angeles, California, USA', 'Tokyo, Japan', 'Manila, Philippines'). "
+        "Include city/region, state/province, and country. Must be a real, geocodable location.\n"
+        "- event_time: **ONLY ISO 8601 format YYYY-MM-DDTHH:MM:SSZ** when the disaster occurred. "
+        "CRITICAL: Only extract CURRENT/RECENT disasters (within the last 30 days). "
+        "If a post mentions a HISTORICAL disaster (years/decades ago), SKIP IT entirely. "
+        "If the exact time is unknown, use the current time. "
+        "NEVER use vague terms like 'next week', 'upcoming', 'ongoing', 'recently', etc.\n"
+        "- disaster_type: MUST be exactly ONE of these 8 values (lowercase): "
+        "earthquake, flood, wildfire, hurricane, tornado, tsunami, volcano, heatwave. "
+        "Pick ONE. No combinations.\n"
+        "- severity: rate 1-5 (1=minor, 5=catastrophic)\n"
+        "- magnitude: single numerical value if applicable, null otherwise\n"
+        "- description: DETAILED summary (at least 50 characters) with specific facts like casualties, damage, evacuations. "
+        "Do NOT just say 'Flood in Indonesia' - include actual details from the post.\n"
+        "- affected_population: estimate number of people affected. "
+        "Look for mentions like 'X families evacuated', 'Y people without power'. "
+        "Convert to individual counts (1 family ≈ 4 people, 1 home ≈ 3 people). "
+        "Provide best-effort estimates: neighborhood=5000, city block=500, building=50, regional=50000. "
+        "Return null if completely unknown.\n\n"
+        "CRITICAL LOCATION RULES:\n"
+        "1. NEVER use vague locations like 'Worldwide', 'Global', 'Asia', 'Europe', 'Unknown', 'Undisclosed'\n"
+        "2. If a disaster affects MULTIPLE COUNTRIES, create SEPARATE entries for each country with specific locations\n"
+        "   Example: 'Floods in Thailand and Indonesia' → two entries: 'Bangkok, Thailand' AND 'Jakarta, Indonesia'\n"
+        "3. If no specific location is mentioned, SKIP that disaster entirely - do not include it\n"
+        "4. Use the most specific location possible (city > state > country)\n"
+        "5. For ocean/offshore events, use nearest coastal city (e.g., 'Offshore Ecuador' → 'Salinas, Ecuador')\n\n"
+        "DISASTER TYPE MAPPING:\n"
+        "- bushfire/forest fire → wildfire\n"
+        "- flash flood/flooding → flood\n"
+        "- cyclone/typhoon/tropical storm → hurricane\n"
+        "- twister → tornado\n"
+        "- quake/tremor → earthquake\n"
+        "- eruption → volcano\n"
+        "- heat wave/extreme heat → heatwave\n\n"
+        f"Posts:\n{posts_text}\n\n"
+        "Return ONLY valid JSON. DO NOT include latitude/longitude - we will geocode the location_name separately."
+    )
+
+    return prompt, batch_images
+
+
+async def _process_single_batch(
+    model, batch_num: int, batch_posts: List[Dict], start_idx: int, now: datetime, total_batches: int
+) -> List[Dict]:
+    """Process a single batch with rate limiting"""
+    await rate_limiter.acquire()
+    
+    print(f"\n📦 Processing batch {batch_num + 1}/{total_batches} ({len(batch_posts)} posts)")
+    
+    prompt, batch_images = _prepare_batch_prompt(batch_posts, start_idx, now)
+    
+    if batch_images:
+        print(f"📷 Downloaded {len(batch_images)} images for vision analysis")
+
+    try:
+        content_parts = [prompt]
+        if batch_images:
+            for img_info in batch_images:
+                content_parts.append({"inline_data": img_info["image"]})
+
+        response = model.generate_content(content_parts)
+        cleaned_response = clean_json_response(response.text)
+
+        try:
+            batch_disasters = json.loads(cleaned_response)
+            if isinstance(batch_disasters, list):
+                print(f"✅ Extracted {len(batch_disasters)} disasters from batch {batch_num + 1}")
+                return batch_disasters
+            else:
+                print(f"⚠️ Invalid response format in batch {batch_num + 1}")
+                return []
+        except json.JSONDecodeError:
+            print(f"⚠️ Failed to parse JSON from batch {batch_num + 1}")
+            print(f"Response was: {cleaned_response[:200]}...")
+            return []
+
+    except Exception as e:
+        print(f"⚠️ Error processing batch {batch_num + 1}: {str(e)}")
+        return []
+
+
+async def _process_batches_concurrent(
+    model, posts: List[Dict], batch_size: int, now: datetime
+) -> List[Dict]:
+    """Process all batches concurrently with rate limiting"""
+    total_batches = (len(posts) + batch_size - 1) // batch_size
+    
+    tasks = []
+    for batch_num in range(total_batches):
+        start_idx = batch_num * batch_size
+        end_idx = min((batch_num + 1) * batch_size, len(posts))
+        batch_posts = posts[start_idx:end_idx]
+        
+        task = _process_single_batch(
+            model, batch_num, batch_posts, start_idx, now, total_batches
+        )
+        tasks.append(task)
+    
+    # Process with limited concurrency using semaphore
+    semaphore = asyncio.Semaphore(GEMINI_CONCURRENT_WORKERS)
+    
+    async def limited_task(task):
+        async with semaphore:
+            return await task
+    
+    results = await asyncio.gather(*[limited_task(t) for t in tasks])
+    
+    all_disasters = []
+    for result in results:
+        if result:
+            all_disasters.extend(result)
+    
+    return all_disasters
+
+
 def analyze_posts(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1) -> str:
-    """Process posts with Gemini AI for disaster extraction in batches
+    """Process posts with Gemini AI for disaster extraction in batches with concurrent processing
 
     Args:
         posts: List of posts to analyze (should include db_post_id if available)
         batch_size: Number of posts to process in each batch (default: 50)
-        batch_delay: Delay between batches in seconds (default: 1)
+        batch_delay: Delay between batches in seconds (default: 1, used for fallback)
 
     Returns:
         JSON string containing array of extracted disasters with source post_ids
@@ -181,126 +355,22 @@ def analyze_posts(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1)
     genai.configure(api_key=GOOGLE_API_KEY)
     model = genai.GenerativeModel("gemini-2.5-flash")
 
-    all_disasters = []
     total_batches = (len(posts) + batch_size - 1) // batch_size
     now = datetime.utcnow()
 
     print(f"\n🔄 Processing {len(posts)} posts in {total_batches} batches of {batch_size}...")
+    print(f"⚡ Concurrent workers: {GEMINI_CONCURRENT_WORKERS}, Rate limit: {GEMINI_RPM} RPM")
 
-    for batch_num in range(total_batches):
-        # Add delay between batches except for the first one
-        if batch_num > 0:
-            print(f"⏳ Waiting {batch_delay}s before next batch...")
-            time.sleep(batch_delay)
-
-        start_idx = batch_num * batch_size
-        end_idx = min((batch_num + 1) * batch_size, len(posts))
-        batch_posts = posts[start_idx:end_idx]
-
-        print(f"\n📦 Processing batch {batch_num + 1}/{total_batches} ({len(batch_posts)} posts)")
-
-        # Build prompt with post IDs and collect images
-        posts_lines = []
-        batch_images = []  # Collect images for vision API
-
-        for idx, post in enumerate(batch_posts, start_idx + 1):
-            text = post.get("text") or post.get("record", {}).get("text", "")
-            post_id = post.get("db_post_id", "unknown")
-
-            # Get image URLs if available
-            media = post.get("media", {})
-            image_urls = media.get("urls", []) if isinstance(media, dict) else []
-
-            line = f"{idx}. [POST_ID: {post_id}] {text}"
-
-            # Download and include images (max 2 per post, max 10 per batch)
-            if image_urls and len(batch_images) < 10:
-                for img_url in image_urls[:2]:
-                    img_data = download_image(img_url)
-                    if img_data:
-                        batch_images.append(
-                            {"post_id": post_id, "post_idx": idx, "image": img_data}
-                        )
-                        line += f"\n   [HAS_IMAGE_{len(batch_images)}]"
-
-            posts_lines.append(line)
-
-        posts_text = "\n".join(posts_lines)
-
-        if batch_images:
-            print(f"📷 Downloaded {len(batch_images)} images for vision analysis")
-
-        prompt = (
-            f"CURRENT TIME (UTC): {now.isoformat()}Z\n\n"
-            "Analyze these social media posts about disasters and extract structured information. "
-            "Some posts have attached images marked as [HAS_IMAGE_N] - I'm also providing these images below. "
-            "Use BOTH the text AND images to extract disaster details. Images often contain headlines, news graphics, or photos showing the disaster. "
-            "For each disaster mentioned, return a JSON array with objects containing:\n"
-            "- post_id: the database post ID from the [POST_ID: X] marker (MUST be an integer or null)\n"
-            "- location_name: the SPECIFIC place name (e.g., 'Los Angeles, California, USA', 'Tokyo, Japan', 'Manila, Philippines'). "
-            "Include city/region, state/province, and country. Must be a real, geocodable location.\n"
-            "- event_time: **ONLY ISO 8601 format YYYY-MM-DDTHH:MM:SSZ** when the disaster occurred. "
-            "CRITICAL: Only extract CURRENT/RECENT disasters (within the last 30 days). "
-            "If a post mentions a HISTORICAL disaster (years/decades ago), SKIP IT entirely. "
-            "If the exact time is unknown, use the current time. "
-            "NEVER use vague terms like 'next week', 'upcoming', 'ongoing', 'recently', etc.\n"
-            "- disaster_type: MUST be exactly ONE of these 8 values (lowercase): "
-            "earthquake, flood, wildfire, hurricane, tornado, tsunami, volcano, heatwave. "
-            "Pick ONE. No combinations.\n"
-            "- severity: rate 1-5 (1=minor, 5=catastrophic)\n"
-            "- magnitude: single numerical value if applicable, null otherwise\n"
-            "- description: DETAILED summary (at least 50 characters) with specific facts like casualties, damage, evacuations. "
-            "Do NOT just say 'Flood in Indonesia' - include actual details from the post.\n"
-            "- affected_population: estimate number of people affected. "
-            "Look for mentions like 'X families evacuated', 'Y people without power'. "
-            "Convert to individual counts (1 family ≈ 4 people, 1 home ≈ 3 people). "
-            "Provide best-effort estimates: neighborhood=5000, city block=500, building=50, regional=50000. "
-            "Return null if completely unknown.\n\n"
-            "CRITICAL LOCATION RULES:\n"
-            "1. NEVER use vague locations like 'Worldwide', 'Global', 'Asia', 'Europe', 'Unknown', 'Undisclosed'\n"
-            "2. If a disaster affects MULTIPLE COUNTRIES, create SEPARATE entries for each country with specific locations\n"
-            "   Example: 'Floods in Thailand and Indonesia' → two entries: 'Bangkok, Thailand' AND 'Jakarta, Indonesia'\n"
-            "3. If no specific location is mentioned, SKIP that disaster entirely - do not include it\n"
-            "4. Use the most specific location possible (city > state > country)\n"
-            "5. For ocean/offshore events, use nearest coastal city (e.g., 'Offshore Ecuador' → 'Salinas, Ecuador')\n\n"
-            "DISASTER TYPE MAPPING:\n"
-            "- bushfire/forest fire → wildfire\n"
-            "- flash flood/flooding → flood\n"
-            "- cyclone/typhoon/tropical storm → hurricane\n"
-            "- twister → tornado\n"
-            "- quake/tremor → earthquake\n"
-            "- eruption → volcano\n"
-            "- heat wave/extreme heat → heatwave\n\n"
-            f"Posts:\n{posts_text}\n\n"
-            "Return ONLY valid JSON. DO NOT include latitude/longitude - we will geocode the location_name separately."
-        )
-
-        try:
-            # Build content parts for multimodal request
-            content_parts = [prompt]
-
-            # Add images if we have any
-            if batch_images:
-                for img_info in batch_images:
-                    content_parts.append({"inline_data": img_info["image"]})
-
-            response = model.generate_content(content_parts)
-            cleaned_response = clean_json_response(response.text)
-
-            # Try to merge the disasters from this batch
-            try:
-                batch_disasters = json.loads(cleaned_response)
-                if isinstance(batch_disasters, list):
-                    all_disasters.extend(batch_disasters)
-                    print(f"✅ Extracted {len(batch_disasters)} disasters from batch {batch_num + 1}")
-                else:
-                    print(f"⚠️ Invalid response format in batch {batch_num + 1}")
-            except json.JSONDecodeError:
-                print(f"⚠️ Failed to parse JSON from batch {batch_num + 1}")
-                print(f"Response was: {cleaned_response[:200]}...")
-
-        except Exception as e:
-            print(f"⚠️ Error processing batch {batch_num + 1}: {str(e)}")
+    # Run concurrent processing
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
+    all_disasters = loop.run_until_complete(
+        _process_batches_concurrent(model, posts, batch_size, now)
+    )
 
     if all_disasters:
         # Filter out vague/invalid locations before geocoding
@@ -355,13 +425,85 @@ def analyze_posts(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1)
     return "[]"
 
 
+async def _process_sentiment_batch(
+    model, batch_num: int, batch_posts: List[Dict], start_idx: int, total_batches: int
+) -> Dict:
+    """Process a single sentiment batch with rate limiting"""
+    await rate_limiter.acquire()
+    
+    print(f"\n📦 Processing sentiment batch {batch_num + 1}/{total_batches} ({len(batch_posts)} posts)")
+
+    posts_text = "\n".join(
+        [
+            f"{idx}. [ID: {post.get('uri', '')}] {post.get('text') or post.get('record', {}).get('text', '')}"
+            for idx, post in enumerate(batch_posts, start_idx + 1)
+        ]
+    )
+
+    prompt = (
+        "Analyze the sentiment of each social media post about disasters. "
+        "For each post, determine:\n"
+        "1. sentiment: 'positive', 'negative', 'neutral', 'urgent', or 'fearful'\n"
+        "2. sentiment_score: a float from -1.0 (most negative/fearful) to 1.0 (most positive)\n\n"
+        "Consider:\n"
+        "- 'urgent' for time-sensitive warnings or alerts\n"
+        "- 'fearful' for posts expressing panic or distress\n"
+        "- 'negative' for sad or concerning news\n"
+        "- 'neutral' for factual reporting\n"
+        "- 'positive' for relief updates or good news\n\n"
+        f"Posts:\n{posts_text}\n\n"
+        "Return a JSON object where keys are the post IDs (the URI after 'ID:') and values are objects with 'sentiment' and 'sentiment_score'.\n"
+        'Example: {"at://did:plc:xyz/app.bsky.feed.post/abc": {"sentiment": "urgent", "sentiment_score": -0.7}}\n'
+        "Return ONLY valid JSON, no other text."
+    )
+
+    batch_results = process_batch_with_retry(model, prompt, batch_num + 1)
+    if batch_results and isinstance(batch_results, dict):
+        print(f"✅ Analyzed sentiment for {len(batch_results)} posts in batch {batch_num + 1}")
+        return batch_results
+    return {}
+
+
+async def _process_sentiment_concurrent(
+    model, posts: List[Dict], batch_size: int
+) -> Dict:
+    """Process all sentiment batches concurrently with rate limiting"""
+    total_batches = (len(posts) + batch_size - 1) // batch_size
+    
+    tasks = []
+    for batch_num in range(total_batches):
+        start_idx = batch_num * batch_size
+        end_idx = min((batch_num + 1) * batch_size, len(posts))
+        batch_posts = posts[start_idx:end_idx]
+        
+        task = _process_sentiment_batch(
+            model, batch_num, batch_posts, start_idx, total_batches
+        )
+        tasks.append(task)
+    
+    semaphore = asyncio.Semaphore(GEMINI_CONCURRENT_WORKERS)
+    
+    async def limited_task(task):
+        async with semaphore:
+            return await task
+    
+    results = await asyncio.gather(*[limited_task(t) for t in tasks])
+    
+    all_sentiments = {}
+    for result in results:
+        if result:
+            all_sentiments.update(result)
+    
+    return all_sentiments
+
+
 def analyze_sentiment(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1) -> str:
-    """Analyze sentiment for each post using Gemini AI in batches
+    """Analyze sentiment for each post using Gemini AI in batches with concurrent processing
     
     Args:
         posts: List of posts to analyze
         batch_size: Number of posts to process in each batch (default: 50)
-        batch_delay: Delay between batches in seconds (default: 1)
+        batch_delay: Delay between batches in seconds (default: 1, used for fallback)
         
     Returns:
         JSON string containing sentiment analysis results
@@ -376,55 +518,21 @@ def analyze_sentiment(posts: List[Dict], batch_size: int = 50, batch_delay: int 
     genai.configure(api_key=GOOGLE_API_KEY)
     model = genai.GenerativeModel("gemini-2.5-flash")
 
-    all_sentiments = {}
     total_batches = (len(posts) + batch_size - 1) // batch_size
 
     print(f"\n🔄 Processing sentiment for {len(posts)} posts in {total_batches} batches of {batch_size}...")
+    print(f"⚡ Concurrent workers: {GEMINI_CONCURRENT_WORKERS}, Rate limit: {GEMINI_RPM} RPM")
 
-    for batch_num in range(total_batches):
-        # Add delay between batches except for the first one
-        if batch_num > 0:
-            print(f"⏳ Waiting {batch_delay}s before next batch...")
-            time.sleep(batch_delay)
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
+    all_sentiments = loop.run_until_complete(
+        _process_sentiment_concurrent(model, posts, batch_size)
+    )
 
-        start_idx = batch_num * batch_size
-        end_idx = min((batch_num + 1) * batch_size, len(posts))
-        batch_posts = posts[start_idx:end_idx]
-
-        print(f"\n📦 Processing sentiment batch {batch_num + 1}/{total_batches} ({len(batch_posts)} posts)")
-
-        posts_text = "\n".join(
-            [
-                f"{idx}. [ID: {post.get('uri', '')}] {post.get('text') or post.get('record', {}).get('text', '')}"
-                for idx, post in enumerate(batch_posts, start_idx + 1)
-            ]
-        )
-
-        prompt = (
-            "Analyze the sentiment of each social media post about disasters. "
-            "For each post, determine:\n"
-            "1. sentiment: 'positive', 'negative', 'neutral', 'urgent', or 'fearful'\n"
-            "2. sentiment_score: a float from -1.0 (most negative/fearful) to 1.0 (most positive)\n\n"
-            "Consider:\n"
-            "- 'urgent' for time-sensitive warnings or alerts\n"
-            "- 'fearful' for posts expressing panic or distress\n"
-            "- 'negative' for sad or concerning news\n"
-            "- 'neutral' for factual reporting\n"
-            "- 'positive' for relief updates or good news\n\n"
-            f"Posts:\n{posts_text}\n\n"
-            "Return a JSON object where keys are the post IDs (the URI after 'ID:') and values are objects with 'sentiment' and 'sentiment_score'.\n"
-            'Example: {"at://did:plc:xyz/app.bsky.feed.post/abc": {"sentiment": "urgent", "sentiment_score": -0.7}}\n'
-            "Return ONLY valid JSON, no other text."
-        )
-
-        # Process batch with retry logic
-        batch_results = process_batch_with_retry(model, prompt, batch_num + 1)
-        if batch_results and isinstance(batch_results, dict):
-            all_sentiments.update(batch_results)
-            print(f"✅ Analyzed sentiment for {len(batch_results)} posts in batch {batch_num + 1}")
-            print(f"📊 Progress: {len(all_sentiments)} total posts analyzed")
-
-    # Prepare final result
     if all_sentiments:
         final_json = json.dumps(all_sentiments, indent=2)
         print(f"\n[{datetime.now()}] Sentiment Analysis Complete - Analyzed {len(all_sentiments)} posts")

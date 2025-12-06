@@ -1,5 +1,5 @@
 # Development Dockerfile
-FROM python:3.11-slim
+FROM python:3.11
 
 WORKDIR /app
 
@@ -8,9 +8,6 @@ ARG COMMIT_SHA=unknown
 
 ENV VERSION=${VERSION}
 ENV COMMIT_SHA=${COMMIT_SHA}
-
-# The installer requires curl (and certificates) to download the release archive
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
 
 # Download the latest installer
 ADD https://astral.sh/uv/install.sh /uv-installer.sh
