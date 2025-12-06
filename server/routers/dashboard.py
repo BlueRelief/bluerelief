@@ -28,6 +28,11 @@ def parse_time_range(time_range: str) -> int:
     return time_map.get(time_range, 24)  # Default to 24 hours
 
 
+def should_include_archived(hours: int) -> bool:
+    """Returns True if the time range exceeds 48 hours, meaning archived data should be included"""
+    return hours > 48
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -41,42 +46,37 @@ def get_dashboard_stats(time_range: str = "24h", db: Session = Depends(get_db)):
     """Return aggregated dashboard stat cards with time filtering"""
     from sqlalchemy import func
 
-    # Parse time range and calculate cutoff time
     hours = parse_time_range(time_range)
     cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+    include_archived = should_include_archived(hours)
 
-    total_crises = (
-        db.query(Disaster)
-        .filter(Disaster.archived == False)
-        .filter(Disaster.extracted_at >= cutoff_time)
-        .count()
-    )
-    active_regions = (
-        db.query(func.count(func.distinct(Disaster.location_name)))
-        .filter(Disaster.archived == False)
-        .filter(Disaster.extracted_at >= cutoff_time)
-        .scalar() or 0
-    )
+    base_query = db.query(Disaster).filter(Disaster.extracted_at >= cutoff_time)
+    if not include_archived:
+        base_query = base_query.filter(Disaster.archived == False)
 
-    # urgent alerts: posts with sentiment == "urgent" from non-archived disasters
-    urgent_alerts = (
-        db.query(Post)
-        .join(Disaster)
-        .filter(Post.sentiment == "urgent")
-        .filter(Disaster.archived == False)
-        .filter(Disaster.extracted_at >= cutoff_time)
-        .count()
-    )
+    total_crises = base_query.count()
 
-    # Improved affected_people calculation using PopulationEstimator
+    regions_query = db.query(func.count(func.distinct(Disaster.location_name))).filter(Disaster.extracted_at >= cutoff_time)
+    if not include_archived:
+        regions_query = regions_query.filter(Disaster.archived == False)
+    active_regions = regions_query.scalar() or 0
+
+    alerts_query = db.query(Post).join(Disaster).filter(Post.sentiment == "urgent").filter(Disaster.extracted_at >= cutoff_time)
+    if not include_archived:
+        alerts_query = alerts_query.filter(Disaster.archived == False)
+    urgent_alerts = alerts_query.count()
+
     from services.population_estimator import PopulationEstimator
 
+    affected_query = db.query(Disaster).filter(Disaster.extracted_at >= cutoff_time)
+    if not include_archived:
+        affected_query = affected_query.filter(Disaster.archived == False)
+
     affected_people = 0
-    for disaster in db.query(Disaster).filter(Disaster.archived == False).filter(Disaster.extracted_at >= cutoff_time).all():
+    for disaster in affected_query.all():
         try:
             affected_people += disaster.affected_population or 0
         except Exception:
-            # If estimation fails for any disaster, skip and continue
             continue
 
     return {
@@ -140,19 +140,15 @@ def get_sentiment_trends(time_range: str = "24h", db: Session = Depends(get_db))
 def get_recent_events(time_range: str = "24h", limit: int = 10, db: Session = Depends(get_db)):
     """Return recent disasters formatted for UI events list"""
 
-    # Parse time range and calculate cutoff time
     hours = parse_time_range(time_range)
     cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+    include_archived = should_include_archived(hours)
 
-    disasters = (
-        db.query(Disaster)
-        .options(joinedload(Disaster.post))
-        .filter(Disaster.archived == False)
-        .filter(Disaster.extracted_at >= cutoff_time)
-        .order_by(Disaster.extracted_at.desc())
-        .limit(limit)
-        .all()
-    )
+    query = db.query(Disaster).options(joinedload(Disaster.post)).filter(Disaster.extracted_at >= cutoff_time)
+    if not include_archived:
+        query = query.filter(Disaster.archived == False)
+
+    disasters = query.order_by(Disaster.extracted_at.desc()).limit(limit).all()
 
     severity_labels = {5: ("Critical", "[background-color:var(--severity-critical-bg)] [color:var(--severity-critical-text)] dark:[background-color:var(--severity-critical-bg)] dark:[color:var(--severity-critical-text)]"),
                        4: ("High", "[background-color:var(--severity-high-bg)] [color:var(--severity-high-text)] dark:[background-color:var(--severity-high-bg)] dark:[color:var(--severity-high-text)]"),
@@ -242,16 +238,13 @@ def get_disaster_types(time_range: str = "24h", db: Session = Depends(get_db)):
 
     hours = parse_time_range(time_range)
     cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+    include_archived = should_include_archived(hours)
 
-    disaster_types = (
-        db.query(Disaster.disaster_type, func.count(Disaster.id).label("count"))
-        .filter(Disaster.archived == False)
-        .filter(Disaster.extracted_at >= cutoff_time)
-        .filter(Disaster.disaster_type.isnot(None))
-        .group_by(Disaster.disaster_type)
-        .order_by(func.count(Disaster.id).desc())
-        .all()
-    )
+    query = db.query(Disaster.disaster_type, func.count(Disaster.id).label("count")).filter(Disaster.extracted_at >= cutoff_time).filter(Disaster.disaster_type.isnot(None))
+    if not include_archived:
+        query = query.filter(Disaster.archived == False)
+
+    disaster_types = query.group_by(Disaster.disaster_type).order_by(func.count(Disaster.id).desc()).all()
 
     return {
         "disaster_types": {
@@ -267,8 +260,9 @@ def get_time_series(hours: int = 48, db: Session = Depends(get_db)):
 
     end_time = datetime.utcnow()
     start_time = end_time - timedelta(hours=hours)
+    include_archived = should_include_archived(hours)
 
-    bucket_hours = 4  # 4-hour buckets
+    bucket_hours = 4 if hours <= 48 else (12 if hours <= 168 else 24)
     bucket_size = timedelta(hours=bucket_hours)
 
     buckets = []
@@ -280,22 +274,15 @@ def get_time_series(hours: int = 48, db: Session = Depends(get_db)):
     timeseries = []
     for b_start in buckets:
         b_end = b_start + bucket_size
-        incident_count = (
-            db.query(func.count(Disaster.id))
-            .filter(Disaster.extracted_at >= b_start)
-            .filter(Disaster.extracted_at < b_end)
-            .filter(Disaster.archived == False)
-            .scalar()
-            or 0
-        )
+        count_query = db.query(func.count(Disaster.id)).filter(Disaster.extracted_at >= b_start).filter(Disaster.extracted_at < b_end)
+        if not include_archived:
+            count_query = count_query.filter(Disaster.archived == False)
+        incident_count = count_query.scalar() or 0
 
-        avg_severity = (
-            db.query(func.avg(Disaster.severity))
-            .filter(Disaster.extracted_at >= b_start)
-            .filter(Disaster.extracted_at < b_end)
-            .filter(Disaster.archived == False)
-            .scalar()
-        )
+        severity_query = db.query(func.avg(Disaster.severity)).filter(Disaster.extracted_at >= b_start).filter(Disaster.extracted_at < b_end)
+        if not include_archived:
+            severity_query = severity_query.filter(Disaster.archived == False)
+        avg_severity = severity_query.scalar()
 
         timeseries.append(
             {

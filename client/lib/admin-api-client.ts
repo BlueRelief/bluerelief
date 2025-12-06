@@ -289,3 +289,26 @@ export async function getUserStats(): Promise<UserStats> {
   return adminApiGet<UserStats>('/api/admin/users/stats');
 }
 
+export interface TriggerTestAlertRequest {
+  user_id: string;
+  disaster_type?: string;
+  severity?: number;
+  description?: string;
+  send_email?: boolean;
+}
+
+export interface TriggerTestAlertResponse {
+  status: string;
+  disaster_id: number;
+  alert_id: number;
+  queue_entry_id: number;
+  user_email: string;
+  location: string;
+  email_task_id?: string;
+  email_error?: string;
+}
+
+export async function triggerTestAlert(data: TriggerTestAlertRequest): Promise<TriggerTestAlertResponse> {
+  return adminApiPost<TriggerTestAlertResponse>('/api/admin/tasks/trigger-test-alert', data);
+}
+

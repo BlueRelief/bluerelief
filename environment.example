@@ -35,6 +35,10 @@ BlueSky_Username=your-bluesky-username
 BlueSky_Password=your-bluesky-password
 GOOGLE_API_KEY=your-google-api-key-here
 
+# Gemini API Rate Limiting (for concurrent processing)
+GEMINI_RPM=15
+GEMINI_CONCURRENT_WORKERS=3
+
 # Data Feed Configuration
 SEARCH_HASHTAG=#earthquake
 POST_LIMIT=5
@@ -43,7 +47,7 @@ SCHEDULE_HOURS=24
 # Email Service (Resend)
 RESEND_API_KEY=your-resend-api-key-here
 SENDING_DOMAIN=bluerelief.app
-EMAIL_FROM=alerts@bluerelief.app
+EMAIL_FROM=alerts@notify.bluerelief.app
 
 # Email Microservice Configuration
 EMAIL_MICROSERVICE_URL=http://email-service:3002

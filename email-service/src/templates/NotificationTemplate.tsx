@@ -4,117 +4,129 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Link,
   Preview,
   Section,
   Text,
   Hr,
+  Font,
 } from '@react-email/components';
 import * as React from 'react';
+import { LOGO_DATA_URI, BASE_URL } from './logo';
 
 interface NotificationTemplateProps {
   title?: string;
   message?: string;
   type?: string;
+  userName?: string;
   actionText?: string;
   actionUrl?: string;
   timestamp?: string;
   [key: string]: any;
 }
 
-const Logo = () => (
-  <svg width="48" height="48" viewBox="0 0 100 100" style={{ margin: '0 auto', display: 'block' }}>
-    <defs>
-      <mask id="logo-mask">
-        <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
-        <rect x="25" y="25" width="50" height="50" rx="8" ry="8" fill="black" />
-      </mask>
-    </defs>
-    <rect
-      x="0"
-      y="0"
-      width="100"
-      height="100"
-      rx="20"
-      ry="20"
-      fill="#196EE3"
-      mask="url(#logo-mask)"
-    />
-  </svg>
-);
+const baseUrl = BASE_URL;
+
+const typeConfig: Record<string, { bg: string; border: string; iconBg: string; icon: string }> = {
+  info: { bg: '#eff6ff', border: '#bfdbfe', iconBg: '#3b82f6', icon: 'ℹ️' },
+  success: { bg: '#f0fdf4', border: '#bbf7d0', iconBg: '#22c55e', icon: '✓' },
+  warning: { bg: '#fffbeb', border: '#fde68a', iconBg: '#f59e0b', icon: '⚠' },
+  error: { bg: '#fef2f2', border: '#fecaca', iconBg: '#ef4444', icon: '!' },
+};
 
 export const NotificationTemplate = ({
   title = 'BlueRelief Notification',
   message = 'You have a new notification from BlueRelief.',
   type = 'info',
+  userName,
   actionText,
   actionUrl,
   timestamp = new Date().toISOString(),
   ...props
 }: NotificationTemplateProps) => {
-  const typeConfig = {
-    info: { bg: '#eff6ff', border: '#93c5fd', iconBg: '#3b82f6', icon: 'ℹ️' },
-    success: { bg: '#f0fdf4', border: '#86efac', iconBg: '#22c55e', icon: '✅' },
-    warning: { bg: '#fffbeb', border: '#fcd34d', iconBg: '#f59e0b', icon: '⚠️' },
-    error: { bg: '#fef2f2', border: '#fca5a5', iconBg: '#ef4444', icon: '❌' },
-  };
-
-  const config = typeConfig[type as keyof typeof typeConfig] || typeConfig.info;
+  const config = typeConfig[type] || typeConfig.info;
+  const formattedTime = new Date(timestamp).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   return (
     <Html>
-      <Head />
+      <Head>
+        <Font
+          fontFamily="Lato"
+          fallbackFontFamily="Helvetica"
+          webFont={{
+            url: 'https://fonts.gstatic.com/s/lato/v24/S6uyw4BMUTPHjx4wXg.woff2',
+            format: 'woff2',
+          }}
+          fontWeight={400}
+          fontStyle="normal"
+        />
+      </Head>
       <Preview>{title}</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Section style={logoContainer}>
-            <Logo />
+          <Section style={header}>
+            <Img
+              src={LOGO_DATA_URI}
+              width="40"
+              height="40"
+              alt="BlueRelief"
+              style={logo}
+            />
+            <Text style={brandName}>BlueRelief</Text>
           </Section>
 
-          <Section
-            style={{
-              ...headerSection,
-              backgroundColor: config.bg,
-              borderColor: config.border,
-            }}
-          >
-            <Section
-              style={{
-                ...iconCircle,
-                backgroundColor: config.iconBg,
-              }}
-            >
-              <Text style={typeIconText}>{config.icon}</Text>
+          <Section style={content}>
+            <Section style={{ ...notificationCard, backgroundColor: config.bg, borderColor: config.border }}>
+              <Section style={{ ...iconCircle, backgroundColor: config.iconBg }}>
+                <Text style={iconText}>{config.icon}</Text>
+              </Section>
+              <Heading style={titleText}>{title}</Heading>
+              <Text style={timestampText}>{formattedTime}</Text>
             </Section>
-            <Heading style={titleText}>{title}</Heading>
-          </Section>
 
-          <Section style={contentSection}>
-            <Section style={timestampContainer}>
-              <Text style={timestampText}>🕐 {new Date(timestamp).toLocaleString()}</Text>
-            </Section>
+            {userName && (
+              <Text style={greeting}>Hi {userName},</Text>
+            )}
 
             <Text style={messageText}>{message}</Text>
-          </Section>
 
-          {actionText && actionUrl && (
-            <Section style={buttonContainer}>
-              <Link style={actionButton} href={actionUrl}>
-                {actionText}
-              </Link>
-            </Section>
-          )}
+            {actionText && actionUrl && (
+              <Section style={buttonContainer}>
+                <Link style={button} href={actionUrl}>
+                  {actionText}
+                </Link>
+              </Section>
+            )}
+          </Section>
 
           <Hr style={divider} />
 
-          <Section style={footerSection}>
+          <Section style={footer}>
             <Text style={footerText}>
-              This notification was sent by BlueRelief Emergency Response System.
+              You're receiving this notification based on your BlueRelief preferences.
             </Text>
-            <Text style={footerText}>
-              <Link href="https://bluerelief.com/settings" style={linkText}>
-                Manage your notification preferences
+            <Text style={footerLinks}>
+              <Link href={`${baseUrl}/dashboard`} style={footerLink}>
+                Dashboard
               </Link>
+              {' • '}
+              <Link href={`${baseUrl}/settings`} style={footerLink}>
+                Notification Settings
+              </Link>
+              {' • '}
+              <Link href={`${baseUrl}/support`} style={footerLink}>
+                Help
+              </Link>
+            </Text>
+            <Text style={footerAddress}>
+              BlueRelief • Real-Time Crisis Detection System
             </Text>
           </Section>
         </Container>
@@ -125,76 +137,90 @@ export const NotificationTemplate = ({
 
 const main = {
   backgroundColor: '#f8fafc',
-  fontFamily: 'Lato, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  fontFamily: 'Lato, Helvetica, Arial, sans-serif',
+  padding: '40px 0',
 };
 
 const container = {
   backgroundColor: '#ffffff',
   margin: '0 auto',
-  padding: '40px 20px',
   maxWidth: '600px',
-  borderRadius: '8px',
-  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+  borderRadius: '12px',
+  overflow: 'hidden' as const,
+  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
 };
 
-const logoContainer = {
-  padding: '0 0 24px',
+const header = {
+  backgroundColor: '#1e3a5f',
+  padding: '24px 40px',
   textAlign: 'center' as const,
 };
 
-const headerSection = {
+const logo = {
+  margin: '0 auto 8px',
+  display: 'block',
+};
+
+const brandName = {
+  color: '#ffffff',
+  fontSize: '20px',
+  fontWeight: '700',
+  margin: '0',
+};
+
+const content = {
+  padding: '32px 40px',
+};
+
+const notificationCard = {
+  borderRadius: '12px',
+  padding: '24px',
   textAlign: 'center' as const,
-  padding: '32px 20px',
-  borderRadius: '8px',
+  margin: '0 0 24px',
   border: '1px solid',
-  marginBottom: '24px',
 };
 
 const iconCircle = {
-  width: '56px',
-  height: '56px',
+  width: '48px',
+  height: '48px',
   borderRadius: '50%',
-  display: 'inline-flex',
+  margin: '0 auto 16px',
+  display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  margin: '0 auto 16px',
 };
 
-const typeIconText = {
-  fontSize: '28px',
+const iconText = {
+  color: '#ffffff',
+  fontSize: '20px',
+  fontWeight: '700',
   margin: '0',
-  lineHeight: '1',
+  lineHeight: '48px',
+  textAlign: 'center' as const,
 };
 
 const titleText = {
-  color: '#020617',
-  fontSize: '24px',
+  color: '#0f172a',
+  fontSize: '22px',
   fontWeight: '700',
-  margin: '0',
+  margin: '0 0 8px',
   lineHeight: '1.3',
-};
-
-const contentSection = {
-  padding: '0',
-};
-
-const timestampContainer = {
-  backgroundColor: '#f8fafc',
-  borderRadius: '8px',
-  padding: '12px 16px',
-  margin: '0 0 20px',
-  border: '1px solid #e2e8f0',
 };
 
 const timestampText = {
   color: '#64748b',
   fontSize: '14px',
   margin: '0',
-  lineHeight: '1.4',
+};
+
+const greeting = {
+  color: '#334155',
+  fontSize: '16px',
+  margin: '0 0 12px',
 };
 
 const messageText = {
-  color: '#334155',
+  color: '#475569',
   fontSize: '16px',
   lineHeight: '1.6',
   margin: '0',
@@ -202,11 +228,11 @@ const messageText = {
 
 const buttonContainer = {
   textAlign: 'center' as const,
-  margin: '32px 0',
+  margin: '32px 0 8px',
 };
 
-const actionButton = {
-  backgroundColor: '#196EE3',
+const button = {
+  backgroundColor: '#3b82f6',
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '16px',
@@ -214,29 +240,44 @@ const actionButton = {
   textDecoration: 'none',
   textAlign: 'center' as const,
   display: 'inline-block',
-  padding: '12px 32px',
-  boxShadow: '0 2px 4px rgba(25, 110, 227, 0.25)',
+  padding: '14px 32px',
 };
 
 const divider = {
   borderColor: '#e2e8f0',
-  margin: '32px 0',
+  margin: '0',
 };
 
-const footerSection = {
-  textAlign: 'center' as const,
+const footer = {
+  padding: '32px 40px',
+  backgroundColor: '#f8fafc',
 };
 
 const footerText = {
   color: '#64748b',
-  fontSize: '12px',
+  fontSize: '14px',
   lineHeight: '1.5',
-  margin: '0 0 8px',
+  margin: '0 0 16px',
+  textAlign: 'center' as const,
 };
 
-const linkText = {
-  color: '#196EE3',
+const footerLinks = {
+  color: '#64748b',
+  fontSize: '14px',
+  margin: '0 0 16px',
+  textAlign: 'center' as const,
+};
+
+const footerLink = {
+  color: '#3b82f6',
   textDecoration: 'none',
+};
+
+const footerAddress = {
+  color: '#94a3b8',
+  fontSize: '12px',
+  margin: '0',
+  textAlign: 'center' as const,
 };
 
 export default NotificationTemplate;

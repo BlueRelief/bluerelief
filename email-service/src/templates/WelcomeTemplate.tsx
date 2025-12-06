@@ -4,13 +4,16 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Link,
   Preview,
   Section,
   Text,
   Hr,
+  Font,
 } from '@react-email/components';
 import * as React from 'react';
+import { LOGO_DATA_URI, BASE_URL } from './logo';
 
 interface WelcomeTemplateProps {
   userName: string;
@@ -20,128 +23,147 @@ interface WelcomeTemplateProps {
   helpUrl?: string;
 }
 
-const Logo = () => (
-  <svg width="56" height="56" viewBox="0 0 100 100" style={{ margin: '0 auto', display: 'block' }}>
-    <defs>
-      <mask id="logo-mask">
-        <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
-        <rect x="25" y="25" width="50" height="50" rx="8" ry="8" fill="black" />
-      </mask>
-    </defs>
-    <rect
-      x="0"
-      y="0"
-      width="100"
-      height="100"
-      rx="20"
-      ry="20"
-      fill="#196EE3"
-      mask="url(#logo-mask)"
-    />
-  </svg>
-);
+const baseUrl = BASE_URL;
 
 export const WelcomeTemplate = ({
-  userName = 'User',
+  userName = 'there',
   userEmail = 'user@example.com',
-  dashboardUrl = 'https://bluerelief.com/dashboard',
-  settingsUrl = 'https://bluerelief.com/settings',
-  helpUrl = 'https://bluerelief.com/help',
+  dashboardUrl = `${baseUrl}/dashboard`,
+  settingsUrl = `${baseUrl}/settings`,
+  helpUrl = `${baseUrl}/support`,
 }: WelcomeTemplateProps) => {
   return (
     <Html>
-      <Head />
-      <Preview>Welcome to BlueRelief, {userName}!</Preview>
+      <Head>
+        <Font
+          fontFamily="Lato"
+          fallbackFontFamily="Helvetica"
+          webFont={{
+            url: 'https://fonts.gstatic.com/s/lato/v24/S6uyw4BMUTPHjx4wXg.woff2',
+            format: 'woff2',
+          }}
+          fontWeight={400}
+          fontStyle="normal"
+        />
+      </Head>
+      <Preview>Welcome to BlueRelief, {userName}! Your account is ready.</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Section style={logoContainer}>
-            <Logo />
+          <Section style={header}>
+            <Img
+              src={LOGO_DATA_URI}
+              width="56"
+              height="56"
+              alt="BlueRelief"
+              style={logo}
+            />
+            <Text style={brandName}>BlueRelief</Text>
+            <Text style={tagline}>Real-Time Crisis Detection</Text>
           </Section>
 
-          <Section style={headerSection}>
-            <Text style={welcomeIcon}>🎉</Text>
-            <Heading style={titleText}>Welcome to BlueRelief!</Heading>
-            <Text style={subtitleText}>Your emergency response platform is ready</Text>
-          </Section>
-
-          <Section style={contentSection}>
-            <Text style={greetingText}>Hello {userName},</Text>
-            <Text style={bodyText}>
-              Thank you for joining BlueRelief! We're excited to have you as part of our emergency
-              response community. You're now connected to real-time crisis information and can help
-              make a difference in emergency situations.
+          <Section style={heroSection}>
+            <Heading style={heroTitle}>Welcome aboard, {userName}!</Heading>
+            <Text style={heroSubtitle}>
+              Your account is now active. You're part of a community dedicated to 
+              real-time emergency awareness and response.
             </Text>
+          </Section>
 
-            <Section style={featuresSection}>
-              <Text style={featuresTitle}>What you can do with BlueRelief</Text>
-
+          <Section style={content}>
+            <Text style={sectionTitle}>Get Started</Text>
+            
+            <Section style={featureGrid}>
               <Section style={featureItem}>
-                <Text style={featureIcon}>📊</Text>
-                <Section style={featureContent}>
-                  <Text style={featureLabel}>Monitor Real-Time Data</Text>
-                  <Text style={featureDescription}>
-                    Track crisis data and alerts as they happen
-                  </Text>
+                <Section style={featureIcon}>
+                  <Text style={featureEmoji}>📊</Text>
                 </Section>
+                <Text style={featureTitle}>Live Dashboard</Text>
+                <Text style={featureDesc}>
+                  Monitor real-time crisis data and alerts from around the world
+                </Text>
               </Section>
 
               <Section style={featureItem}>
-                <Text style={featureIcon}>🌍</Text>
-                <Section style={featureContent}>
-                  <Text style={featureLabel}>Global Coverage</Text>
-                  <Text style={featureDescription}>Track disasters and emergencies worldwide</Text>
+                <Section style={featureIcon}>
+                  <Text style={featureEmoji}>🔔</Text>
                 </Section>
+                <Text style={featureTitle}>Smart Alerts</Text>
+                <Text style={featureDesc}>
+                  Get notified about emergencies in areas you care about
+                </Text>
               </Section>
 
               <Section style={featureItem}>
-                <Text style={featureIcon}>📱</Text>
-                <Section style={featureContent}>
-                  <Text style={featureLabel}>Instant Notifications</Text>
-                  <Text style={featureDescription}>Get alerts for emergencies in your area</Text>
+                <Section style={featureIcon}>
+                  <Text style={featureEmoji}>🗺️</Text>
                 </Section>
+                <Text style={featureTitle}>Interactive Map</Text>
+                <Text style={featureDesc}>
+                  Visualize incidents on an interactive, real-time map
+                </Text>
               </Section>
 
               <Section style={featureItem}>
-                <Text style={featureIcon}>📈</Text>
-                <Section style={featureContent}>
-                  <Text style={featureLabel}>Detailed Analytics</Text>
-                  <Text style={featureDescription}>Access comprehensive reports and insights</Text>
+                <Section style={featureIcon}>
+                  <Text style={featureEmoji}>📈</Text>
                 </Section>
+                <Text style={featureTitle}>Analytics</Text>
+                <Text style={featureDesc}>
+                  Access insights and trends from crisis data
+                </Text>
               </Section>
             </Section>
 
-            <Section style={actionSection}>
+            <Section style={buttonContainer}>
               <Link style={primaryButton} href={dashboardUrl}>
-                Go to Dashboard
-              </Link>
-              <Link style={secondaryButton} href={settingsUrl}>
-                Account Settings
+                Open Your Dashboard
               </Link>
             </Section>
 
-            <Section style={helpSection}>
-              <Text style={helpText}>
-                Need help getting started? Check out our{' '}
-                <Link href={helpUrl} style={helpLink}>
-                  help center
-                </Link>{' '}
-                for guides and tutorials.
-              </Text>
+            <Section style={secondaryActions}>
+              <Link style={secondaryLink} href={settingsUrl}>
+                Set Up Alert Preferences
+              </Link>
+              <Text style={actionDivider}>•</Text>
+              <Link style={secondaryLink} href={helpUrl}>
+                View Help Guide
+              </Link>
             </Section>
+          </Section>
+
+          <Section style={tipSection}>
+            <Text style={tipTitle}>Quick Tip</Text>
+            <Text style={tipText}>
+              Set up your monitored locations in Settings to receive personalized 
+              alerts about emergencies in areas that matter to you.
+            </Text>
           </Section>
 
           <Hr style={divider} />
 
-          <Section style={footerSection}>
-            <Text style={footerText}>Welcome to the BlueRelief community!</Text>
+          <Section style={footer}>
             <Text style={footerText}>
-              <Link href="https://bluerelief.com/support" style={linkText}>
-                Contact Support
-              </Link>{' '}
-              •{' '}
-              <Link href="https://bluerelief.com/privacy" style={linkText}>
-                Privacy Policy
+              This email confirms your BlueRelief account registration for {userEmail}.
+            </Text>
+            <Text style={footerLinks}>
+              <Link href={dashboardUrl} style={footerLink}>
+                Dashboard
               </Link>
+              {' • '}
+              <Link href={settingsUrl} style={footerLink}>
+                Settings
+              </Link>
+              {' • '}
+              <Link href={`${baseUrl}/privacy`} style={footerLink}>
+                Privacy
+              </Link>
+              {' • '}
+              <Link href={helpUrl} style={footerLink}>
+                Support
+              </Link>
+            </Text>
+            <Text style={footerAddress}>
+              BlueRelief • Real-Time Crisis Detection System
             </Text>
           </Section>
         </Container>
@@ -152,126 +174,129 @@ export const WelcomeTemplate = ({
 
 const main = {
   backgroundColor: '#f8fafc',
-  fontFamily: 'Lato, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  fontFamily: 'Lato, Helvetica, Arial, sans-serif',
+  padding: '40px 0',
 };
 
 const container = {
   backgroundColor: '#ffffff',
   margin: '0 auto',
-  padding: '40px 20px',
   maxWidth: '600px',
-  borderRadius: '8px',
-  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+  borderRadius: '12px',
+  overflow: 'hidden' as const,
+  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
 };
 
-const logoContainer = {
-  padding: '0 0 32px',
+const header = {
+  background: 'linear-gradient(135deg, #1e3a5f 0%, #3b82f6 100%)',
+  padding: '40px',
   textAlign: 'center' as const,
 };
 
-const headerSection = {
-  textAlign: 'center' as const,
-  padding: '24px 20px',
-  background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)',
-  borderRadius: '8px',
-  marginBottom: '32px',
+const logo = {
+  margin: '0 auto 12px',
+  display: 'block',
 };
 
-const welcomeIcon = {
-  fontSize: '48px',
-  margin: '0 0 16px',
-  lineHeight: '1',
-};
-
-const titleText = {
-  color: '#020617',
-  fontSize: '32px',
+const brandName = {
+  color: '#ffffff',
+  fontSize: '28px',
   fontWeight: '700',
-  margin: '0 0 8px',
+  margin: '0 0 4px',
+  letterSpacing: '-0.5px',
+};
+
+const tagline = {
+  color: 'rgba(255, 255, 255, 0.8)',
+  fontSize: '14px',
+  margin: '0',
+};
+
+const heroSection = {
+  backgroundColor: '#f0f9ff',
+  padding: '32px 40px',
+  textAlign: 'center' as const,
+  borderBottom: '1px solid #e0f2fe',
+};
+
+const heroTitle = {
+  color: '#0f172a',
+  fontSize: '28px',
+  fontWeight: '700',
+  margin: '0 0 12px',
   lineHeight: '1.2',
 };
 
-const subtitleText = {
+const heroSubtitle = {
   color: '#475569',
   fontSize: '16px',
-  margin: '0',
-  lineHeight: '1.5',
-};
-
-const contentSection = {
-  padding: '0',
-};
-
-const greetingText = {
-  color: '#020617',
-  fontSize: '18px',
-  fontWeight: '600',
-  margin: '0 0 16px',
-};
-
-const bodyText = {
-  color: '#334155',
-  fontSize: '15px',
   lineHeight: '1.6',
-  margin: '0 0 24px',
+  margin: '0',
 };
 
-const featuresSection = {
-  backgroundColor: '#f8fafc',
-  borderRadius: '8px',
-  padding: '24px',
-  margin: '24px 0',
-  border: '1px solid #e2e8f0',
+const content = {
+  padding: '32px 40px',
 };
 
-const featuresTitle = {
-  color: '#020617',
+const sectionTitle = {
+  color: '#0f172a',
   fontSize: '18px',
-  fontWeight: '600',
-  margin: '0 0 20px',
+  fontWeight: '700',
+  margin: '0 0 24px',
+  textAlign: 'center' as const,
+};
+
+const featureGrid = {
+  margin: '0 0 32px',
 };
 
 const featureItem = {
-  display: 'flex',
-  alignItems: 'flex-start',
-  margin: '0 0 16px',
+  backgroundColor: '#f8fafc',
+  borderRadius: '8px',
+  padding: '20px',
+  margin: '0 0 12px',
+  border: '1px solid #e2e8f0',
 };
 
 const featureIcon = {
-  fontSize: '24px',
-  margin: '0 12px 0 0',
-  lineHeight: '1',
-  display: 'inline-block',
-  verticalAlign: 'top',
+  width: '40px',
+  height: '40px',
+  backgroundColor: '#eff6ff',
+  borderRadius: '8px',
+  margin: '0 0 12px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 };
 
-const featureContent = {
-  flex: '1',
-  display: 'inline-block',
+const featureEmoji = {
+  fontSize: '20px',
+  margin: '0',
+  lineHeight: '40px',
+  textAlign: 'center' as const,
 };
 
-const featureLabel = {
-  color: '#020617',
+const featureTitle = {
+  color: '#0f172a',
   fontSize: '15px',
   fontWeight: '600',
   margin: '0 0 4px',
-  lineHeight: '1.4',
 };
 
-const featureDescription = {
+const featureDesc = {
   color: '#64748b',
   fontSize: '14px',
-  margin: '0',
   lineHeight: '1.4',
+  margin: '0',
 };
 
-const actionSection = {
+const buttonContainer = {
   textAlign: 'center' as const,
-  margin: '32px 0',
+  margin: '0 0 24px',
 };
 
 const primaryButton = {
-  backgroundColor: '#196EE3',
+  backgroundColor: '#3b82f6',
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '16px',
@@ -279,65 +304,83 @@ const primaryButton = {
   textDecoration: 'none',
   textAlign: 'center' as const,
   display: 'inline-block',
-  padding: '14px 32px',
-  margin: '0 8px 12px',
-  boxShadow: '0 2px 4px rgba(25, 110, 227, 0.25)',
+  padding: '14px 40px',
 };
 
-const secondaryButton = {
-  backgroundColor: '#f8fafc',
-  border: '1px solid #cbd5e1',
-  borderRadius: '8px',
-  color: '#475569',
-  fontSize: '16px',
-  fontWeight: '600',
-  textDecoration: 'none',
+const secondaryActions = {
   textAlign: 'center' as const,
-  display: 'inline-block',
-  padding: '14px 32px',
-  margin: '0 8px 12px',
 };
 
-const helpSection = {
-  backgroundColor: '#eff6ff',
-  border: '1px solid #bfdbfe',
-  borderRadius: '8px',
-  padding: '16px',
-  margin: '24px 0',
-};
-
-const helpText = {
-  color: '#1e40af',
+const secondaryLink = {
+  color: '#3b82f6',
   fontSize: '14px',
-  margin: '0',
-  lineHeight: '1.5',
+  textDecoration: 'none',
 };
 
-const helpLink = {
-  color: '#2563eb',
-  textDecoration: 'underline',
-  fontWeight: '500',
+const actionDivider = {
+  color: '#cbd5e1',
+  fontSize: '14px',
+  margin: '0 12px',
+  display: 'inline',
+};
+
+const tipSection = {
+  backgroundColor: '#f0fdf4',
+  border: '1px solid #bbf7d0',
+  borderRadius: '8px',
+  padding: '20px',
+  margin: '0 40px 32px',
+};
+
+const tipTitle = {
+  color: '#166534',
+  fontSize: '14px',
+  fontWeight: '700',
+  margin: '0 0 8px',
+};
+
+const tipText = {
+  color: '#15803d',
+  fontSize: '14px',
+  lineHeight: '1.5',
+  margin: '0',
 };
 
 const divider = {
   borderColor: '#e2e8f0',
-  margin: '32px 0',
+  margin: '0',
 };
 
-const footerSection = {
-  textAlign: 'center' as const,
+const footer = {
+  padding: '32px 40px',
+  backgroundColor: '#f8fafc',
 };
 
 const footerText = {
   color: '#64748b',
-  fontSize: '12px',
+  fontSize: '14px',
   lineHeight: '1.5',
-  margin: '0 0 8px',
+  margin: '0 0 16px',
+  textAlign: 'center' as const,
 };
 
-const linkText = {
-  color: '#196EE3',
+const footerLinks = {
+  color: '#64748b',
+  fontSize: '14px',
+  margin: '0 0 16px',
+  textAlign: 'center' as const,
+};
+
+const footerLink = {
+  color: '#3b82f6',
   textDecoration: 'none',
+};
+
+const footerAddress = {
+  color: '#94a3b8',
+  fontSize: '12px',
+  margin: '0',
+  textAlign: 'center' as const,
 };
 
 export default WelcomeTemplate;

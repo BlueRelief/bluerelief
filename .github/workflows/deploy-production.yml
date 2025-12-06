@@ -186,9 +186,9 @@ jobs:
           echo "Version:       v${{ needs.version.outputs.current_version }} → v${{ needs.version.outputs.version }}"
           echo "Type:          ${{ needs.version.outputs.bump_type }} release"
           echo "Commit:        ${{ needs.version.outputs.commit_sha }}"
-          echo "Backend:       https://api.private.bluerelief.app"
-          echo "Frontend:      https://platform.private.bluerelief.app"
-          echo "Email Service: https://email-api.private.bluerelief.app"
+          echo "Backend:       https://api.bluerelief.app"
+          echo "Frontend:      https://bluerelief.app"
+          echo "Email Service: https://email-api.bluerelief.app"
           echo ""
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 

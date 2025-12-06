@@ -42,6 +42,8 @@ import {
   UserCheck,
   UserX,
   AlertTriangle,
+  Bell,
+  Loader2,
 } from "lucide-react";
 import {
   listUsers,
@@ -50,6 +52,7 @@ import {
   deleteUser,
   bulkDeleteUsers,
   getUserStats,
+  triggerTestAlert,
   type User,
   type UserListParams,
   type CreateUserRequest,
@@ -81,8 +84,18 @@ export default function ManageUsersPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [alertDialogOpen, setAlertDialogOpen] = useState(false);
+  const [sendingAlert, setSendingAlert] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  const [alertForm, setAlertForm] = useState({
+    disaster_type: "test",
+    severity: 4,
+    description: "Test alert triggered by admin",
+    send_email: true,
+  });
 
   // Create user form
   const [createForm, setCreateForm] = useState<CreateUserRequest>({
@@ -234,6 +247,38 @@ export default function ManageUsersPage() {
     setDeleteDialogOpen(true);
   };
 
+  const openAlertDialog = (user: User) => {
+    setCurrentUser(user);
+    setAlertForm({
+      disaster_type: "test",
+      severity: 4,
+      description: "Test alert triggered by admin",
+      send_email: true,
+    });
+    setAlertDialogOpen(true);
+  };
+
+  const handleTriggerAlert = async () => {
+    if (!currentUser) return;
+    try {
+      setSendingAlert(true);
+      setError(null);
+      const result = await triggerTestAlert({
+        user_id: currentUser.id,
+        ...alertForm,
+      });
+      setAlertDialogOpen(false);
+      setSuccessMessage(
+        `Test alert sent to ${result.user_email} at ${result.location}`
+      );
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to trigger alert");
+    } finally {
+      setSendingAlert(false);
+    }
+  };
+
   const formatRelativeTime = (dateStr: string | null) => {
     if (!dateStr) return "Never";
     const date = new Date(dateStr);
@@ -282,6 +327,13 @@ export default function ManageUsersPage() {
           <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-4 w-4" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="mb-4 p-4 bg-green-500/10 border border-green-500/20 rounded-lg flex items-center gap-2 text-green-700 dark:text-green-400">
+            <Bell className="h-4 w-4" />
+            <span>{successMessage}</span>
           </div>
         )}
 
@@ -540,11 +592,20 @@ export default function ManageUsersPage() {
                             {formatRelativeTime(user.created_at)}
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openAlertDialog(user)}
+                                title="Send Test Alert"
+                              >
+                                <Bell className="h-4 w-4 text-amber-600" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => openEditDialog(user)}
+                                title="Edit User"
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -552,6 +613,7 @@ export default function ManageUsersPage() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => openDeleteDialog(user)}
+                                title="Delete User"
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
@@ -790,6 +852,120 @@ export default function ManageUsersPage() {
                 }
               >
                 Delete Permanently
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Trigger Test Alert Dialog */}
+        <Dialog open={alertDialogOpen} onOpenChange={setAlertDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Send Test Alert</DialogTitle>
+              <DialogDescription>
+                Send a test alert to this user at their registered location.
+              </DialogDescription>
+            </DialogHeader>
+            {currentUser && (
+              <div className="space-y-4">
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="text-sm">
+                    <strong>User:</strong> {currentUser.email}
+                  </p>
+                  <p className="text-sm">
+                    <strong>Location:</strong> {currentUser.location || "Not set (will use coordinates or default)"}
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="alert-type">Disaster Type</Label>
+                  <Select
+                    value={alertForm.disaster_type}
+                    onValueChange={(value) =>
+                      setAlertForm({ ...alertForm, disaster_type: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="test">Test</SelectItem>
+                      <SelectItem value="earthquake">Earthquake</SelectItem>
+                      <SelectItem value="flood">Flood</SelectItem>
+                      <SelectItem value="wildfire">Wildfire</SelectItem>
+                      <SelectItem value="hurricane">Hurricane</SelectItem>
+                      <SelectItem value="tornado">Tornado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="alert-severity">Severity (1-5)</Label>
+                  <Select
+                    value={alertForm.severity.toString()}
+                    onValueChange={(value) =>
+                      setAlertForm({ ...alertForm, severity: parseInt(value) })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 - Minor</SelectItem>
+                      <SelectItem value="2">2 - Moderate</SelectItem>
+                      <SelectItem value="3">3 - Significant</SelectItem>
+                      <SelectItem value="4">4 - Severe</SelectItem>
+                      <SelectItem value="5">5 - Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="alert-description">Description</Label>
+                  <Input
+                    id="alert-description"
+                    value={alertForm.description}
+                    onChange={(e) =>
+                      setAlertForm({ ...alertForm, description: e.target.value })
+                    }
+                    placeholder="Test alert message..."
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="send-email"
+                    checked={alertForm.send_email}
+                    onCheckedChange={(checked) =>
+                      setAlertForm({ ...alertForm, send_email: checked as boolean })
+                    }
+                  />
+                  <Label htmlFor="send-email" className="cursor-pointer">
+                    Send email notification immediately
+                  </Label>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setAlertDialogOpen(false)}
+                disabled={sendingAlert}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleTriggerAlert}
+                disabled={sendingAlert}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                {sendingAlert ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Bell className="mr-2 h-4 w-4" />
+                    Send Test Alert
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -68,6 +68,8 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = memo(({ data, regions, mapboxT
   const { resolvedTheme } = useTheme();
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const isMapLoaded = useRef<boolean>(false);
+  const prevDataRef = useRef<string>("");
+  const prevRegionsRef = useRef<string>("");
   const [userMapPreferences, setUserMapPreferences] = useState<{ light_style: string; dark_style: string } | null>(null);
   const [userCountryCenter, setUserCountryCenter] = useState<[number, number] | null>(() => {
     try {
@@ -344,7 +346,119 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = memo(({ data, regions, mapboxT
       isMapLoaded.current = false;
       map.current?.remove();
     };
-  }, [data, regions, mapboxToken, resolvedTheme, onViewDetails, userMapPreferences, isLocationReady, userCountryCenter]);
+  // Only reinitialize map when these core settings change, not when data changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapboxToken, resolvedTheme, userMapPreferences, isLocationReady, userCountryCenter]);
+
+  // Separate effect to update markers and heatmap data without recreating the map
+  useEffect(() => {
+    if (!map.current || !isMapLoaded.current) return;
+
+    // Check if data actually changed by comparing stringified versions
+    const dataStr = JSON.stringify(data.map(d => d.coordinates));
+    const regionsStr = JSON.stringify(regions.map(r => ({ id: r.id, region: r.region, coordinates: r.coordinates })));
+    
+    if (dataStr === prevDataRef.current && regionsStr === prevRegionsRef.current) {
+      return; // Data hasn't changed, skip update
+    }
+    
+    prevDataRef.current = dataStr;
+    prevRegionsRef.current = regionsStr;
+
+    // Update heatmap data
+    const source = map.current.getSource('heatmap-source') as mapboxgl.GeoJSONSource;
+    if (source) {
+      const geojsonData: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: data.map(point => ({
+          type: 'Feature',
+          properties: { weight: point.weight || 1 },
+          geometry: { type: 'Point', coordinates: point.coordinates }
+        }))
+      };
+      source.setData(geojsonData);
+    }
+
+    // Update markers
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+
+    regions.forEach(region => {
+      if (!map.current) return;
+      if (!region.coordinates || !Array.isArray(region.coordinates) || region.coordinates.length !== 2) return;
+
+      const [lng, lat] = region.coordinates;
+      if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) return;
+
+      const el = document.createElement('div');
+      el.className = 'crisis-marker';
+      el.style.cssText = `
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: bold;
+        color: white;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        transition: transform 0.2s ease;
+        background-color: ${
+          region.severity.toLowerCase() === 'critical' ? '#dc2626' :
+          region.severity.toLowerCase() === 'high' ? '#f97316' :
+          region.severity.toLowerCase() === 'medium' ? '#eab308' : '#22c55e'
+        };
+      `;
+      el.textContent = region.incidents.toString();
+      el.onmouseenter = () => { el.style.transform = 'scale(1.2)'; };
+      el.onmouseleave = () => { el.style.transform = 'scale(1)'; };
+
+      const popupContent = document.createElement('div');
+      popupContent.className = 'p-3 min-w-[200px]';
+      popupContent.innerHTML = `
+        <div class="font-semibold text-sm mb-2">${region.region}</div>
+        <div class="text-xs space-y-1">
+          <div><span class="text-muted-foreground">Incidents:</span> ${region.incidents}</div>
+          <div><span class="text-muted-foreground">Severity:</span> <span class="font-medium ${
+            region.severity.toLowerCase() === 'critical' ? 'text-red-600' :
+            region.severity.toLowerCase() === 'high' ? 'text-orange-600' :
+            region.severity.toLowerCase() === 'medium' ? 'text-yellow-600' : 'text-green-600'
+          }">${region.severity}</span></div>
+          ${region.crisis_description ? `<div class="mt-2 text-muted-foreground">${region.crisis_description.substring(0, 100)}${region.crisis_description.length > 100 ? '...' : ''}</div>` : ''}
+        </div>
+      `;
+
+      if (region.id) {
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'mt-3 pt-2 border-t';
+        const button = document.createElement('button');
+        button.className = 'w-full px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors';
+        button.textContent = 'View Details';
+        button.onclick = (e) => {
+          e.stopPropagation();
+          onViewDetails(region.id!);
+        };
+        buttonContainer.appendChild(button);
+        popupContent.appendChild(buttonContainer);
+      }
+
+      const popup = new mapboxgl.Popup({
+        offset: 25,
+        closeButton: true,
+        className: 'map-popup'
+      }).setDOMContent(popupContent);
+
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([lng, lat])
+        .setPopup(popup)
+        .addTo(map.current);
+
+      markersRef.current.push(marker);
+    });
+  }, [data, regions, onViewDetails]);
 
   useEffect(() => {
     if (!map.current || !resolvedTheme || !isMapLoaded.current || !userMapPreferences) return;

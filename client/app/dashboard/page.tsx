@@ -157,6 +157,8 @@ export default function DashboardPage() {
         setLoading(true);
 
         const timeParam = timeRange || '24h';
+        const timeHoursMap: Record<string, number> = { '6h': 6, '12h': 12, '24h': 24, '48h': 48, '7d': 168, '30d': 720 };
+        const timeSeriesHours = timeHoursMap[timeParam] || 48;
         const [statsData, sentimentResponse, eventsResponse, incidentsData, timeSeriesResponse, disasterTypesResponse] = await Promise.all([
           apiGet<DashboardStats>(`/api/dashboard/stats?time_range=${timeParam}`),
           apiGet<{ trends: SentimentTrend[] }>(`/api/dashboard/sentiment-trends?time_range=${timeParam}`),
@@ -168,7 +170,7 @@ export default function DashboardPage() {
             coordinates: [number, number];
             crisis_description?: string;
           }>>(`/api/incidents?time_range=${timeParam}`),
-          apiGet<{ timeseries: TimeSeriesData[] }>(`/api/dashboard/time-series?hours=48`),
+          apiGet<{ timeseries: TimeSeriesData[] }>(`/api/dashboard/time-series?hours=${timeSeriesHours}`),
           apiGet<DisasterTypesData>(`/api/dashboard/disaster-types?time_range=${timeParam}`),
         ]);
 

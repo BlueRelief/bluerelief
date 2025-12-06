@@ -9,14 +9,33 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeSwitcher } from "@/components/theme-switcher";
-import { Shield, LogOut, Users, Settings, Activity, Clock, AlertTriangle, TrendingUp, CheckCircle2, XCircle, Search, Wrench, MapPin } from "lucide-react";
+import { Shield, LogOut, Users, Settings, Activity, Clock, AlertTriangle, TrendingUp, CheckCircle2, XCircle, Search, Wrench, MapPin, Bell, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { 
   getAdminStats, 
   getRecentCrises, 
   getRecentUsers,
+  listUsers,
+  triggerTestAlert,
   type AdminStats,
   type RecentCrisis,
-  type RecentUser
+  type RecentUser,
+  type User
 } from "@/lib/admin-api-client";
 import { formatActivityTime } from "@/lib/utils";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -37,7 +56,66 @@ export default function AdminDashboard() {
   const [recentCrises, setRecentCrises] = useState<RecentCrisis[]>([]);
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [alertDialogOpen, setAlertDialogOpen] = useState(false);
+  const [sendingAlert, setSendingAlert] = useState(false);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [alertForm, setAlertForm] = useState({
+    disaster_type: "earthquake",
+    severity: 4,
+    description: "",
+  });
+  const [alertSuccess, setAlertSuccess] = useState<string | null>(null);
+  const [alertError, setAlertError] = useState<string | null>(null);
   const router = useRouter();
+
+  const DISASTER_TYPES = [
+    { value: "earthquake", label: "Earthquake" },
+    { value: "flood", label: "Flood" },
+    { value: "wildfire", label: "Wildfire" },
+    { value: "hurricane", label: "Hurricane" },
+    { value: "tornado", label: "Tornado" },
+    { value: "tsunami", label: "Tsunami" },
+    { value: "volcano", label: "Volcanic Activity" },
+  ];
+
+  const RANDOM_DESCRIPTIONS: Record<string, string[]> = {
+    earthquake: [
+      "Seismic activity detected. Residents advised to take shelter.",
+      "Earthquake warning issued. Secure loose objects and stay away from windows.",
+      "Ground tremors reported. Emergency services on standby.",
+    ],
+    flood: [
+      "Flash flood warning in effect. Move to higher ground immediately.",
+      "Rising water levels detected. Evacuations may be necessary.",
+      "Heavy rainfall causing flooding in low-lying areas.",
+    ],
+    wildfire: [
+      "Wildfire spreading rapidly. Evacuation orders in effect.",
+      "Brush fire reported. Air quality advisory issued.",
+      "Fire danger extreme. Avoid outdoor burning.",
+    ],
+    hurricane: [
+      "Hurricane approaching. Secure property and prepare emergency supplies.",
+      "Tropical storm intensifying. Coastal areas should prepare for impact.",
+      "Hurricane warning issued. Evacuate if in flood-prone areas.",
+    ],
+    tornado: [
+      "Tornado warning issued. Seek shelter immediately in interior room.",
+      "Severe thunderstorm with tornado potential. Stay alert.",
+      "Funnel cloud spotted. Take cover now.",
+    ],
+    tsunami: [
+      "Tsunami warning. Move to high ground immediately.",
+      "Coastal evacuation ordered due to tsunami threat.",
+      "Seismic event may trigger tsunami. Stay away from beaches.",
+    ],
+    volcano: [
+      "Volcanic activity increasing. Ash fall possible.",
+      "Eruption imminent. Evacuate danger zone immediately.",
+      "Volcanic alert level raised. Monitor official channels.",
+    ],
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -122,6 +200,74 @@ export default function AdminDashboard() {
     localStorage.removeItem('admin_user');
     sessionStorage.removeItem('admin_user');
     router.push('/admin/login');
+  };
+
+  const openAlertDialog = async () => {
+    setAlertDialogOpen(true);
+    setAlertError(null);
+    setAlertSuccess(null);
+    
+    try {
+      const response = await listUsers({ page_size: 100 });
+      setAllUsers(response.users);
+      if (response.users.length > 0) {
+        setSelectedUserId(response.users[0].id);
+      }
+    } catch (err) {
+      console.error("Failed to fetch users:", err);
+    }
+    
+    const randomType = DISASTER_TYPES[Math.floor(Math.random() * DISASTER_TYPES.length)].value;
+    const descriptions = RANDOM_DESCRIPTIONS[randomType];
+    const randomDesc = descriptions[Math.floor(Math.random() * descriptions.length)];
+    
+    setAlertForm({
+      disaster_type: randomType,
+      severity: Math.floor(Math.random() * 2) + 4,
+      description: randomDesc,
+    });
+  };
+
+  const handleSendTestAlert = async () => {
+    if (!selectedUserId) {
+      setAlertError("Please select a user");
+      return;
+    }
+
+    setSendingAlert(true);
+    setAlertError(null);
+
+    try {
+      const result = await triggerTestAlert({
+        user_id: selectedUserId,
+        disaster_type: alertForm.disaster_type,
+        severity: alertForm.severity,
+        description: alertForm.description,
+        send_email: true,
+      });
+      
+      setAlertSuccess(`Alert sent to ${result.user_email} at ${result.location}`);
+      setTimeout(() => {
+        setAlertDialogOpen(false);
+        setAlertSuccess(null);
+      }, 2000);
+    } catch (err) {
+      setAlertError(err instanceof Error ? err.message : "Failed to send alert");
+    } finally {
+      setSendingAlert(false);
+    }
+  };
+
+  const randomizeAlert = () => {
+    const randomType = DISASTER_TYPES[Math.floor(Math.random() * DISASTER_TYPES.length)].value;
+    const descriptions = RANDOM_DESCRIPTIONS[randomType];
+    const randomDesc = descriptions[Math.floor(Math.random() * descriptions.length)];
+    
+    setAlertForm({
+      disaster_type: randomType,
+      severity: Math.floor(Math.random() * 2) + 4,
+      description: randomDesc,
+    });
   };
 
   const formatLastLogin = (timeStr: string | null) => {
@@ -576,17 +722,6 @@ export default function AdminDashboard() {
                     <div className="text-xs text-muted-foreground">View and manage all users</div>
                   </div>
                 </Button>
-                <Button 
-                  className="justify-start h-auto py-3" 
-                  variant="outline"
-                  onClick={() => router.push('/admin')}
-                >
-                  <Settings className="mr-2 h-4 w-4" />
-                  <div className="text-left">
-                    <div className="font-medium">Admin Settings</div>
-                    <div className="text-xs text-muted-foreground">Configure system settings</div>
-                  </div>
-                </Button>
                  <Button 
                    className="justify-start h-auto py-3" 
                    variant="outline"
@@ -609,10 +744,152 @@ export default function AdminDashboard() {
                     <div className="text-xs text-muted-foreground">Developer tools and utilities</div>
                   </div>
                 </Button>
+                <Button 
+                  className="justify-start h-auto py-3 border-amber-500/50 hover:bg-amber-500/10" 
+                  variant="outline"
+                  onClick={openAlertDialog}
+                >
+                  <Bell className="mr-2 h-4 w-4 text-amber-600" />
+                  <div className="text-left">
+                    <div className="font-medium">Send Test Alert</div>
+                    <div className="text-xs text-muted-foreground">Trigger a test alert for a user</div>
+                  </div>
+                </Button>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {alertSuccess && (
+          <div className="fixed bottom-4 right-4 p-4 bg-green-500/10 border border-green-500/20 rounded-lg flex items-center gap-2 text-green-700 dark:text-green-400 shadow-lg z-50">
+            <CheckCircle2 className="h-4 w-4" />
+            <span>{alertSuccess}</span>
+          </div>
+        )}
+
+        <Dialog open={alertDialogOpen} onOpenChange={setAlertDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-amber-600" />
+                Send Test Alert
+              </DialogTitle>
+              <DialogDescription>
+                Create a test disaster and send an alert notification to a user.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {alertError && (
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
+                {alertError}
+              </div>
+            )}
+
+            {alertSuccess ? (
+              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg text-green-700 dark:text-green-400 text-center">
+                <CheckCircle2 className="h-8 w-8 mx-auto mb-2" />
+                <p className="font-medium">{alertSuccess}</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <Label>Select User</Label>
+                  <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a user..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allUsers.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.email} {user.location ? `(${user.location})` : "(No location)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Disaster Type</Label>
+                    <Select 
+                      value={alertForm.disaster_type} 
+                      onValueChange={(v) => {
+                        const descriptions = RANDOM_DESCRIPTIONS[v];
+                        const randomDesc = descriptions[Math.floor(Math.random() * descriptions.length)];
+                        setAlertForm({ ...alertForm, disaster_type: v, description: randomDesc });
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DISASTER_TYPES.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Severity</Label>
+                    <Select 
+                      value={alertForm.severity.toString()} 
+                      onValueChange={(v) => setAlertForm({ ...alertForm, severity: parseInt(v) })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">3 - Significant</SelectItem>
+                        <SelectItem value="4">4 - Severe</SelectItem>
+                        <SelectItem value="5">5 - Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Description</Label>
+                  <Input
+                    value={alertForm.description}
+                    onChange={(e) => setAlertForm({ ...alertForm, description: e.target.value })}
+                    placeholder="Alert description..."
+                  />
+                </div>
+
+                <Button variant="ghost" size="sm" onClick={randomizeAlert} className="w-full">
+                  🎲 Randomize Alert
+                </Button>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAlertDialogOpen(false)} disabled={sendingAlert}>
+                Cancel
+              </Button>
+              {!alertSuccess && (
+                <Button 
+                  onClick={handleSendTestAlert} 
+                  disabled={sendingAlert || !selectedUserId}
+                  className="bg-amber-600 hover:bg-amber-700"
+                >
+                  {sendingAlert ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="mr-2 h-4 w-4" />
+                      Send Alert
+                    </>
+                  )}
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

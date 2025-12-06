@@ -55,8 +55,8 @@ export function LandingFooter() {
     resources: [
       { href: "https://github.com/bluerelief", label: "GitHub" },
       { href: "mailto:admin@bluerelief.app", label: "Contact" },
-      { href: "https://platform.private.bluerelief.app/docs", label: "Documentation" },
-      { href: "https://platform.private.bluerelief.app/api/docs", label: "API" },
+      { href: "https://bluerelief.app/docs", label: "Documentation" },
+      { href: "https://bluerelief.app/api/docs", label: "API" },
     ],
   };
 

@@ -5,13 +5,16 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Link,
   Preview,
   Section,
   Text,
   Hr,
+  Font,
 } from '@react-email/components';
 import * as React from 'react';
+import { LOGO_DATA_URI, BASE_URL } from './logo';
 
 interface PasswordResetTemplateProps {
   userName: string;
@@ -19,71 +22,69 @@ interface PasswordResetTemplateProps {
   expiresIn?: string;
 }
 
-const Logo = () => (
-  <svg width="56" height="56" viewBox="0 0 100 100" style={{ margin: '0 auto', display: 'block' }}>
-    <defs>
-      <mask id="logo-mask">
-        <rect x="0" y="0" width="100" height="100" rx="20" ry="20" fill="white" />
-        <rect x="25" y="25" width="50" height="50" rx="8" ry="8" fill="black" />
-      </mask>
-    </defs>
-    <rect
-      x="0"
-      y="0"
-      width="100"
-      height="100"
-      rx="20"
-      ry="20"
-      fill="#196EE3"
-      mask="url(#logo-mask)"
-    />
-  </svg>
-);
+const baseUrl = BASE_URL;
 
 export const PasswordResetTemplate = ({
-  userName = 'User',
-  resetLink = 'https://bluerelief.com/reset-password',
+  userName = 'there',
+  resetLink = `${baseUrl}/reset-password`,
   expiresIn = '1 hour',
 }: PasswordResetTemplateProps) => {
   return (
     <Html>
-      <Head />
+      <Head>
+        <Font
+          fontFamily="Lato"
+          fallbackFontFamily="Helvetica"
+          webFont={{
+            url: 'https://fonts.gstatic.com/s/lato/v24/S6uyw4BMUTPHjx4wXg.woff2',
+            format: 'woff2',
+          }}
+          fontWeight={400}
+          fontStyle="normal"
+        />
+      </Head>
       <Preview>Reset your BlueRelief password</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Section style={logoContainer}>
-            <Logo />
+          <Section style={header}>
+            <Img
+              src={LOGO_DATA_URI}
+              width="48"
+              height="48"
+              alt="BlueRelief"
+              style={logo}
+            />
             <Text style={brandName}>BlueRelief</Text>
           </Section>
 
-          <Section style={headerSection}>
-            <Text style={lockIcon}>🔐</Text>
-            <Heading style={heading}>Password Reset Request</Heading>
+          <Section style={iconSection}>
+            <Section style={iconCircle}>
+              <Text style={iconText}>🔐</Text>
+            </Section>
+            <Heading style={titleText}>Password Reset Request</Heading>
           </Section>
 
-          <Section style={contentSection}>
-            <Text style={greetingText}>Hello {userName},</Text>
+          <Section style={content}>
+            <Text style={greeting}>Hi {userName},</Text>
 
             <Text style={bodyText}>
-              We received a request to reset your password for your BlueRelief account. Click the
-              button below to create a new password:
+              We received a request to reset the password for your BlueRelief account. 
+              If you made this request, click the button below to create a new password.
             </Text>
 
             <Section style={buttonContainer}>
               <Button style={resetButton} href={resetLink}>
-                Reset Password
+                Reset My Password
               </Button>
             </Section>
 
-            <Text style={infoText}>
-              This link will expire in <strong>{expiresIn}</strong>. If you didn't request a
-              password reset, you can safely ignore this email.
+            <Text style={expiryText}>
+              This link will expire in <strong>{expiresIn}</strong>. After that, you'll need 
+              to request a new password reset.
             </Text>
 
-            <Hr style={divider} />
-
             <Section style={linkSection}>
-              <Text style={linkText}>
+              <Text style={linkLabel}>
                 If the button doesn't work, copy and paste this link into your browser:
               </Text>
               <Link href={resetLink} style={linkUrl}>
@@ -91,34 +92,36 @@ export const PasswordResetTemplate = ({
               </Link>
             </Section>
 
-            <Section style={warningBox}>
-              <Text style={warningText}>
-                <strong>Security Note:</strong> For your account's security, never share this email
-                or link with anyone.
+            <Section style={securityNotice}>
+              <Text style={securityTitle}>🔒 Security Notice</Text>
+              <Text style={securityText}>
+                If you didn't request this password reset, you can safely ignore this email. 
+                Your password will remain unchanged. Never share this link with anyone.
               </Text>
             </Section>
           </Section>
 
           <Hr style={divider} />
 
-          <Section style={footerSection}>
-            <Text style={footerTitle}>BlueRelief</Text>
-            <Text style={footerSubtitle}>Real-Time Crisis Detection System</Text>
+          <Section style={footer}>
             <Text style={footerText}>
-              This is an automated message, please do not reply to this email.
+              This is an automated security email from BlueRelief.
             </Text>
             <Text style={footerLinks}>
-              <Link href="https://bluerelief.com/support" style={footerLink}>
-                Support
+              <Link href={`${baseUrl}/support`} style={footerLink}>
+                Contact Support
               </Link>
               {' • '}
-              <Link href="https://bluerelief.com/privacy" style={footerLink}>
-                Privacy
+              <Link href={`${baseUrl}/privacy`} style={footerLink}>
+                Privacy Policy
               </Link>
               {' • '}
-              <Link href="https://bluerelief.com/terms" style={footerLink}>
-                Terms
+              <Link href={`${baseUrl}/terms`} style={footerLink}>
+                Terms of Service
               </Link>
+            </Text>
+            <Text style={footerAddress}>
+              BlueRelief • Real-Time Crisis Detection System
             </Text>
           </Section>
         </Container>
@@ -129,78 +132,91 @@ export const PasswordResetTemplate = ({
 
 const main = {
   backgroundColor: '#f8fafc',
-  fontFamily: 'Lato, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  fontFamily: 'Lato, Helvetica, Arial, sans-serif',
+  padding: '40px 0',
 };
 
 const container = {
   backgroundColor: '#ffffff',
   margin: '0 auto',
-  padding: '0',
   maxWidth: '600px',
   borderRadius: '12px',
-  boxShadow: '0 4px 24px rgba(0, 0, 0, 0.08)',
   overflow: 'hidden' as const,
+  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
 };
 
-const logoContainer = {
-  padding: '32px 20px 24px',
+const header = {
+  backgroundColor: '#1e3a5f',
+  padding: '32px 40px',
   textAlign: 'center' as const,
-  background: 'linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%)',
+};
+
+const logo = {
+  margin: '0 auto 12px',
+  display: 'block',
 };
 
 const brandName = {
-  color: '#020617',
+  color: '#ffffff',
   fontSize: '24px',
   fontWeight: '700',
-  margin: '12px 0 0',
+  margin: '0',
+};
+
+const iconSection = {
+  backgroundColor: '#f0f9ff',
+  padding: '32px 40px',
+  textAlign: 'center' as const,
+  borderBottom: '1px solid #e0f2fe',
+};
+
+const iconCircle = {
+  width: '64px',
+  height: '64px',
+  backgroundColor: '#dbeafe',
+  borderRadius: '50%',
+  margin: '0 auto 16px',
+};
+
+const iconText = {
+  fontSize: '32px',
+  margin: '0',
+  lineHeight: '64px',
   textAlign: 'center' as const,
 };
 
-const headerSection = {
-  background: 'linear-gradient(135deg, #196EE3 0%, #5B6FFF 100%)',
-  padding: '32px 20px',
-  textAlign: 'center' as const,
-};
-
-const lockIcon = {
-  fontSize: '48px',
-  margin: '0 0 12px',
-  lineHeight: '1',
-};
-
-const heading = {
-  color: '#ffffff',
-  fontSize: '28px',
+const titleText = {
+  color: '#0f172a',
+  fontSize: '24px',
   fontWeight: '700',
   margin: '0',
-  lineHeight: '1.2',
+  lineHeight: '1.3',
 };
 
-const contentSection = {
-  padding: '32px 20px',
+const content = {
+  padding: '32px 40px',
 };
 
-const greetingText = {
-  color: '#020617',
-  fontSize: '18px',
-  fontWeight: '600',
+const greeting = {
+  color: '#334155',
+  fontSize: '16px',
   margin: '0 0 16px',
 };
 
 const bodyText = {
-  color: '#334155',
+  color: '#475569',
   fontSize: '16px',
   lineHeight: '1.6',
-  margin: '0 0 24px',
+  margin: '0 0 32px',
 };
 
 const buttonContainer = {
   textAlign: 'center' as const,
-  margin: '32px 0',
+  margin: '0 0 32px',
 };
 
 const resetButton = {
-  background: 'linear-gradient(135deg, #196EE3 0%, #5B6FFF 100%)',
+  backgroundColor: '#3b82f6',
   borderRadius: '8px',
   color: '#ffffff',
   fontSize: '16px',
@@ -208,91 +224,94 @@ const resetButton = {
   textDecoration: 'none',
   textAlign: 'center' as const,
   display: 'inline-block',
-  padding: '14px 40px',
-  boxShadow: '0 4px 12px rgba(25, 110, 227, 0.3)',
+  padding: '16px 48px',
 };
 
-const infoText = {
-  color: '#475569',
+const expiryText = {
+  color: '#64748b',
   fontSize: '14px',
-  lineHeight: '1.6',
-  margin: '24px 0',
-};
-
-const divider = {
-  borderColor: '#e2e8f0',
-  margin: '24px 0',
+  lineHeight: '1.5',
+  margin: '0 0 24px',
+  textAlign: 'center' as const,
 };
 
 const linkSection = {
-  margin: '24px 0',
+  backgroundColor: '#f8fafc',
+  borderRadius: '8px',
+  padding: '16px 20px',
+  margin: '0 0 24px',
+  border: '1px solid #e2e8f0',
 };
 
-const linkText = {
-  color: '#475569',
-  fontSize: '14px',
+const linkLabel = {
+  color: '#64748b',
+  fontSize: '13px',
   margin: '0 0 8px',
 };
 
 const linkUrl = {
-  color: '#5B6FFF',
+  color: '#3b82f6',
   fontSize: '13px',
   wordBreak: 'break-all' as const,
   textDecoration: 'underline',
 };
 
-const warningBox = {
-  backgroundColor: '#FFF7ED',
-  borderLeft: '4px solid #FB923C',
-  borderRadius: '4px',
-  padding: '16px',
-  margin: '24px 0',
+const securityNotice = {
+  backgroundColor: '#fff7ed',
+  border: '1px solid #fed7aa',
+  borderRadius: '8px',
+  padding: '16px 20px',
 };
 
-const warningText = {
-  color: '#9A3412',
+const securityTitle = {
+  color: '#c2410c',
+  fontSize: '14px',
+  fontWeight: '700',
+  margin: '0 0 8px',
+};
+
+const securityText = {
+  color: '#ea580c',
   fontSize: '14px',
   lineHeight: '1.5',
   margin: '0',
 };
 
-const footerSection = {
-  textAlign: 'center' as const,
-  padding: '32px 20px',
-  background: 'linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%)',
+const divider = {
+  borderColor: '#e2e8f0',
+  margin: '0',
 };
 
-const footerTitle = {
-  color: '#020617',
-  fontSize: '18px',
-  fontWeight: '700',
-  margin: '0 0 4px',
-};
-
-const footerSubtitle = {
-  color: '#475569',
-  fontSize: '13px',
-  fontWeight: '500',
-  margin: '0 0 16px',
+const footer = {
+  padding: '32px 40px',
+  backgroundColor: '#f8fafc',
 };
 
 const footerText = {
   color: '#64748b',
-  fontSize: '12px',
+  fontSize: '14px',
   lineHeight: '1.5',
-  margin: '0 0 12px',
+  margin: '0 0 16px',
+  textAlign: 'center' as const,
 };
 
 const footerLinks = {
   color: '#64748b',
-  fontSize: '12px',
-  margin: '0',
+  fontSize: '14px',
+  margin: '0 0 16px',
+  textAlign: 'center' as const,
 };
 
 const footerLink = {
-  color: '#196EE3',
+  color: '#3b82f6',
   textDecoration: 'none',
-  fontWeight: '500',
+};
+
+const footerAddress = {
+  color: '#94a3b8',
+  fontSize: '12px',
+  margin: '0',
+  textAlign: 'center' as const,
 };
 
 export default PasswordResetTemplate;

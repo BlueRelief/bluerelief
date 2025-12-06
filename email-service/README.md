@@ -35,7 +35,7 @@ POST /send
     "title": "Earthquake Alert",
     "content": "A 6.5 magnitude earthquake has been detected...",
     "buttonText": "View Details",
-    "buttonUrl": "https://bluerelief.com/alerts/123"
+    "buttonUrl": "https://bluerelief.app/alerts/123"
   },
   "metadata": {
     "alertId": "123",
@@ -59,7 +59,7 @@ Create a `.env` file based on `env.example`:
 ```bash
 # Email Service Configuration
 PORT=3002
-EMAIL_FROM=noreply@bluerelief.com
+EMAIL_FROM=noreply@bluerelief.app
 
 # Resend API Configuration
 RESEND_API_KEY=your_resend_api_key_here

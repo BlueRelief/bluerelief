@@ -18,7 +18,7 @@ router.get('/', (req, res) => {
 
 router.get('/health', (req, res) => {
   const hasApiKey = !!process.env.RESEND_API_KEY;
-  const emailFrom = process.env.EMAIL_FROM || 'noreply@bluerelief.com';
+  const emailFrom = process.env.EMAIL_FROM || 'noreply@bluerelief.app';
 
   res.json({
     status: 'healthy',
