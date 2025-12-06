@@ -96,7 +96,7 @@ jobs:
           if [ "${{ matrix.service.name }}" = "backend" ]; then
             BUILD_ARGS="$BUILD_ARGS --build-arg COMMIT_SHA=${{ needs.version.outputs.commit_sha }}"
           elif [ "${{ matrix.service.name }}" = "frontend" ]; then
-            BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_API_URL=https://api.private.bluerelief.app"
+            BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_API_URL=https://api.bluerelief.app"
             BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_MAPBOX_TOKEN=${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}"
           fi
           
@@ -129,8 +129,6 @@ jobs:
             --set app.image.tag=${{ needs.version.outputs.image_tag }} \
             --set frontend.image.tag=${{ needs.version.outputs.image_tag }} \
             --set emailService.image.tag=${{ needs.version.outputs.image_tag }} \
-            --set emailService.ingress.enabled=true \
-            --set emailService.ingress.host="email-api.private.bluerelief.app" \
             --wait
 
       - name: Create Git Tag and Release
