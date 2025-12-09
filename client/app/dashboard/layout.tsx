@@ -321,7 +321,8 @@ function DashboardLayoutContent({
   }, [isAuthenticated, loading, router]);
 
   useEffect(() => {
-    if (user && !user.location) {
+    // Check if user needs onboarding (hasn't completed it yet)
+    if (user && !user.onboarding_completed) {
       setShowOnboarding(true);
     } else {
       setShowOnboarding(false);

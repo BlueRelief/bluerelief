@@ -50,6 +50,7 @@ class User(Base):
     last_login = Column(DateTime, nullable=True)
     failed_login_attempts = Column(Integer, default=0, nullable=False)
     account_locked_until = Column(DateTime, nullable=True)
+    onboarding_completed = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -452,6 +453,7 @@ def get_user_by_email(email: str) -> Optional[Dict]:
                 "role": user.role,
                 "created_at": user.created_at,
                 "updated_at": user.updated_at,
+                "onboarding_completed": user.onboarding_completed,
             }
         return None
 

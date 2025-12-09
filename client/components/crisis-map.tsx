@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, memo, useCallback } from 'react';
+import React, { useEffect, useRef, useState, memo, useCallback, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useTheme } from 'next-themes';
@@ -390,53 +390,46 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = memo(({ data, regions, mapboxT
       const [lng, lat] = region.coordinates;
       if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) return;
 
+      const color = region.severity.toLowerCase() === 'critical' ? '#dc2626' :
+        region.severity.toLowerCase() === 'high' ? '#f97316' :
+        region.severity.toLowerCase() === 'medium' ? '#eab308' : '#22c55e';
+
       const el = document.createElement('div');
-      el.className = 'crisis-marker';
-      el.style.cssText = `
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 10px;
-        font-weight: bold;
-        color: white;
-        border: 2px solid white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        transition: transform 0.2s ease;
-        background-color: ${
-          region.severity.toLowerCase() === 'critical' ? '#dc2626' :
-          region.severity.toLowerCase() === 'high' ? '#f97316' :
-          region.severity.toLowerCase() === 'medium' ? '#eab308' : '#22c55e'
-        };
-      `;
-      el.textContent = region.incidents.toString();
-      el.onmouseenter = () => { el.style.transform = 'scale(1.2)'; };
-      el.onmouseleave = () => { el.style.transform = 'scale(1)'; };
+      el.className = 'marker';
+      el.style.backgroundColor = color;
+      el.style.width = '12px';
+      el.style.height = '12px';
+      el.style.borderRadius = '50%';
+      el.style.border = '1px solid rgba(255,255,255,0.5)';
+      el.style.cursor = 'pointer';
+      el.style.boxShadow = `0 0 8px ${color}`;
+      el.style.opacity = '0.8';
 
       const popupContent = document.createElement('div');
-      popupContent.className = 'p-3 min-w-[200px]';
+      popupContent.className = 'bg-card p-4 rounded-lg border border-border min-w-[250px] max-w-[350px]';
       popupContent.innerHTML = `
-        <div class="font-semibold text-sm mb-2">${region.region}</div>
-        <div class="text-xs space-y-1">
-          <div><span class="text-muted-foreground">Incidents:</span> ${region.incidents}</div>
-          <div><span class="text-muted-foreground">Severity:</span> <span class="font-medium ${
-            region.severity.toLowerCase() === 'critical' ? 'text-red-600' :
-            region.severity.toLowerCase() === 'high' ? 'text-orange-600' :
-            region.severity.toLowerCase() === 'medium' ? 'text-yellow-600' : 'text-green-600'
-          }">${region.severity}</span></div>
-          ${region.crisis_description ? `<div class="mt-2 text-muted-foreground">${region.crisis_description.substring(0, 100)}${region.crisis_description.length > 100 ? '...' : ''}</div>` : ''}
+        <h3 class="font-semibold text-card-foreground mb-2">${region.region}</h3>
+        <div class="space-y-1 text-sm">
+          <p class="text-muted-foreground">
+            <span class="font-medium">Incidents:</span> ${region.incidents}
+          </p>
+          <p class="text-muted-foreground">
+            <span class="font-medium">Severity:</span>
+            <span class="font-semibold" style="color: ${color}">${region.severity}</span>
+          </p>
+          <p class="text-muted-foreground">
+            <span class="font-medium">Description:</span><br>
+            <span style="font-style: italic; word-wrap: break-word; line-height: 1.3;">${region.crisis_description || 'No description available'}</span>
+          </p>
         </div>
       `;
 
       if (region.id) {
         const buttonContainer = document.createElement('div');
-        buttonContainer.className = 'mt-3 pt-2 border-t';
+        buttonContainer.className = 'mt-3';
         const button = document.createElement('button');
-        button.className = 'w-full px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors';
-        button.textContent = 'View Details';
+        button.className = 'w-full px-3 py-2 text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-md transition-colors border border-primary/20';
+        button.textContent = 'View Full Details';
         button.onclick = (e) => {
           e.stopPropagation();
           onViewDetails(region.id!);
@@ -616,7 +609,7 @@ export default function CrisisMap({ regions, focusRegion }: CrisisMapProps) {
   const handleViewDetails = useCallback(async (regionId: number) => {
     try {
       setIsLoading(true);
-      const data = await apiGet<DisasterDetails>(`/api/incidents/${regionId}`);
+      const data = await apiGet<DisasterDetails>(`/api/incidents/${regionId}?include_archived=true`);
       setSelectedEvent(data);
       setIsDialogOpen(true);
     } catch (error) {
@@ -643,28 +636,15 @@ export default function CrisisMap({ regions, focusRegion }: CrisisMapProps) {
     return severity ? labels[severity] || "Unknown" : "Unknown";
   };
 
-  if (!mapboxToken) {
-    return (
-      <div className="flex items-center justify-center h-[600px] bg-muted/50 rounded-lg border border-dashed">
-        <div className="text-center">
-          <div className="text-lg font-medium text-destructive mb-2">Mapbox Token Missing</div>
-          <div className="text-sm text-muted-foreground">
-            Please set NEXT_PUBLIC_MAPBOX_TOKEN in your environment variables
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const validRegions = regions.filter(region => {
+  const validRegions = useMemo(() => regions.filter(region => {
     if (!region.coordinates || !Array.isArray(region.coordinates) || region.coordinates.length !== 2) {
       return false;
     }
     const [lng, lat] = region.coordinates;
     return typeof lng === 'number' && typeof lat === 'number' && !isNaN(lng) && !isNaN(lat);
-  });
+  }), [regions]);
 
-  const heatmapData: HeatmapPoint[] = validRegions.map(region => {
+  const heatmapData: HeatmapPoint[] = useMemo(() => validRegions.map(region => {
     const severity_weights = {
       'Critical': 1.0,
       'High': 0.8,
@@ -678,7 +658,20 @@ export default function CrisisMap({ regions, focusRegion }: CrisisMapProps) {
       coordinates: region.coordinates,
       weight: weight
     };
-  });
+  }), [validRegions]);
+
+  if (!mapboxToken) {
+    return (
+      <div className="flex items-center justify-center h-[600px] bg-muted/50 rounded-lg border border-dashed">
+        <div className="text-center">
+          <div className="text-lg font-medium text-destructive mb-2">Mapbox Token Missing</div>
+          <div className="text-sm text-muted-foreground">
+            Please set NEXT_PUBLIC_MAPBOX_TOKEN in your environment variables
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
