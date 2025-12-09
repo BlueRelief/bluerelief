@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Search, Check, AlertCircle, Loader2, RefreshCw, Trash2, MapPin, Calendar, User, Edit2, X, Plus } from "lucide-react"
+import { Check, AlertCircle, Loader2, RefreshCw, Trash2, MapPin, Calendar, User, Edit2, X, Plus } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
 import { MapStyleSettings } from "@/components/map-style-settings"
 import {
@@ -212,22 +212,34 @@ export default function SettingsPage() {
 
     setDeletingAccount(true)
     try {
-      const response = await apiClient('/auth/delete-account', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/auth/delete-account`, {
         method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       })
 
       if (response.ok) {
-        // Clear auth state and redirect to home page
-        // Use window.location to ensure full page reload and cookie clearing
+        // Clear local storage and redirect
+        localStorage.clear()
+        sessionStorage.clear()
+        // Full page reload to clear all state and cookies
         window.location.href = '/'
       } else {
-        const error = await response.json()
-        alert(error.detail || 'Failed to delete account')
+        let errorMessage = 'Failed to delete account'
+        try {
+          const error = await response.json()
+          errorMessage = error.detail || errorMessage
+        } catch {
+          // Response might not be JSON
+        }
+        alert(errorMessage)
         setDeletingAccount(false)
       }
     } catch (err) {
       console.error('Error deleting account:', err)
-      alert('Error deleting account')
+      alert('Error deleting account. Please try again.')
       setDeletingAccount(false)
     }
   }
@@ -357,18 +369,18 @@ export default function SettingsPage() {
 
             {/* Location Section */}
             <div className="pt-3 border-t">
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Location</span>
                 </div>
                 {user?.latitude != null && user?.longitude != null ? (
                   <>
-                    <div className="text-sm">
-                      {user.latitude.toFixed(4)}, {user.longitude.toFixed(4)}
+                    <div className="text-sm text-muted-foreground">
+                      Coordinates: {user.latitude.toFixed(4)}, {user.longitude.toFixed(4)}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Alerts within 100km
+                      Alerts within 100km radius
                     </div>
                     <div className="flex gap-2">
                       <Button

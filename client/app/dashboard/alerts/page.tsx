@@ -52,12 +52,11 @@ export default function AlertsPage() {
   }, [user?.user_id]);
 
   const markAlertAsRead = useCallback(async (alertId: number) => {
+    if (!user?.user_id) return;
+    
     try {
-      const response = await apiClient(`/api/alerts/${alertId}/mark-read`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await apiClient(`/api/alerts/${alertId}/read?user_id=${user.user_id}`, {
+        method: 'PUT',
       });
       
       if (response.ok) {

@@ -12,6 +12,7 @@ export interface User {
   longitude?: number;
   role?: string;
   created_at?: string;
+  onboarding_completed?: boolean;
 }
 
 export async function checkAuthStatus(): Promise<User | null> {

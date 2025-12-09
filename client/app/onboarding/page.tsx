@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/dialog';
 import { apiClient } from '@/lib/api-client';
 import { Logo } from '@/components/logo';
-import { checkAuthStatus } from '@/lib/auth';
 import { useAuth } from '@/hooks/use-auth';
 
 function OnboardingPageContent() {
@@ -132,20 +131,7 @@ function OnboardingPageContent() {
       });
 
       if (response.ok) {
-        setSuccessMessage('You\'ll receive alerts for all global disasters');
-        setStep('success');
-        
-        setTimeout(async () => {
-          await checkAuthStatus();
-          if (fromSettings) {
-            router.push('/dashboard/settings');
-          } else {
-            router.push('/dashboard');
-            setTimeout(() => {
-              window.location.href = '/dashboard';
-            }, 500);
-          }
-        }, 1500);
+        // Move to alerts step after skipping location
         setStep('alerts');
         setLoading(false);
       } else {
@@ -202,17 +188,15 @@ function OnboardingPageContent() {
         setSuccessMessage('Your preferences have been saved!');
         setStep('success');
         
-        setTimeout(async () => {
-          await checkAuthStatus();
+        // Short delay to show success message, then do a full page navigation
+        // to ensure the auth context is fully refreshed with onboarding_completed=true
+        setTimeout(() => {
           if (fromSettings) {
-            router.push('/dashboard/settings');
+            window.location.href = '/dashboard/settings';
           } else {
-            router.push('/dashboard');
-            setTimeout(() => {
-              window.location.href = '/dashboard';
-            }, 500);
+            window.location.href = '/dashboard';
           }
-        }, 1500);
+        }, 1200);
       } else {
         setError('Failed to save alert preferences');
         setSavingAlerts(false);

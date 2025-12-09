@@ -143,32 +143,6 @@ export function LandingHero() {
                   filter: "blur(20px)"
                 }}
               />
-
-              {/* Floating stats badges - positioned over bottom of image */}
-              <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 w-full max-w-xl px-4">
-                <div className="flex justify-center gap-2 flex-wrap">
-                  {[
-                    { value: "100km", label: "Radius" },
-                    { value: "24/7", label: "Active" },
-                    { value: "5 Levels", label: "Severity" }
-                  ].map((stat, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: 0.8 + i * 0.1 }}
-                      className="backdrop-blur-xl bg-background/95 border border-primary/20 rounded-lg px-4 py-2 shadow-xl"
-                    >
-                      <div className="text-center">
-                        <div className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                          {stat.value}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground">{stat.label}</div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
             </motion.div>
           </motion.div>
         </div>

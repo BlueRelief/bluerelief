@@ -114,6 +114,7 @@ def get_current_user(token: str = Cookie(None)):
             "longitude": user_data.get("longitude"),
             "role": user_data.get("role"),
             "created_at": user_data.get("created_at"),
+            "onboarding_completed": user_data.get("onboarding_completed", False),
         }
 
     except ExpiredSignatureError:
@@ -148,6 +149,7 @@ async def auth_status(request: Request, token: str = Cookie(None)):
                 "longitude": user.get("longitude"),
                 "role": user.get("role"),
                 "created_at": user.get("created_at"),
+                "onboarding_completed": user.get("onboarding_completed", False),
             },
         }
     except HTTPException:
@@ -736,6 +738,9 @@ async def setup_location(request: Request, token: str = Cookie(None)):
                 user_obj.longitude = float(longitude)
                 logger.info(f"✅ Set location for user {user_id}: {location}")
                 change_summary = f"User set location to {location}"
+
+            # Mark onboarding as completed
+            user_obj.onboarding_completed = True
 
             db.commit()
 
