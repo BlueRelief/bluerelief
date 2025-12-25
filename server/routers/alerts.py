@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+import os
 from db_utils.db import Alert, AlertQueue, UserAlertPreferences, User, SessionLocal, get_db_session
 from services.geocoding_service import geocode_region
 from typing import Optional, List
@@ -7,6 +8,9 @@ from pydantic import BaseModel
 from datetime import datetime
 
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
+
+# SHOWCASE_MODE: When enabled, disables geocoding API calls
+SHOWCASE_MODE = os.getenv("SHOWCASE_MODE", "true").lower() == "true"
 
 
 class AlertResponse(BaseModel):
@@ -286,6 +290,13 @@ def update_user_location(
 @router.get("/regions/search", response_model=RegionSearchResult)
 def search_region(query: str = Query(..., min_length=2)):
     """Search for a region using Google Geocoding API"""
+    # SHOWCASE MODE: Geocoding disabled to prevent API costs
+    if SHOWCASE_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="🎭 Showcase Mode: Region search disabled. This app is in portfolio/demo mode."
+        )
+    
     result = geocode_region(query)
 
     if not result:

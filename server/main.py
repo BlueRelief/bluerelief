@@ -48,6 +48,7 @@ def get_commit_sha():
 
 APP_VERSION = get_version()
 COMMIT_SHA = get_commit_sha()
+SHOWCASE_MODE = os.getenv("SHOWCASE_MODE", "true").lower() == "true"
 
 app = FastAPI(
     title="BlueRelief API",
@@ -125,6 +126,7 @@ async def version_info():
         "version": APP_VERSION,
         "commit": COMMIT_SHA,
         "environment": os.getenv("ENVIRONMENT", "development"),
+        "showcase_mode": SHOWCASE_MODE,
     }
 
 

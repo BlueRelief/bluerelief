@@ -15,6 +15,9 @@ from services.geocoding_service import geocode_region
 
 load_dotenv()
 
+# SHOWCASE_MODE: When enabled, skip all Gemini API calls
+SHOWCASE_MODE = os.getenv("SHOWCASE_MODE", "true").lower() == "true"
+
 # Rate limiter for Gemini API (default 15 RPM for free tier, adjust based on your quota)
 GEMINI_RPM = int(os.getenv("GEMINI_RPM", "15"))
 GEMINI_CONCURRENT_WORKERS = int(os.getenv("GEMINI_CONCURRENT_WORKERS", "3"))
@@ -344,6 +347,11 @@ def analyze_posts(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1)
     Returns:
         JSON string containing array of extracted disasters with source post_ids
     """
+    # SHOWCASE MODE: Skip all Gemini analysis
+    if SHOWCASE_MODE:
+        print("🎭 SHOWCASE MODE: Skipping Gemini analysis")
+        return "[]"
+
     if not posts:
         print("No posts to process")
         return "[]"
@@ -367,7 +375,7 @@ def analyze_posts(posts: List[Dict], batch_size: int = 50, batch_delay: int = 1)
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-    
+
     all_disasters = loop.run_until_complete(
         _process_batches_concurrent(model, posts, batch_size, now)
     )
@@ -508,6 +516,11 @@ def analyze_sentiment(posts: List[Dict], batch_size: int = 50, batch_delay: int 
     Returns:
         JSON string containing sentiment analysis results
     """
+    # SHOWCASE MODE: Skip all Gemini analysis
+    if SHOWCASE_MODE:
+        print("🎭 SHOWCASE MODE: Skipping sentiment analysis")
+        return "{}"
+
     if not posts:
         return "{}"
 
@@ -528,7 +541,7 @@ def analyze_sentiment(posts: List[Dict], batch_size: int = 50, batch_delay: int 
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-    
+
     all_sentiments = loop.run_until_complete(
         _process_sentiment_concurrent(model, posts, batch_size)
     )

@@ -152,6 +152,22 @@ export default function DevToolsPage() {
         )}
       </div>
 
+      {/* Showcase Mode Banner */}
+      <Card className="border-amber-500/50 bg-amber-500/10">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🎭</span>
+            <div>
+              <h3 className="font-semibold text-amber-600 dark:text-amber-400">Showcase Mode Active</h3>
+              <p className="text-sm text-muted-foreground">
+                AI features and data collection are disabled to prevent API costs. 
+                The app displays existing data only for portfolio demonstration.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>

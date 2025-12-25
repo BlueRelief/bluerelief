@@ -26,6 +26,9 @@ load_dotenv(override=True)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# SHOWCASE_MODE: When enabled, disables geocoding API calls
+SHOWCASE_MODE = os.getenv("SHOWCASE_MODE", "true").lower() == "true"
+
 # Load configurations
 config = Config(".env")
 
@@ -671,16 +674,23 @@ async def logout(request: Request, token: str = Cookie(None)):
 @router.get("/geocode")
 async def geocode_location(query: str):
     """Geocode a location query using Google Geocoding API"""
+    # SHOWCASE MODE: Geocoding disabled to prevent API costs
+    if SHOWCASE_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="🎭 Showcase Mode: Geocoding disabled. Please use IP-based location or skip location setup.",
+        )
+
     from services.geocoding_service import geocode_region
-    
+
     if not query or len(query.strip()) < 2:
         raise HTTPException(status_code=400, detail="Query too short")
-    
+
     result = geocode_region(query.strip())
-    
+
     if not result:
         raise HTTPException(status_code=404, detail="Location not found")
-    
+
     return {
         "name": result.get("name"),
         "latitude": result.get("lat"),

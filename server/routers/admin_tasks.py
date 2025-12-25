@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
+import os
 from db_utils.db import (
     SessionLocal,
     User,
@@ -26,6 +27,18 @@ from services.admin_logger import log_admin_activity
 import sqlalchemy
 
 router = APIRouter(prefix="/api/admin/tasks", tags=["admin-tasks"])
+
+# SHOWCASE_MODE: When enabled, blocks all AI/data collection tasks
+SHOWCASE_MODE = os.getenv("SHOWCASE_MODE", "true").lower() == "true"
+
+
+def check_showcase_mode():
+    """Raises HTTPException if showcase mode is enabled"""
+    if SHOWCASE_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="🎭 Showcase Mode: AI features disabled. This app is in portfolio/demo mode.",
+        )
 
 
 def get_db():
@@ -56,6 +69,7 @@ def trigger_collection(req: CollectRequest, current_admin: User = Depends(get_cu
     Accepts JSON body: { "include_enhanced": bool, "disaster_types": ["earthquake","flood"] }
     Note: disaster_types is currently accepted for future use but not passed to the Celery task.
     """
+    check_showcase_mode()
     try:
         task = collect_and_analyze.delay(include_enhanced=req.include_enhanced)
         return {"task_id": task.id, "status": "started"}
@@ -65,6 +79,7 @@ def trigger_collection(req: CollectRequest, current_admin: User = Depends(get_cu
 
 @router.post("/generate-alerts")
 def trigger_alert_generation(current_admin: User = Depends(get_current_admin)):
+    check_showcase_mode()
     try:
         task = generate_alerts.delay()
         return {"task_id": task.id, "status": "started"}
@@ -74,6 +89,7 @@ def trigger_alert_generation(current_admin: User = Depends(get_current_admin)):
 
 @router.post("/process-queue")
 def trigger_queue_processing(current_admin: User = Depends(get_current_admin)):
+    check_showcase_mode()
     try:
         task = manage_alert_queue.delay()
         return {"task_id": task.id, "status": "started"}
@@ -83,6 +99,7 @@ def trigger_queue_processing(current_admin: User = Depends(get_current_admin)):
 
 @router.post("/cleanup-alerts")
 def trigger_alert_cleanup(current_admin: User = Depends(get_current_admin)):
+    check_showcase_mode()
     try:
         task = cleanup_old_alerts.delay()
         return {"task_id": task.id, "status": "started"}
@@ -92,6 +109,7 @@ def trigger_alert_cleanup(current_admin: User = Depends(get_current_admin)):
 
 @router.post("/archive")
 def trigger_archive(days_threshold: int = 2, current_admin: User = Depends(get_current_admin)):
+    check_showcase_mode()
     try:
         task = archive_completed_disasters.delay(days_threshold=days_threshold)
         return {"task_id": task.id, "status": "started", "days_threshold": days_threshold}
@@ -144,6 +162,7 @@ def trigger_test_alert(
     Trigger a test alert for a specific user at their location.
     Creates a test disaster near the user and queues an alert for them.
     """
+    check_showcase_mode()
     db = SessionLocal()
     try:
         user = (

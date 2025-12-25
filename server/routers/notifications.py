@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List, Dict, Any
+import os
 from services.email_service import (
     send_email_via_microservice, 
     log_email_event,
@@ -15,6 +16,9 @@ from celery_app import celery_app
 import traceback
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
+
+# SHOWCASE_MODE: When enabled, blocks batch email tasks
+SHOWCASE_MODE = os.getenv("SHOWCASE_MODE", "true").lower() == "true"
 
 
 class EmailSendRequest(BaseModel):
@@ -224,6 +228,11 @@ def send_welcome(req: WelcomeEmailRequest):
 @router.post("/email/batch")
 def send_batch(req: BatchEmailRequest):
     """Enqueue a batch email job (async)."""
+    if SHOWCASE_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="🎭 Showcase Mode: Batch emails disabled. This app is in portfolio/demo mode."
+        )
     try:
         # For DEV: perform quick pre-check: filter out opted-out users
         recipients = []
