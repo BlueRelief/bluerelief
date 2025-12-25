@@ -50,6 +50,7 @@ services:
       DATABASE_URL: postgresql://dev:devpassword@postgres:5432/bluerelief
       REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: ${ENVIRONMENT}
+      SHOWCASE_MODE: ${SHOWCASE_MODE:-true}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
@@ -90,6 +91,7 @@ services:
     environment:
       DATABASE_URL: postgresql://dev:devpassword@postgres:5432/bluerelief
       REDIS_URL: redis://redis:6379/0
+      SHOWCASE_MODE: ${SHOWCASE_MODE:-true}
       BlueSky_Username: ${BlueSky_Username}
       BlueSky_Password: ${BlueSky_Password}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
@@ -120,6 +122,7 @@ services:
     environment:
       DATABASE_URL: postgresql://dev:devpassword@postgres:5432/bluerelief
       REDIS_URL: redis://redis:6379/0
+      SHOWCASE_MODE: ${SHOWCASE_MODE:-true}
       BlueSky_Username: ${BlueSky_Username}
       BlueSky_Password: ${BlueSky_Password}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}

@@ -1,11 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+import os
 from db_utils.db import SessionLocal, User
 from middleware.admin_auth import get_current_admin
 from tasks import archive_completed_disasters
 from celery_app import celery_app
 
 router = APIRouter(prefix="/api/archive", tags=["archive"])
+
+# SHOWCASE_MODE: When enabled, blocks task triggers
+SHOWCASE_MODE = os.getenv("SHOWCASE_MODE", "true").lower() == "true"
 
 
 def get_db():
@@ -43,6 +47,11 @@ def trigger_archive(
     Returns:
         Task info with ID and status
     """
+    if SHOWCASE_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="🎭 Showcase Mode: Task triggers disabled. This app is in portfolio/demo mode."
+        )
     try:
         task = archive_completed_disasters.delay(days_threshold=days_threshold)
         return {

@@ -7,6 +7,9 @@ logger = logging.getLogger(__name__)
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
+# SHOWCASE_MODE: When enabled, skip all Google Geocoding API calls
+SHOWCASE_MODE = os.getenv("SHOWCASE_MODE", "true").lower() == "true"
+
 
 def geocode_region(query: str) -> Optional[dict]:
     """
@@ -19,36 +22,41 @@ def geocode_region(query: str) -> Optional[dict]:
     - bounds: {ne_lat, ne_lng, sw_lat, sw_lng} for the region
     - place_id: Google place ID
     """
+    # SHOWCASE MODE: Skip all geocoding API calls
+    if SHOWCASE_MODE:
+        logger.info("🎭 SHOWCASE MODE: Geocoding disabled")
+        return None
+
     if not GOOGLE_API_KEY:
         logger.error("GOOGLE_API_KEY not configured")
         return None
-    
+
     try:
         url = "https://maps.googleapis.com/maps/api/geocode/json"
         params = {
             "address": query,
             "key": GOOGLE_API_KEY,
         }
-        
+
         response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
-        
+
         if data.get("status") != "OK" or not data.get("results"):
             logger.warning(f"Geocoding failed for '{query}': {data.get('status')}")
             return None
-        
+
         result = data["results"][0]
         geometry = result.get("geometry", {})
         location = geometry.get("location", {})
-        
+
         region_data = {
             "name": result.get("formatted_address", query),
             "lat": location.get("lat"),
             "lng": location.get("lng"),
             "place_id": result.get("place_id"),
         }
-        
+
         # Get bounds if available (for regions like states/countries)
         bounds = geometry.get("bounds") or geometry.get("viewport")
         if bounds:
@@ -58,9 +66,9 @@ def geocode_region(query: str) -> Optional[dict]:
                 "sw_lat": bounds["southwest"]["lat"],
                 "sw_lng": bounds["southwest"]["lng"],
             }
-        
+
         return region_data
-        
+
     except requests.RequestException as e:
         logger.error(f"Geocoding request failed: {e}")
         return None
@@ -78,4 +86,3 @@ def is_point_in_bounds(lat: float, lng: float, bounds: dict) -> bool:
         bounds["sw_lat"] <= lat <= bounds["ne_lat"] and
         bounds["sw_lng"] <= lng <= bounds["ne_lng"]
     )
-

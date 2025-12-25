@@ -10,6 +10,9 @@ load_dotenv()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
+# SHOWCASE_MODE: When enabled, skip Google API calls for population estimation
+SHOWCASE_MODE = os.getenv("SHOWCASE_MODE", "true").lower() == "true"
+
 
 class PopulationEstimator:
     """Estimate affected population based on various factors"""
@@ -74,7 +77,13 @@ class PopulationEstimator:
         severity = severity if severity and 1 <= severity <= 5 else 3
 
         # Try Google Places API if configured and we have coordinates
-        if GOOGLE_API_KEY and longitude is not None and latitude is not None:
+        # Skip in showcase mode to prevent API costs
+        if (
+            not SHOWCASE_MODE
+            and GOOGLE_API_KEY
+            and longitude is not None
+            and latitude is not None
+        ):
             try:
                 radius = PopulationEstimator.calculate_impact_radius_km(
                     severity, disaster_type

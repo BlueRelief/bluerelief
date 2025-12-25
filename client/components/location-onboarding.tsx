@@ -149,7 +149,10 @@ export function LocationOnboarding({ onLocationSet }: LocationOnboardingProps) {
       const response = await apiClient(`/auth/geocode?query=${encodeURIComponent(manualLocation.trim())}`);
 
       if (!response.ok) {
-        if (response.status === 404) {
+        if (response.status === 403) {
+          // Showcase mode - geocoding disabled
+          setError('Manual location search is currently unavailable. Please use "Auto-Detect Country" or "Skip Location Setup" instead.');
+        } else if (response.status === 404) {
           setError('Location not found. Please try a different location.');
         } else {
           setError('Failed to find location. Please try again.');

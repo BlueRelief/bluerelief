@@ -1,11 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+import os
 from tasks import collect_and_analyze
 from services.database_service import get_recent_disasters, get_collection_stats
 from db_utils.db import SessionLocal, Post, Disaster, CollectionRun
 from celery_app import celery_app
 
 router = APIRouter(prefix="/api/bluesky", tags=["bluesky"])
+
+# SHOWCASE_MODE: When enabled, blocks data collection triggers
+SHOWCASE_MODE = os.getenv("SHOWCASE_MODE", "true").lower() == "true"
 
 def get_db():
     db = SessionLocal()
@@ -50,6 +54,11 @@ def trigger_collection(include_enhanced: bool = True):
     Args:
         include_enhanced: Whether to collect enhanced post data (profile info, engagement, etc.)
     """
+    if SHOWCASE_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="🎭 Showcase Mode: Data collection disabled. This app is in portfolio/demo mode."
+        )
     task = collect_and_analyze.delay(include_enhanced=include_enhanced)
     return {
         "status": "accepted",

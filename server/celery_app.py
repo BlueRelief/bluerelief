@@ -7,6 +7,9 @@ load_dotenv()
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
+# SHOWCASE_MODE: When enabled, disables all automatic tasks to prevent API costs
+SHOWCASE_MODE = os.getenv("SHOWCASE_MODE", "true").lower() == "true"
+
 celery_app = Celery(
     "bluerelief_tasks",
     broker=REDIS_URL,
@@ -45,47 +48,53 @@ celery_app.conf.update(
 # Default to running every 8 hours, but can be configured with env var
 SCHEDULE_HOURS = int(os.getenv("SCHEDULE_HOURS", "8"))
 
-celery_app.conf.beat_schedule = {
-    "collect-bluesky-data": {
-        "task": "tasks.collect_and_analyze",
-        "schedule": crontab(hour=f"*/{SCHEDULE_HOURS}", minute=0),
-        "options": {"expires": 60 * 60 * 3},  # Tasks expire after 3 hours
-    },
-    "generate-alerts": {
-        "task": "tasks.generate_alerts",
-        "schedule": 300.0,  # every 5 minutes
-        "options": {
-            "expires": 60 * 5,  # Tasks expire after 5 minutes
+# SHOWCASE MODE: All scheduled tasks are disabled to prevent Gemini/Google API costs
+# The app displays existing data only - no new data collection or AI analysis
+if SHOWCASE_MODE:
+    print("🎭 SHOWCASE MODE ENABLED - All scheduled tasks disabled")
+    celery_app.conf.beat_schedule = {}
+else:
+    celery_app.conf.beat_schedule = {
+        "collect-bluesky-data": {
+            "task": "tasks.collect_and_analyze",
+            "schedule": crontab(hour=f"*/{SCHEDULE_HOURS}", minute=0),
+            "options": {"expires": 60 * 60 * 3},  # Tasks expire after 3 hours
         },
-    },
-    "manage-alert-queue": {
-        "task": "tasks.manage_alert_queue",
-        "schedule": 120.0,  # every 2 minutes
-        "options": {
-            "expires": 60 * 2,  # Tasks expire after 2 minutes
+        "generate-alerts": {
+            "task": "tasks.generate_alerts",
+            "schedule": 300.0,  # every 5 minutes
+            "options": {
+                "expires": 60 * 5,  # Tasks expire after 5 minutes
+            },
         },
-    },
-    "send-alert-emails": {
-        "task": "tasks.send_alert_emails",
-        "schedule": 120.0,  # every 2 minutes
-        "options": {
-            "expires": 60 * 2,  # Tasks expire after 2 minutes
+        "manage-alert-queue": {
+            "task": "tasks.manage_alert_queue",
+            "schedule": 120.0,  # every 2 minutes
+            "options": {
+                "expires": 60 * 2,  # Tasks expire after 2 minutes
+            },
         },
-    },
-    "cleanup-alerts": {
-        "task": "tasks.cleanup_old_alerts",
-        "schedule": crontab(hour=2, minute=0),  # 2 AM daily
-        "options": {
-            "expires": 60 * 60 * 24,  # Tasks expire after 24 hours
+        "send-alert-emails": {
+            "task": "tasks.send_alert_emails",
+            "schedule": 120.0,  # every 2 minutes
+            "options": {
+                "expires": 60 * 2,  # Tasks expire after 2 minutes
+            },
         },
-    },
-    "archive-completed-disasters": {
-        "task": "tasks.archive_completed_disasters",
-        "schedule": crontab(hour=3, minute=0),  # 3 AM daily
-        "options": {
-            "expires": 60 * 60 * 24,  # Tasks expire after 24 hours
+        "cleanup-alerts": {
+            "task": "tasks.cleanup_old_alerts",
+            "schedule": crontab(hour=2, minute=0),  # 2 AM daily
+            "options": {
+                "expires": 60 * 60 * 24,  # Tasks expire after 24 hours
+            },
         },
-    },
-}
+        "archive-completed-disasters": {
+            "task": "tasks.archive_completed_disasters",
+            "schedule": crontab(hour=3, minute=0),  # 3 AM daily
+            "options": {
+                "expires": 60 * 60 * 24,  # Tasks expire after 24 hours
+            },
+        },
+    }
 
 celery_app.conf.timezone = "UTC"

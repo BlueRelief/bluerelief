@@ -12,6 +12,10 @@ REDIS_URL=redis://localhost:6379/0
 ENVIRONMENT=development
 NODE_ENV=development
 
+# Showcase Mode - When true, disables all AI/Gemini features to prevent API costs
+# Set to false to enable data collection and AI analysis
+SHOWCASE_MODE=true
+
 # Frontend Configuration
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_APP_URL=https://platform.private.bluerelief.app
