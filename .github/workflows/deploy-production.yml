@@ -119,17 +119,38 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Deploy to production
+      - name: Mint argocd repo token
+        id: argocd-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.RAD_SOFT_ARGOCD_APP_ID }}
+          private-key: ${{ secrets.RAD_SOFT_ARGOCD_PRIVATE_KEY }}
+          owner: Rad-Soft
+          repositories: argocd
+
+      - name: Bump image tag in argocd repo
+        env:
+          GITHUB_TOKEN: ${{ steps.argocd-token.outputs.token }}
+          IMAGE_TAG: ${{ needs.version.outputs.image_tag }}
         run: |
-          helm upgrade --install bluerelief \
-            /home/geeth/Development/k8s/helm/celery-app-chart \
-            -f /home/geeth/Development/k8s/helm/celery-app-chart/bluerelief-values.yaml \
-            -n bluerelief \
-            --create-namespace \
-            --set app.image.tag=${{ needs.version.outputs.image_tag }} \
-            --set frontend.image.tag=${{ needs.version.outputs.image_tag }} \
-            --set emailService.image.tag=${{ needs.version.outputs.image_tag }} \
-            --wait
+          # self-hosted runners don't clean up between runs
+          WORKDIR=$(mktemp -d)
+          git clone --depth 1 "https://x-access-token:${GITHUB_TOKEN}@github.com/Rad-Soft/argocd.git" "$WORKDIR"
+          cd "$WORKDIR"
+
+          # backend, frontend and email-service all ship from the same commit
+          sed -i "s|^    tag: .*|    tag: ${IMAGE_TAG}|" values/bluerelief.yaml
+          grep -n "tag:" values/bluerelief.yaml
+
+          git config user.name "rad-soft-argocd[bot]"
+          git config user.email "rad-soft-argocd[bot]@users.noreply.github.com"
+          git add values/bluerelief.yaml
+          if git diff --cached --quiet; then
+            echo "No tag change — skipping commit"
+          else
+            git commit -m "deploy bluerelief: ${IMAGE_TAG}"
+            git push
+          fi
 
       - name: Create Git Tag and Release
         run: |
